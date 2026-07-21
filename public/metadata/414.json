@@ -1,0 +1,71 @@
+{
+  "name": "Pangs Rally #414",
+  "description": "The official Pangs Rally Racing Pangolin.",
+  "image": "ipfs://QmZUFnYS72EkvGHFoi3yizwRB7ENS9amZzw7UXeiacYf9G/414.png",
+  "dna": "53fe9ae5465b9b9c9ff1734b3946d010f2c8bae4",
+  "edition": 954,
+  "date": 1784242677811,
+  "attributes": [
+    {
+      "trait_type": "Background",
+      "value": "white"
+    },
+    {
+      "trait_type": "Body",
+      "value": "Rainbow"
+    },
+    {
+      "trait_type": "Belt",
+      "value": "none"
+    },
+    {
+      "trait_type": "Shoes",
+      "value": "none"
+    },
+    {
+      "trait_type": "Neck",
+      "value": "Emerald"
+    },
+    {
+      "trait_type": "Mouth",
+      "value": "none"
+    },
+    {
+      "trait_type": "Eyes",
+      "value": "Scorp"
+    },
+    {
+      "trait_type": "Hat",
+      "value": "SafariV2"
+    },
+    {
+      "trait_type": "Gender",
+      "value": "Male"
+    },
+    {
+      "trait_type": "Arm",
+      "value": "none"
+    },
+    {
+      "trait_type": "Speed",
+      "value": 55
+    },
+    {
+      "trait_type": "Burst Power",
+      "value": 43
+    },
+    {
+      "trait_type": "Endurance",
+      "value": 42
+    },
+    {
+      "trait_type": "Weather Adaptation",
+      "value": "Forest"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Uncommon"
+    }
+  ],
+  "compiler": "HashLips Art Engine"
+}

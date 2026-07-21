@@ -1,0 +1,71 @@
+{
+  "name": "Pangs Rally #401",
+  "description": "The official Pangs Rally Racing Pangolin.",
+  "image": "ipfs://QmZUFnYS72EkvGHFoi3yizwRB7ENS9amZzw7UXeiacYf9G/401.png",
+  "dna": "eb3c2b007774580a29d11851e8bc1dedb1977aef",
+  "edition": 134,
+  "date": 1784242344342,
+  "attributes": [
+    {
+      "trait_type": "Background",
+      "value": "white"
+    },
+    {
+      "trait_type": "Body",
+      "value": "Red"
+    },
+    {
+      "trait_type": "Belt",
+      "value": "none"
+    },
+    {
+      "trait_type": "Shoes",
+      "value": "Roller Skate"
+    },
+    {
+      "trait_type": "Neck",
+      "value": "Bitten Medal"
+    },
+    {
+      "trait_type": "Mouth",
+      "value": "none"
+    },
+    {
+      "trait_type": "Eyes",
+      "value": "Monocle"
+    },
+    {
+      "trait_type": "Hat",
+      "value": "Safari"
+    },
+    {
+      "trait_type": "Gender",
+      "value": "Female"
+    },
+    {
+      "trait_type": "Arm",
+      "value": "none"
+    },
+    {
+      "trait_type": "Speed",
+      "value": 54
+    },
+    {
+      "trait_type": "Burst Power",
+      "value": 87
+    },
+    {
+      "trait_type": "Endurance",
+      "value": 69
+    },
+    {
+      "trait_type": "Weather Adaptation",
+      "value": "Forest"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Rare"
+    }
+  ],
+  "compiler": "HashLips Art Engine"
+}

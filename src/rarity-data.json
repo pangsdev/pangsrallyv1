@@ -1,0 +1,3201 @@
+{
+  "traitFrequencies": {
+    "Background": {
+      "green": "18.4",
+      "white": "53.5",
+      "yellow": "28.1"
+    },
+    "Body": {
+      "Red": "10.4",
+      "Rainbow": "8.1",
+      "Brown": "42.5",
+      "Blue": "21.2",
+      "Black": "8.9",
+      "Silver": "3.5",
+      "Albino": "4.2",
+      "Gold": "1.2"
+    },
+    "Belt": {
+      "none": "86.6",
+      "discoverer": "2.3",
+      "asdas": "2.6",
+      "asas": "2.3",
+      "wew": "1.9",
+      "qqqq": "2.2",
+      "safaribag": "2.1"
+    },
+    "Shoes": {
+      "none": "89.3",
+      "Roller Skate": "10.7"
+    },
+    "Neck": {
+      "none": "36.9",
+      "Bone": "11.1",
+      "Emerald": "12.4",
+      "Grey Scarf": "10.2",
+      "Scarf": "14.7",
+      "Bitten Medal": "4.8",
+      "Blue Scarf": "10.0"
+    },
+    "Mouth": {
+      "none": "83.3",
+      "Bandana": "4.9",
+      "Nozzle": "5.4",
+      "Muzzle": "6.4"
+    },
+    "Eyes": {
+      "Police": "8.1",
+      "Thug": "6.0",
+      "none": "38.0",
+      "Retired": "4.2",
+      "GTech": "4.9",
+      "AIv2": "3.7",
+      "Gatsby": "9.8",
+      "Scorp": "6.8",
+      "Oogle": "9.1",
+      "Monocle": "6.3",
+      "AIGlasses": "3.0"
+    },
+    "Hat": {
+      "Viking": "2.3",
+      "none": "45.2",
+      "Safari": "8.6",
+      "Farmer": "7.1",
+      "SafariV2": "8.6",
+      "Beanie": "9.4",
+      "Felt": "7.3",
+      "Pirate": "4.2",
+      "Kabuto": "3.0",
+      "Hale": "3.0",
+      "Crown": "1.3"
+    },
+    "Gender": {
+      "Male": "59.6",
+      "Female": "40.4"
+    },
+    "Arm": {
+      "none": "98.2",
+      "qwe": "1.8"
+    },
+    "Generation": {
+      "Gen 0": "100.0"
+    },
+    "Weather Adaptation": {
+      "None": "49.9",
+      "Midnight": "12.9",
+      "Sandstorm": "12.6",
+      "Volcanic": "12.9",
+      "Forest": "11.7"
+    }
+  },
+  "nftRarities": {
+    "1": {
+      "tier": "Uncommon",
+      "score": "6.87"
+    },
+    "2": {
+      "tier": "Uncommon",
+      "score": "5.34"
+    },
+    "3": {
+      "tier": "Common",
+      "score": "3.01"
+    },
+    "4": {
+      "tier": "Uncommon",
+      "score": "5.51"
+    },
+    "5": {
+      "tier": "Uncommon",
+      "score": "8.30"
+    },
+    "6": {
+      "tier": "Common",
+      "score": "3.38"
+    },
+    "7": {
+      "tier": "Rare",
+      "score": "10.64"
+    },
+    "8": {
+      "tier": "Common",
+      "score": "4.41"
+    },
+    "9": {
+      "tier": "Common",
+      "score": "3.82"
+    },
+    "10": {
+      "tier": "Uncommon",
+      "score": "6.27"
+    },
+    "11": {
+      "tier": "Common",
+      "score": "3.90"
+    },
+    "12": {
+      "tier": "Common",
+      "score": "3.81"
+    },
+    "13": {
+      "tier": "Uncommon",
+      "score": "6.01"
+    },
+    "14": {
+      "tier": "Common",
+      "score": "3.53"
+    },
+    "15": {
+      "tier": "Uncommon",
+      "score": "7.75"
+    },
+    "16": {
+      "tier": "Common",
+      "score": "2.68"
+    },
+    "17": {
+      "tier": "Common",
+      "score": "4.33"
+    },
+    "18": {
+      "tier": "Uncommon",
+      "score": "7.92"
+    },
+    "19": {
+      "tier": "Common",
+      "score": "3.13"
+    },
+    "20": {
+      "tier": "Uncommon",
+      "score": "8.18"
+    },
+    "21": {
+      "tier": "Common",
+      "score": "4.81"
+    },
+    "22": {
+      "tier": "Uncommon",
+      "score": "5.44"
+    },
+    "23": {
+      "tier": "Common",
+      "score": "4.38"
+    },
+    "24": {
+      "tier": "Uncommon",
+      "score": "6.74"
+    },
+    "25": {
+      "tier": "Common",
+      "score": "2.90"
+    },
+    "26": {
+      "tier": "Common",
+      "score": "3.23"
+    },
+    "27": {
+      "tier": "Uncommon",
+      "score": "5.10"
+    },
+    "28": {
+      "tier": "Uncommon",
+      "score": "8.73"
+    },
+    "29": {
+      "tier": "Common",
+      "score": "4.26"
+    },
+    "30": {
+      "tier": "Common",
+      "score": "3.59"
+    },
+    "31": {
+      "tier": "Common",
+      "score": "3.57"
+    },
+    "32": {
+      "tier": "Common",
+      "score": "3.60"
+    },
+    "33": {
+      "tier": "Uncommon",
+      "score": "6.84"
+    },
+    "34": {
+      "tier": "Common",
+      "score": "4.94"
+    },
+    "35": {
+      "tier": "Uncommon",
+      "score": "5.15"
+    },
+    "36": {
+      "tier": "Common",
+      "score": "3.23"
+    },
+    "37": {
+      "tier": "Uncommon",
+      "score": "5.68"
+    },
+    "38": {
+      "tier": "Common",
+      "score": "4.68"
+    },
+    "39": {
+      "tier": "Uncommon",
+      "score": "7.10"
+    },
+    "40": {
+      "tier": "Common",
+      "score": "4.06"
+    },
+    "41": {
+      "tier": "Common",
+      "score": "4.86"
+    },
+    "42": {
+      "tier": "Common",
+      "score": "3.74"
+    },
+    "43": {
+      "tier": "Uncommon",
+      "score": "5.20"
+    },
+    "44": {
+      "tier": "Common",
+      "score": "4.03"
+    },
+    "45": {
+      "tier": "Common",
+      "score": "4.17"
+    },
+    "46": {
+      "tier": "Uncommon",
+      "score": "6.97"
+    },
+    "47": {
+      "tier": "Uncommon",
+      "score": "6.72"
+    },
+    "48": {
+      "tier": "Common",
+      "score": "3.05"
+    },
+    "49": {
+      "tier": "Common",
+      "score": "4.53"
+    },
+    "50": {
+      "tier": "Common",
+      "score": "3.27"
+    },
+    "51": {
+      "tier": "Common",
+      "score": "4.18"
+    },
+    "52": {
+      "tier": "Common",
+      "score": "4.86"
+    },
+    "53": {
+      "tier": "Common",
+      "score": "4.01"
+    },
+    "54": {
+      "tier": "Common",
+      "score": "4.67"
+    },
+    "55": {
+      "tier": "Common",
+      "score": "3.17"
+    },
+    "56": {
+      "tier": "Common",
+      "score": "4.38"
+    },
+    "57": {
+      "tier": "Common",
+      "score": "2.45"
+    },
+    "58": {
+      "tier": "Common",
+      "score": "3.57"
+    },
+    "59": {
+      "tier": "Common",
+      "score": "3.26"
+    },
+    "60": {
+      "tier": "Uncommon",
+      "score": "5.72"
+    },
+    "61": {
+      "tier": "Uncommon",
+      "score": "5.36"
+    },
+    "62": {
+      "tier": "Uncommon",
+      "score": "5.98"
+    },
+    "63": {
+      "tier": "Common",
+      "score": "3.10"
+    },
+    "64": {
+      "tier": "Uncommon",
+      "score": "6.54"
+    },
+    "65": {
+      "tier": "Uncommon",
+      "score": "8.12"
+    },
+    "66": {
+      "tier": "Common",
+      "score": "4.66"
+    },
+    "67": {
+      "tier": "Common",
+      "score": "3.87"
+    },
+    "68": {
+      "tier": "Common",
+      "score": "3.38"
+    },
+    "69": {
+      "tier": "Uncommon",
+      "score": "7.49"
+    },
+    "70": {
+      "tier": "Common",
+      "score": "4.09"
+    },
+    "71": {
+      "tier": "Uncommon",
+      "score": "6.08"
+    },
+    "72": {
+      "tier": "Uncommon",
+      "score": "5.43"
+    },
+    "73": {
+      "tier": "Common",
+      "score": "4.72"
+    },
+    "74": {
+      "tier": "Common",
+      "score": "3.31"
+    },
+    "75": {
+      "tier": "Uncommon",
+      "score": "5.34"
+    },
+    "76": {
+      "tier": "Common",
+      "score": "4.24"
+    },
+    "77": {
+      "tier": "Common",
+      "score": "2.81"
+    },
+    "78": {
+      "tier": "Common",
+      "score": "3.57"
+    },
+    "79": {
+      "tier": "Uncommon",
+      "score": "5.40"
+    },
+    "80": {
+      "tier": "Uncommon",
+      "score": "5.45"
+    },
+    "81": {
+      "tier": "Common",
+      "score": "4.91"
+    },
+    "82": {
+      "tier": "Uncommon",
+      "score": "8.19"
+    },
+    "83": {
+      "tier": "Common",
+      "score": "3.80"
+    },
+    "84": {
+      "tier": "Uncommon",
+      "score": "7.47"
+    },
+    "85": {
+      "tier": "Uncommon",
+      "score": "5.28"
+    },
+    "86": {
+      "tier": "Uncommon",
+      "score": "5.79"
+    },
+    "87": {
+      "tier": "Uncommon",
+      "score": "6.28"
+    },
+    "88": {
+      "tier": "Uncommon",
+      "score": "5.87"
+    },
+    "89": {
+      "tier": "Uncommon",
+      "score": "7.63"
+    },
+    "90": {
+      "tier": "Common",
+      "score": "4.29"
+    },
+    "91": {
+      "tier": "Common",
+      "score": "4.90"
+    },
+    "92": {
+      "tier": "Common",
+      "score": "3.28"
+    },
+    "93": {
+      "tier": "Common",
+      "score": "2.98"
+    },
+    "94": {
+      "tier": "Common",
+      "score": "2.44"
+    },
+    "95": {
+      "tier": "Common",
+      "score": "4.13"
+    },
+    "96": {
+      "tier": "Common",
+      "score": "3.86"
+    },
+    "97": {
+      "tier": "Common",
+      "score": "3.88"
+    },
+    "98": {
+      "tier": "Uncommon",
+      "score": "5.53"
+    },
+    "99": {
+      "tier": "Common",
+      "score": "3.79"
+    },
+    "100": {
+      "tier": "Uncommon",
+      "score": "5.80"
+    },
+    "101": {
+      "tier": "Common",
+      "score": "4.83"
+    },
+    "102": {
+      "tier": "Common",
+      "score": "4.26"
+    },
+    "103": {
+      "tier": "Uncommon",
+      "score": "9.47"
+    },
+    "104": {
+      "tier": "Common",
+      "score": "4.06"
+    },
+    "105": {
+      "tier": "Common",
+      "score": "2.11"
+    },
+    "106": {
+      "tier": "Common",
+      "score": "4.41"
+    },
+    "107": {
+      "tier": "Uncommon",
+      "score": "5.65"
+    },
+    "108": {
+      "tier": "Common",
+      "score": "2.70"
+    },
+    "109": {
+      "tier": "Common",
+      "score": "2.89"
+    },
+    "110": {
+      "tier": "Uncommon",
+      "score": "9.27"
+    },
+    "111": {
+      "tier": "Common",
+      "score": "4.95"
+    },
+    "112": {
+      "tier": "Common",
+      "score": "4.95"
+    },
+    "113": {
+      "tier": "Common",
+      "score": "4.90"
+    },
+    "114": {
+      "tier": "Common",
+      "score": "3.06"
+    },
+    "115": {
+      "tier": "Common",
+      "score": "2.60"
+    },
+    "116": {
+      "tier": "Common",
+      "score": "4.57"
+    },
+    "117": {
+      "tier": "Uncommon",
+      "score": "5.89"
+    },
+    "118": {
+      "tier": "Uncommon",
+      "score": "5.42"
+    },
+    "119": {
+      "tier": "Uncommon",
+      "score": "5.93"
+    },
+    "120": {
+      "tier": "Common",
+      "score": "2.83"
+    },
+    "121": {
+      "tier": "Common",
+      "score": "2.38"
+    },
+    "122": {
+      "tier": "Common",
+      "score": "4.35"
+    },
+    "123": {
+      "tier": "Common",
+      "score": "3.63"
+    },
+    "124": {
+      "tier": "Common",
+      "score": "2.64"
+    },
+    "125": {
+      "tier": "Uncommon",
+      "score": "6.39"
+    },
+    "126": {
+      "tier": "Common",
+      "score": "2.83"
+    },
+    "127": {
+      "tier": "Uncommon",
+      "score": "6.38"
+    },
+    "128": {
+      "tier": "Uncommon",
+      "score": "5.10"
+    },
+    "129": {
+      "tier": "Uncommon",
+      "score": "5.03"
+    },
+    "130": {
+      "tier": "Common",
+      "score": "3.09"
+    },
+    "131": {
+      "tier": "Uncommon",
+      "score": "7.56"
+    },
+    "132": {
+      "tier": "Common",
+      "score": "2.61"
+    },
+    "133": {
+      "tier": "Common",
+      "score": "4.78"
+    },
+    "134": {
+      "tier": "Uncommon",
+      "score": "8.01"
+    },
+    "135": {
+      "tier": "Common",
+      "score": "3.19"
+    },
+    "136": {
+      "tier": "Uncommon",
+      "score": "5.66"
+    },
+    "137": {
+      "tier": "Uncommon",
+      "score": "5.05"
+    },
+    "138": {
+      "tier": "Common",
+      "score": "2.99"
+    },
+    "139": {
+      "tier": "Uncommon",
+      "score": "6.47"
+    },
+    "140": {
+      "tier": "Uncommon",
+      "score": "8.68"
+    },
+    "141": {
+      "tier": "Common",
+      "score": "3.01"
+    },
+    "142": {
+      "tier": "Common",
+      "score": "4.75"
+    },
+    "143": {
+      "tier": "Common",
+      "score": "3.72"
+    },
+    "144": {
+      "tier": "Uncommon",
+      "score": "6.56"
+    },
+    "145": {
+      "tier": "Uncommon",
+      "score": "7.87"
+    },
+    "146": {
+      "tier": "Common",
+      "score": "4.54"
+    },
+    "147": {
+      "tier": "Uncommon",
+      "score": "5.06"
+    },
+    "148": {
+      "tier": "Uncommon",
+      "score": "7.17"
+    },
+    "149": {
+      "tier": "Uncommon",
+      "score": "9.30"
+    },
+    "150": {
+      "tier": "Common",
+      "score": "2.59"
+    },
+    "151": {
+      "tier": "Common",
+      "score": "3.89"
+    },
+    "152": {
+      "tier": "Common",
+      "score": "4.41"
+    },
+    "153": {
+      "tier": "Common",
+      "score": "4.90"
+    },
+    "154": {
+      "tier": "Common",
+      "score": "2.38"
+    },
+    "155": {
+      "tier": "Common",
+      "score": "4.97"
+    },
+    "156": {
+      "tier": "Common",
+      "score": "3.15"
+    },
+    "157": {
+      "tier": "Common",
+      "score": "3.22"
+    },
+    "158": {
+      "tier": "Uncommon",
+      "score": "8.38"
+    },
+    "159": {
+      "tier": "Common",
+      "score": "3.21"
+    },
+    "160": {
+      "tier": "Common",
+      "score": "2.29"
+    },
+    "161": {
+      "tier": "Uncommon",
+      "score": "5.65"
+    },
+    "162": {
+      "tier": "Uncommon",
+      "score": "6.26"
+    },
+    "163": {
+      "tier": "Uncommon",
+      "score": "5.55"
+    },
+    "164": {
+      "tier": "Common",
+      "score": "4.97"
+    },
+    "165": {
+      "tier": "Common",
+      "score": "2.49"
+    },
+    "166": {
+      "tier": "Common",
+      "score": "2.08"
+    },
+    "167": {
+      "tier": "Common",
+      "score": "3.31"
+    },
+    "168": {
+      "tier": "Uncommon",
+      "score": "9.11"
+    },
+    "169": {
+      "tier": "Rare",
+      "score": "10.70"
+    },
+    "170": {
+      "tier": "Uncommon",
+      "score": "8.18"
+    },
+    "171": {
+      "tier": "Common",
+      "score": "3.37"
+    },
+    "172": {
+      "tier": "Uncommon",
+      "score": "7.93"
+    },
+    "173": {
+      "tier": "Uncommon",
+      "score": "5.06"
+    },
+    "174": {
+      "tier": "Uncommon",
+      "score": "5.49"
+    },
+    "175": {
+      "tier": "Common",
+      "score": "4.70"
+    },
+    "176": {
+      "tier": "Uncommon",
+      "score": "5.68"
+    },
+    "177": {
+      "tier": "Common",
+      "score": "4.85"
+    },
+    "178": {
+      "tier": "Common",
+      "score": "2.55"
+    },
+    "179": {
+      "tier": "Uncommon",
+      "score": "5.22"
+    },
+    "180": {
+      "tier": "Common",
+      "score": "4.12"
+    },
+    "181": {
+      "tier": "Common",
+      "score": "4.36"
+    },
+    "182": {
+      "tier": "Uncommon",
+      "score": "8.03"
+    },
+    "183": {
+      "tier": "Common",
+      "score": "2.44"
+    },
+    "184": {
+      "tier": "Common",
+      "score": "3.09"
+    },
+    "185": {
+      "tier": "Uncommon",
+      "score": "5.27"
+    },
+    "186": {
+      "tier": "Common",
+      "score": "4.34"
+    },
+    "187": {
+      "tier": "Common",
+      "score": "2.45"
+    },
+    "188": {
+      "tier": "Common",
+      "score": "4.83"
+    },
+    "189": {
+      "tier": "Common",
+      "score": "4.31"
+    },
+    "190": {
+      "tier": "Common",
+      "score": "3.96"
+    },
+    "191": {
+      "tier": "Uncommon",
+      "score": "7.21"
+    },
+    "192": {
+      "tier": "Common",
+      "score": "4.17"
+    },
+    "193": {
+      "tier": "Uncommon",
+      "score": "6.71"
+    },
+    "194": {
+      "tier": "Common",
+      "score": "3.07"
+    },
+    "195": {
+      "tier": "Uncommon",
+      "score": "5.04"
+    },
+    "196": {
+      "tier": "Uncommon",
+      "score": "5.28"
+    },
+    "197": {
+      "tier": "Uncommon",
+      "score": "6.20"
+    },
+    "198": {
+      "tier": "Common",
+      "score": "4.93"
+    },
+    "199": {
+      "tier": "Uncommon",
+      "score": "6.66"
+    },
+    "200": {
+      "tier": "Uncommon",
+      "score": "7.39"
+    },
+    "201": {
+      "tier": "Uncommon",
+      "score": "5.56"
+    },
+    "202": {
+      "tier": "Uncommon",
+      "score": "6.30"
+    },
+    "203": {
+      "tier": "Common",
+      "score": "3.84"
+    },
+    "204": {
+      "tier": "Common",
+      "score": "4.18"
+    },
+    "205": {
+      "tier": "Uncommon",
+      "score": "9.47"
+    },
+    "206": {
+      "tier": "Uncommon",
+      "score": "7.48"
+    },
+    "207": {
+      "tier": "Common",
+      "score": "4.66"
+    },
+    "208": {
+      "tier": "Common",
+      "score": "4.51"
+    },
+    "209": {
+      "tier": "Uncommon",
+      "score": "6.13"
+    },
+    "210": {
+      "tier": "Common",
+      "score": "3.08"
+    },
+    "211": {
+      "tier": "Common",
+      "score": "4.11"
+    },
+    "212": {
+      "tier": "Uncommon",
+      "score": "6.80"
+    },
+    "213": {
+      "tier": "Common",
+      "score": "2.79"
+    },
+    "214": {
+      "tier": "Common",
+      "score": "2.69"
+    },
+    "215": {
+      "tier": "Common",
+      "score": "3.20"
+    },
+    "216": {
+      "tier": "Uncommon",
+      "score": "6.25"
+    },
+    "217": {
+      "tier": "Uncommon",
+      "score": "7.52"
+    },
+    "218": {
+      "tier": "Uncommon",
+      "score": "5.80"
+    },
+    "219": {
+      "tier": "Common",
+      "score": "3.94"
+    },
+    "220": {
+      "tier": "Uncommon",
+      "score": "5.01"
+    },
+    "221": {
+      "tier": "Common",
+      "score": "3.20"
+    },
+    "222": {
+      "tier": "Common",
+      "score": "3.04"
+    },
+    "223": {
+      "tier": "Uncommon",
+      "score": "6.03"
+    },
+    "224": {
+      "tier": "Common",
+      "score": "4.27"
+    },
+    "225": {
+      "tier": "Common",
+      "score": "4.22"
+    },
+    "226": {
+      "tier": "Common",
+      "score": "4.25"
+    },
+    "227": {
+      "tier": "Uncommon",
+      "score": "5.25"
+    },
+    "228": {
+      "tier": "Common",
+      "score": "3.24"
+    },
+    "229": {
+      "tier": "Common",
+      "score": "3.81"
+    },
+    "230": {
+      "tier": "Common",
+      "score": "3.78"
+    },
+    "231": {
+      "tier": "Common",
+      "score": "2.87"
+    },
+    "232": {
+      "tier": "Uncommon",
+      "score": "7.99"
+    },
+    "233": {
+      "tier": "Common",
+      "score": "2.99"
+    },
+    "234": {
+      "tier": "Common",
+      "score": "4.63"
+    },
+    "235": {
+      "tier": "Uncommon",
+      "score": "5.01"
+    },
+    "236": {
+      "tier": "Uncommon",
+      "score": "5.80"
+    },
+    "237": {
+      "tier": "Common",
+      "score": "3.03"
+    },
+    "238": {
+      "tier": "Common",
+      "score": "4.20"
+    },
+    "239": {
+      "tier": "Uncommon",
+      "score": "6.83"
+    },
+    "240": {
+      "tier": "Uncommon",
+      "score": "5.51"
+    },
+    "241": {
+      "tier": "Common",
+      "score": "3.01"
+    },
+    "242": {
+      "tier": "Common",
+      "score": "3.23"
+    },
+    "243": {
+      "tier": "Common",
+      "score": "3.88"
+    },
+    "244": {
+      "tier": "Common",
+      "score": "3.56"
+    },
+    "245": {
+      "tier": "Common",
+      "score": "4.60"
+    },
+    "246": {
+      "tier": "Common",
+      "score": "4.67"
+    },
+    "247": {
+      "tier": "Common",
+      "score": "2.77"
+    },
+    "248": {
+      "tier": "Common",
+      "score": "3.14"
+    },
+    "249": {
+      "tier": "Common",
+      "score": "4.32"
+    },
+    "250": {
+      "tier": "Common",
+      "score": "4.18"
+    },
+    "251": {
+      "tier": "Uncommon",
+      "score": "9.71"
+    },
+    "252": {
+      "tier": "Uncommon",
+      "score": "5.51"
+    },
+    "253": {
+      "tier": "Uncommon",
+      "score": "6.15"
+    },
+    "254": {
+      "tier": "Common",
+      "score": "2.34"
+    },
+    "255": {
+      "tier": "Common",
+      "score": "4.79"
+    },
+    "256": {
+      "tier": "Uncommon",
+      "score": "8.27"
+    },
+    "257": {
+      "tier": "Uncommon",
+      "score": "5.27"
+    },
+    "258": {
+      "tier": "Uncommon",
+      "score": "7.07"
+    },
+    "259": {
+      "tier": "Uncommon",
+      "score": "5.46"
+    },
+    "260": {
+      "tier": "Common",
+      "score": "4.06"
+    },
+    "261": {
+      "tier": "Common",
+      "score": "4.20"
+    },
+    "262": {
+      "tier": "Uncommon",
+      "score": "6.23"
+    },
+    "263": {
+      "tier": "Uncommon",
+      "score": "7.39"
+    },
+    "264": {
+      "tier": "Common",
+      "score": "4.08"
+    },
+    "265": {
+      "tier": "Common",
+      "score": "4.82"
+    },
+    "266": {
+      "tier": "Uncommon",
+      "score": "9.41"
+    },
+    "267": {
+      "tier": "Uncommon",
+      "score": "5.07"
+    },
+    "268": {
+      "tier": "Uncommon",
+      "score": "7.86"
+    },
+    "269": {
+      "tier": "Uncommon",
+      "score": "8.61"
+    },
+    "270": {
+      "tier": "Common",
+      "score": "4.03"
+    },
+    "271": {
+      "tier": "Uncommon",
+      "score": "5.66"
+    },
+    "272": {
+      "tier": "Common",
+      "score": "4.42"
+    },
+    "273": {
+      "tier": "Common",
+      "score": "4.53"
+    },
+    "274": {
+      "tier": "Rare",
+      "score": "10.64"
+    },
+    "275": {
+      "tier": "Common",
+      "score": "3.84"
+    },
+    "276": {
+      "tier": "Rare",
+      "score": "10.97"
+    },
+    "277": {
+      "tier": "Uncommon",
+      "score": "6.81"
+    },
+    "278": {
+      "tier": "Common",
+      "score": "4.36"
+    },
+    "279": {
+      "tier": "Rare",
+      "score": "12.97"
+    },
+    "280": {
+      "tier": "Uncommon",
+      "score": "7.26"
+    },
+    "281": {
+      "tier": "Uncommon",
+      "score": "8.42"
+    },
+    "282": {
+      "tier": "Rare",
+      "score": "11.64"
+    },
+    "283": {
+      "tier": "Uncommon",
+      "score": "7.54"
+    },
+    "284": {
+      "tier": "Uncommon",
+      "score": "5.10"
+    },
+    "285": {
+      "tier": "Uncommon",
+      "score": "7.99"
+    },
+    "286": {
+      "tier": "Uncommon",
+      "score": "5.49"
+    },
+    "287": {
+      "tier": "Uncommon",
+      "score": "5.67"
+    },
+    "288": {
+      "tier": "Rare",
+      "score": "14.19"
+    },
+    "289": {
+      "tier": "Uncommon",
+      "score": "5.05"
+    },
+    "290": {
+      "tier": "Uncommon",
+      "score": "5.53"
+    },
+    "291": {
+      "tier": "Common",
+      "score": "3.37"
+    },
+    "292": {
+      "tier": "Common",
+      "score": "3.93"
+    },
+    "293": {
+      "tier": "Uncommon",
+      "score": "6.65"
+    },
+    "294": {
+      "tier": "Uncommon",
+      "score": "6.70"
+    },
+    "295": {
+      "tier": "Common",
+      "score": "2.89"
+    },
+    "296": {
+      "tier": "Common",
+      "score": "4.44"
+    },
+    "297": {
+      "tier": "Uncommon",
+      "score": "7.15"
+    },
+    "298": {
+      "tier": "Uncommon",
+      "score": "6.32"
+    },
+    "299": {
+      "tier": "Uncommon",
+      "score": "6.41"
+    },
+    "300": {
+      "tier": "Uncommon",
+      "score": "5.39"
+    },
+    "301": {
+      "tier": "Common",
+      "score": "3.22"
+    },
+    "302": {
+      "tier": "Common",
+      "score": "3.87"
+    },
+    "303": {
+      "tier": "Uncommon",
+      "score": "6.78"
+    },
+    "304": {
+      "tier": "Common",
+      "score": "2.77"
+    },
+    "305": {
+      "tier": "Common",
+      "score": "4.34"
+    },
+    "306": {
+      "tier": "Uncommon",
+      "score": "5.94"
+    },
+    "307": {
+      "tier": "Uncommon",
+      "score": "6.54"
+    },
+    "308": {
+      "tier": "Uncommon",
+      "score": "8.14"
+    },
+    "309": {
+      "tier": "Common",
+      "score": "1.75"
+    },
+    "310": {
+      "tier": "Common",
+      "score": "3.84"
+    },
+    "311": {
+      "tier": "Common",
+      "score": "4.79"
+    },
+    "312": {
+      "tier": "Uncommon",
+      "score": "7.13"
+    },
+    "313": {
+      "tier": "Common",
+      "score": "2.35"
+    },
+    "314": {
+      "tier": "Common",
+      "score": "2.55"
+    },
+    "315": {
+      "tier": "Common",
+      "score": "3.17"
+    },
+    "316": {
+      "tier": "Common",
+      "score": "3.04"
+    },
+    "317": {
+      "tier": "Uncommon",
+      "score": "9.09"
+    },
+    "318": {
+      "tier": "Uncommon",
+      "score": "9.33"
+    },
+    "319": {
+      "tier": "Uncommon",
+      "score": "8.31"
+    },
+    "320": {
+      "tier": "Common",
+      "score": "4.27"
+    },
+    "321": {
+      "tier": "Uncommon",
+      "score": "7.15"
+    },
+    "322": {
+      "tier": "Common",
+      "score": "3.29"
+    },
+    "323": {
+      "tier": "Uncommon",
+      "score": "6.36"
+    },
+    "324": {
+      "tier": "Uncommon",
+      "score": "5.42"
+    },
+    "325": {
+      "tier": "Uncommon",
+      "score": "5.33"
+    },
+    "326": {
+      "tier": "Common",
+      "score": "4.58"
+    },
+    "327": {
+      "tier": "Common",
+      "score": "3.49"
+    },
+    "328": {
+      "tier": "Common",
+      "score": "3.90"
+    },
+    "329": {
+      "tier": "Rare",
+      "score": "10.34"
+    },
+    "330": {
+      "tier": "Common",
+      "score": "4.58"
+    },
+    "331": {
+      "tier": "Common",
+      "score": "3.10"
+    },
+    "332": {
+      "tier": "Uncommon",
+      "score": "5.14"
+    },
+    "333": {
+      "tier": "Uncommon",
+      "score": "7.60"
+    },
+    "334": {
+      "tier": "Common",
+      "score": "4.26"
+    },
+    "335": {
+      "tier": "Common",
+      "score": "2.63"
+    },
+    "336": {
+      "tier": "Common",
+      "score": "3.02"
+    },
+    "337": {
+      "tier": "Uncommon",
+      "score": "5.93"
+    },
+    "338": {
+      "tier": "Uncommon",
+      "score": "6.43"
+    },
+    "339": {
+      "tier": "Uncommon",
+      "score": "5.77"
+    },
+    "340": {
+      "tier": "Common",
+      "score": "3.13"
+    },
+    "341": {
+      "tier": "Uncommon",
+      "score": "5.02"
+    },
+    "342": {
+      "tier": "Uncommon",
+      "score": "5.74"
+    },
+    "343": {
+      "tier": "Uncommon",
+      "score": "8.58"
+    },
+    "344": {
+      "tier": "Common",
+      "score": "4.57"
+    },
+    "345": {
+      "tier": "Uncommon",
+      "score": "5.33"
+    },
+    "346": {
+      "tier": "Common",
+      "score": "4.07"
+    },
+    "347": {
+      "tier": "Uncommon",
+      "score": "5.26"
+    },
+    "348": {
+      "tier": "Common",
+      "score": "3.27"
+    },
+    "349": {
+      "tier": "Common",
+      "score": "3.99"
+    },
+    "350": {
+      "tier": "Common",
+      "score": "4.34"
+    },
+    "351": {
+      "tier": "Common",
+      "score": "3.00"
+    },
+    "352": {
+      "tier": "Common",
+      "score": "3.00"
+    },
+    "353": {
+      "tier": "Uncommon",
+      "score": "7.66"
+    },
+    "354": {
+      "tier": "Uncommon",
+      "score": "7.54"
+    },
+    "355": {
+      "tier": "Common",
+      "score": "3.96"
+    },
+    "356": {
+      "tier": "Common",
+      "score": "3.04"
+    },
+    "357": {
+      "tier": "Common",
+      "score": "3.94"
+    },
+    "358": {
+      "tier": "Common",
+      "score": "4.90"
+    },
+    "359": {
+      "tier": "Common",
+      "score": "2.65"
+    },
+    "360": {
+      "tier": "Common",
+      "score": "2.72"
+    },
+    "361": {
+      "tier": "Uncommon",
+      "score": "5.04"
+    },
+    "362": {
+      "tier": "Common",
+      "score": "3.81"
+    },
+    "363": {
+      "tier": "Uncommon",
+      "score": "5.28"
+    },
+    "364": {
+      "tier": "Uncommon",
+      "score": "8.70"
+    },
+    "365": {
+      "tier": "Common",
+      "score": "4.05"
+    },
+    "366": {
+      "tier": "Common",
+      "score": "3.70"
+    },
+    "367": {
+      "tier": "Uncommon",
+      "score": "5.06"
+    },
+    "368": {
+      "tier": "Common",
+      "score": "2.93"
+    },
+    "369": {
+      "tier": "Rare",
+      "score": "11.71"
+    },
+    "370": {
+      "tier": "Uncommon",
+      "score": "6.42"
+    },
+    "371": {
+      "tier": "Uncommon",
+      "score": "7.21"
+    },
+    "372": {
+      "tier": "Common",
+      "score": "3.37"
+    },
+    "373": {
+      "tier": "Common",
+      "score": "2.31"
+    },
+    "374": {
+      "tier": "Rare",
+      "score": "11.71"
+    },
+    "375": {
+      "tier": "Common",
+      "score": "3.66"
+    },
+    "376": {
+      "tier": "Uncommon",
+      "score": "6.09"
+    },
+    "377": {
+      "tier": "Rare",
+      "score": "11.94"
+    },
+    "378": {
+      "tier": "Common",
+      "score": "2.88"
+    },
+    "379": {
+      "tier": "Common",
+      "score": "3.67"
+    },
+    "380": {
+      "tier": "Common",
+      "score": "2.99"
+    },
+    "381": {
+      "tier": "Uncommon",
+      "score": "6.91"
+    },
+    "382": {
+      "tier": "Uncommon",
+      "score": "7.98"
+    },
+    "383": {
+      "tier": "Common",
+      "score": "2.49"
+    },
+    "384": {
+      "tier": "Common",
+      "score": "3.52"
+    },
+    "385": {
+      "tier": "Common",
+      "score": "4.59"
+    },
+    "386": {
+      "tier": "Common",
+      "score": "2.63"
+    },
+    "387": {
+      "tier": "Uncommon",
+      "score": "9.26"
+    },
+    "388": {
+      "tier": "Uncommon",
+      "score": "6.11"
+    },
+    "389": {
+      "tier": "Common",
+      "score": "3.04"
+    },
+    "390": {
+      "tier": "Uncommon",
+      "score": "6.22"
+    },
+    "391": {
+      "tier": "Common",
+      "score": "4.72"
+    },
+    "392": {
+      "tier": "Uncommon",
+      "score": "7.87"
+    },
+    "393": {
+      "tier": "Uncommon",
+      "score": "7.53"
+    },
+    "394": {
+      "tier": "Uncommon",
+      "score": "5.35"
+    },
+    "395": {
+      "tier": "Common",
+      "score": "4.66"
+    },
+    "396": {
+      "tier": "Uncommon",
+      "score": "7.60"
+    },
+    "397": {
+      "tier": "Uncommon",
+      "score": "6.69"
+    },
+    "398": {
+      "tier": "Uncommon",
+      "score": "6.41"
+    },
+    "399": {
+      "tier": "Uncommon",
+      "score": "7.03"
+    },
+    "400": {
+      "tier": "Common",
+      "score": "3.83"
+    },
+    "401": {
+      "tier": "Uncommon",
+      "score": "7.55"
+    },
+    "402": {
+      "tier": "Common",
+      "score": "3.13"
+    },
+    "403": {
+      "tier": "Common",
+      "score": "2.91"
+    },
+    "404": {
+      "tier": "Common",
+      "score": "3.21"
+    },
+    "405": {
+      "tier": "Uncommon",
+      "score": "6.84"
+    },
+    "406": {
+      "tier": "Uncommon",
+      "score": "5.76"
+    },
+    "407": {
+      "tier": "Rare",
+      "score": "10.28"
+    },
+    "408": {
+      "tier": "Rare",
+      "score": "10.26"
+    },
+    "409": {
+      "tier": "Common",
+      "score": "4.79"
+    },
+    "410": {
+      "tier": "Common",
+      "score": "4.19"
+    },
+    "411": {
+      "tier": "Common",
+      "score": "4.13"
+    },
+    "412": {
+      "tier": "Uncommon",
+      "score": "8.06"
+    },
+    "413": {
+      "tier": "Uncommon",
+      "score": "6.24"
+    },
+    "414": {
+      "tier": "Uncommon",
+      "score": "5.13"
+    },
+    "415": {
+      "tier": "Uncommon",
+      "score": "5.48"
+    },
+    "416": {
+      "tier": "Common",
+      "score": "4.70"
+    },
+    "417": {
+      "tier": "Uncommon",
+      "score": "5.30"
+    },
+    "418": {
+      "tier": "Common",
+      "score": "4.12"
+    },
+    "419": {
+      "tier": "Uncommon",
+      "score": "6.30"
+    },
+    "420": {
+      "tier": "Common",
+      "score": "2.59"
+    },
+    "421": {
+      "tier": "Uncommon",
+      "score": "6.02"
+    },
+    "422": {
+      "tier": "Common",
+      "score": "2.83"
+    },
+    "423": {
+      "tier": "Common",
+      "score": "4.52"
+    },
+    "424": {
+      "tier": "Uncommon",
+      "score": "5.22"
+    },
+    "425": {
+      "tier": "Common",
+      "score": "4.41"
+    },
+    "426": {
+      "tier": "Uncommon",
+      "score": "5.04"
+    },
+    "427": {
+      "tier": "Uncommon",
+      "score": "8.81"
+    },
+    "428": {
+      "tier": "Uncommon",
+      "score": "5.08"
+    },
+    "429": {
+      "tier": "Common",
+      "score": "3.59"
+    },
+    "430": {
+      "tier": "Common",
+      "score": "3.13"
+    },
+    "431": {
+      "tier": "Common",
+      "score": "4.59"
+    },
+    "432": {
+      "tier": "Uncommon",
+      "score": "5.99"
+    },
+    "433": {
+      "tier": "Common",
+      "score": "4.45"
+    },
+    "434": {
+      "tier": "Uncommon",
+      "score": "5.64"
+    },
+    "435": {
+      "tier": "Common",
+      "score": "4.57"
+    },
+    "436": {
+      "tier": "Uncommon",
+      "score": "6.63"
+    },
+    "437": {
+      "tier": "Uncommon",
+      "score": "5.51"
+    },
+    "438": {
+      "tier": "Uncommon",
+      "score": "5.99"
+    },
+    "439": {
+      "tier": "Rare",
+      "score": "10.55"
+    },
+    "440": {
+      "tier": "Common",
+      "score": "3.53"
+    },
+    "441": {
+      "tier": "Uncommon",
+      "score": "5.88"
+    },
+    "442": {
+      "tier": "Uncommon",
+      "score": "5.44"
+    },
+    "443": {
+      "tier": "Common",
+      "score": "3.41"
+    },
+    "444": {
+      "tier": "Uncommon",
+      "score": "9.63"
+    },
+    "445": {
+      "tier": "Uncommon",
+      "score": "8.84"
+    },
+    "446": {
+      "tier": "Uncommon",
+      "score": "9.70"
+    },
+    "447": {
+      "tier": "Uncommon",
+      "score": "6.62"
+    },
+    "448": {
+      "tier": "Common",
+      "score": "2.49"
+    },
+    "449": {
+      "tier": "Common",
+      "score": "4.64"
+    },
+    "450": {
+      "tier": "Common",
+      "score": "2.74"
+    },
+    "451": {
+      "tier": "Uncommon",
+      "score": "7.11"
+    },
+    "452": {
+      "tier": "Common",
+      "score": "3.69"
+    },
+    "453": {
+      "tier": "Common",
+      "score": "2.23"
+    },
+    "454": {
+      "tier": "Common",
+      "score": "3.67"
+    },
+    "455": {
+      "tier": "Common",
+      "score": "3.56"
+    },
+    "456": {
+      "tier": "Common",
+      "score": "4.64"
+    },
+    "457": {
+      "tier": "Uncommon",
+      "score": "5.59"
+    },
+    "458": {
+      "tier": "Common",
+      "score": "4.26"
+    },
+    "459": {
+      "tier": "Common",
+      "score": "4.23"
+    },
+    "460": {
+      "tier": "Uncommon",
+      "score": "8.92"
+    },
+    "461": {
+      "tier": "Common",
+      "score": "3.96"
+    },
+    "462": {
+      "tier": "Common",
+      "score": "3.81"
+    },
+    "463": {
+      "tier": "Uncommon",
+      "score": "5.64"
+    },
+    "464": {
+      "tier": "Common",
+      "score": "3.41"
+    },
+    "465": {
+      "tier": "Common",
+      "score": "3.82"
+    },
+    "466": {
+      "tier": "Uncommon",
+      "score": "6.31"
+    },
+    "467": {
+      "tier": "Common",
+      "score": "3.30"
+    },
+    "468": {
+      "tier": "Common",
+      "score": "3.78"
+    },
+    "469": {
+      "tier": "Common",
+      "score": "2.94"
+    },
+    "470": {
+      "tier": "Common",
+      "score": "3.69"
+    },
+    "471": {
+      "tier": "Common",
+      "score": "4.68"
+    },
+    "472": {
+      "tier": "Uncommon",
+      "score": "6.72"
+    },
+    "473": {
+      "tier": "Common",
+      "score": "4.93"
+    },
+    "474": {
+      "tier": "Common",
+      "score": "3.04"
+    },
+    "475": {
+      "tier": "Uncommon",
+      "score": "6.66"
+    },
+    "476": {
+      "tier": "Uncommon",
+      "score": "5.40"
+    },
+    "477": {
+      "tier": "Common",
+      "score": "2.42"
+    },
+    "478": {
+      "tier": "Common",
+      "score": "2.52"
+    },
+    "479": {
+      "tier": "Common",
+      "score": "3.42"
+    },
+    "480": {
+      "tier": "Common",
+      "score": "3.98"
+    },
+    "481": {
+      "tier": "Common",
+      "score": "2.94"
+    },
+    "482": {
+      "tier": "Common",
+      "score": "4.38"
+    },
+    "483": {
+      "tier": "Uncommon",
+      "score": "6.97"
+    },
+    "484": {
+      "tier": "Uncommon",
+      "score": "5.59"
+    },
+    "485": {
+      "tier": "Uncommon",
+      "score": "9.17"
+    },
+    "486": {
+      "tier": "Uncommon",
+      "score": "5.01"
+    },
+    "487": {
+      "tier": "Uncommon",
+      "score": "6.07"
+    },
+    "488": {
+      "tier": "Uncommon",
+      "score": "6.01"
+    },
+    "489": {
+      "tier": "Uncommon",
+      "score": "9.90"
+    },
+    "490": {
+      "tier": "Common",
+      "score": "3.68"
+    },
+    "491": {
+      "tier": "Common",
+      "score": "4.22"
+    },
+    "492": {
+      "tier": "Common",
+      "score": "3.33"
+    },
+    "493": {
+      "tier": "Common",
+      "score": "3.96"
+    },
+    "494": {
+      "tier": "Common",
+      "score": "2.78"
+    },
+    "495": {
+      "tier": "Rare",
+      "score": "10.20"
+    },
+    "496": {
+      "tier": "Uncommon",
+      "score": "6.78"
+    },
+    "497": {
+      "tier": "Common",
+      "score": "4.43"
+    },
+    "498": {
+      "tier": "Common",
+      "score": "3.18"
+    },
+    "499": {
+      "tier": "Common",
+      "score": "3.18"
+    },
+    "500": {
+      "tier": "Uncommon",
+      "score": "5.43"
+    },
+    "501": {
+      "tier": "Common",
+      "score": "4.91"
+    },
+    "502": {
+      "tier": "Common",
+      "score": "3.77"
+    },
+    "503": {
+      "tier": "Uncommon",
+      "score": "7.04"
+    },
+    "504": {
+      "tier": "Common",
+      "score": "2.95"
+    },
+    "505": {
+      "tier": "Common",
+      "score": "4.19"
+    },
+    "506": {
+      "tier": "Common",
+      "score": "3.36"
+    },
+    "507": {
+      "tier": "Common",
+      "score": "4.10"
+    },
+    "508": {
+      "tier": "Common",
+      "score": "3.25"
+    },
+    "509": {
+      "tier": "Uncommon",
+      "score": "6.04"
+    },
+    "510": {
+      "tier": "Common",
+      "score": "3.57"
+    },
+    "511": {
+      "tier": "Common",
+      "score": "4.85"
+    },
+    "512": {
+      "tier": "Uncommon",
+      "score": "5.35"
+    },
+    "513": {
+      "tier": "Uncommon",
+      "score": "6.24"
+    },
+    "514": {
+      "tier": "Common",
+      "score": "3.85"
+    },
+    "515": {
+      "tier": "Uncommon",
+      "score": "5.32"
+    },
+    "516": {
+      "tier": "Common",
+      "score": "4.20"
+    },
+    "517": {
+      "tier": "Common",
+      "score": "2.94"
+    },
+    "518": {
+      "tier": "Common",
+      "score": "4.45"
+    },
+    "519": {
+      "tier": "Common",
+      "score": "2.92"
+    },
+    "520": {
+      "tier": "Uncommon",
+      "score": "5.03"
+    },
+    "521": {
+      "tier": "Rare",
+      "score": "11.04"
+    },
+    "522": {
+      "tier": "Common",
+      "score": "4.90"
+    },
+    "523": {
+      "tier": "Uncommon",
+      "score": "6.39"
+    },
+    "524": {
+      "tier": "Common",
+      "score": "4.43"
+    },
+    "525": {
+      "tier": "Common",
+      "score": "3.04"
+    },
+    "526": {
+      "tier": "Uncommon",
+      "score": "8.60"
+    },
+    "527": {
+      "tier": "Common",
+      "score": "3.89"
+    },
+    "528": {
+      "tier": "Common",
+      "score": "3.78"
+    },
+    "529": {
+      "tier": "Uncommon",
+      "score": "5.53"
+    },
+    "530": {
+      "tier": "Uncommon",
+      "score": "6.41"
+    },
+    "531": {
+      "tier": "Uncommon",
+      "score": "9.56"
+    },
+    "532": {
+      "tier": "Uncommon",
+      "score": "7.56"
+    },
+    "533": {
+      "tier": "Uncommon",
+      "score": "5.62"
+    },
+    "534": {
+      "tier": "Common",
+      "score": "3.72"
+    },
+    "535": {
+      "tier": "Uncommon",
+      "score": "8.46"
+    },
+    "536": {
+      "tier": "Rare",
+      "score": "11.11"
+    },
+    "537": {
+      "tier": "Uncommon",
+      "score": "5.76"
+    },
+    "538": {
+      "tier": "Common",
+      "score": "3.03"
+    },
+    "539": {
+      "tier": "Common",
+      "score": "3.72"
+    },
+    "540": {
+      "tier": "Uncommon",
+      "score": "7.18"
+    },
+    "541": {
+      "tier": "Uncommon",
+      "score": "6.11"
+    },
+    "542": {
+      "tier": "Common",
+      "score": "4.70"
+    },
+    "543": {
+      "tier": "Uncommon",
+      "score": "5.18"
+    },
+    "544": {
+      "tier": "Uncommon",
+      "score": "5.91"
+    },
+    "545": {
+      "tier": "Uncommon",
+      "score": "5.98"
+    },
+    "546": {
+      "tier": "Common",
+      "score": "4.90"
+    },
+    "547": {
+      "tier": "Common",
+      "score": "2.64"
+    },
+    "548": {
+      "tier": "Uncommon",
+      "score": "7.79"
+    },
+    "549": {
+      "tier": "Uncommon",
+      "score": "5.21"
+    },
+    "550": {
+      "tier": "Uncommon",
+      "score": "9.02"
+    },
+    "551": {
+      "tier": "Uncommon",
+      "score": "9.10"
+    },
+    "552": {
+      "tier": "Uncommon",
+      "score": "8.28"
+    },
+    "553": {
+      "tier": "Uncommon",
+      "score": "8.22"
+    },
+    "554": {
+      "tier": "Common",
+      "score": "3.85"
+    },
+    "555": {
+      "tier": "Common",
+      "score": "3.99"
+    },
+    "556": {
+      "tier": "Common",
+      "score": "4.74"
+    },
+    "557": {
+      "tier": "Common",
+      "score": "4.87"
+    },
+    "558": {
+      "tier": "Common",
+      "score": "3.86"
+    },
+    "559": {
+      "tier": "Uncommon",
+      "score": "7.07"
+    },
+    "560": {
+      "tier": "Common",
+      "score": "4.17"
+    },
+    "561": {
+      "tier": "Uncommon",
+      "score": "7.41"
+    },
+    "562": {
+      "tier": "Uncommon",
+      "score": "6.35"
+    },
+    "563": {
+      "tier": "Uncommon",
+      "score": "8.07"
+    },
+    "564": {
+      "tier": "Uncommon",
+      "score": "5.73"
+    },
+    "565": {
+      "tier": "Common",
+      "score": "4.61"
+    },
+    "566": {
+      "tier": "Uncommon",
+      "score": "5.96"
+    },
+    "567": {
+      "tier": "Common",
+      "score": "3.78"
+    },
+    "568": {
+      "tier": "Common",
+      "score": "3.43"
+    },
+    "569": {
+      "tier": "Uncommon",
+      "score": "7.83"
+    },
+    "570": {
+      "tier": "Common",
+      "score": "4.19"
+    },
+    "571": {
+      "tier": "Common",
+      "score": "3.88"
+    },
+    "572": {
+      "tier": "Uncommon",
+      "score": "5.66"
+    },
+    "573": {
+      "tier": "Common",
+      "score": "4.83"
+    },
+    "574": {
+      "tier": "Uncommon",
+      "score": "8.53"
+    },
+    "575": {
+      "tier": "Uncommon",
+      "score": "8.08"
+    },
+    "576": {
+      "tier": "Common",
+      "score": "4.05"
+    },
+    "577": {
+      "tier": "Common",
+      "score": "3.16"
+    },
+    "578": {
+      "tier": "Uncommon",
+      "score": "5.78"
+    },
+    "579": {
+      "tier": "Common",
+      "score": "2.74"
+    },
+    "580": {
+      "tier": "Common",
+      "score": "4.61"
+    },
+    "581": {
+      "tier": "Uncommon",
+      "score": "6.28"
+    },
+    "582": {
+      "tier": "Uncommon",
+      "score": "5.62"
+    },
+    "583": {
+      "tier": "Uncommon",
+      "score": "7.73"
+    },
+    "584": {
+      "tier": "Uncommon",
+      "score": "6.62"
+    },
+    "585": {
+      "tier": "Common",
+      "score": "3.17"
+    },
+    "586": {
+      "tier": "Common",
+      "score": "2.15"
+    },
+    "587": {
+      "tier": "Uncommon",
+      "score": "5.79"
+    },
+    "588": {
+      "tier": "Common",
+      "score": "3.35"
+    },
+    "589": {
+      "tier": "Common",
+      "score": "4.90"
+    },
+    "590": {
+      "tier": "Uncommon",
+      "score": "6.37"
+    },
+    "591": {
+      "tier": "Common",
+      "score": "3.95"
+    },
+    "592": {
+      "tier": "Uncommon",
+      "score": "5.45"
+    },
+    "593": {
+      "tier": "Common",
+      "score": "4.20"
+    },
+    "594": {
+      "tier": "Rare",
+      "score": "12.57"
+    },
+    "595": {
+      "tier": "Uncommon",
+      "score": "5.69"
+    },
+    "596": {
+      "tier": "Common",
+      "score": "2.46"
+    },
+    "597": {
+      "tier": "Common",
+      "score": "4.00"
+    },
+    "598": {
+      "tier": "Common",
+      "score": "3.93"
+    },
+    "599": {
+      "tier": "Uncommon",
+      "score": "5.33"
+    },
+    "600": {
+      "tier": "Common",
+      "score": "3.35"
+    },
+    "601": {
+      "tier": "Uncommon",
+      "score": "5.49"
+    },
+    "602": {
+      "tier": "Uncommon",
+      "score": "7.88"
+    },
+    "603": {
+      "tier": "Uncommon",
+      "score": "6.04"
+    },
+    "604": {
+      "tier": "Common",
+      "score": "3.79"
+    },
+    "605": {
+      "tier": "Uncommon",
+      "score": "5.87"
+    },
+    "606": {
+      "tier": "Common",
+      "score": "3.18"
+    },
+    "607": {
+      "tier": "Common",
+      "score": "3.59"
+    },
+    "608": {
+      "tier": "Uncommon",
+      "score": "6.18"
+    },
+    "609": {
+      "tier": "Common",
+      "score": "4.83"
+    },
+    "610": {
+      "tier": "Common",
+      "score": "3.05"
+    },
+    "611": {
+      "tier": "Uncommon",
+      "score": "6.11"
+    },
+    "612": {
+      "tier": "Common",
+      "score": "4.76"
+    },
+    "613": {
+      "tier": "Uncommon",
+      "score": "5.02"
+    },
+    "614": {
+      "tier": "Common",
+      "score": "3.96"
+    },
+    "615": {
+      "tier": "Uncommon",
+      "score": "8.68"
+    },
+    "616": {
+      "tier": "Common",
+      "score": "4.76"
+    },
+    "617": {
+      "tier": "Uncommon",
+      "score": "6.84"
+    },
+    "618": {
+      "tier": "Common",
+      "score": "3.75"
+    },
+    "619": {
+      "tier": "Common",
+      "score": "3.95"
+    },
+    "620": {
+      "tier": "Common",
+      "score": "4.75"
+    },
+    "621": {
+      "tier": "Uncommon",
+      "score": "7.53"
+    },
+    "622": {
+      "tier": "Common",
+      "score": "4.17"
+    },
+    "623": {
+      "tier": "Uncommon",
+      "score": "5.39"
+    },
+    "624": {
+      "tier": "Common",
+      "score": "4.72"
+    },
+    "625": {
+      "tier": "Common",
+      "score": "3.99"
+    },
+    "626": {
+      "tier": "Uncommon",
+      "score": "5.19"
+    },
+    "627": {
+      "tier": "Common",
+      "score": "4.59"
+    },
+    "628": {
+      "tier": "Rare",
+      "score": "10.10"
+    },
+    "629": {
+      "tier": "Common",
+      "score": "2.34"
+    },
+    "630": {
+      "tier": "Common",
+      "score": "3.82"
+    },
+    "631": {
+      "tier": "Uncommon",
+      "score": "9.04"
+    },
+    "632": {
+      "tier": "Common",
+      "score": "2.87"
+    },
+    "633": {
+      "tier": "Common",
+      "score": "3.55"
+    },
+    "634": {
+      "tier": "Common",
+      "score": "2.94"
+    },
+    "635": {
+      "tier": "Uncommon",
+      "score": "5.87"
+    },
+    "636": {
+      "tier": "Uncommon",
+      "score": "8.17"
+    },
+    "637": {
+      "tier": "Common",
+      "score": "4.58"
+    },
+    "638": {
+      "tier": "Uncommon",
+      "score": "5.24"
+    },
+    "639": {
+      "tier": "Common",
+      "score": "4.05"
+    },
+    "640": {
+      "tier": "Uncommon",
+      "score": "5.56"
+    },
+    "641": {
+      "tier": "Uncommon",
+      "score": "7.14"
+    },
+    "642": {
+      "tier": "Uncommon",
+      "score": "7.92"
+    },
+    "643": {
+      "tier": "Common",
+      "score": "4.74"
+    },
+    "644": {
+      "tier": "Common",
+      "score": "3.09"
+    },
+    "645": {
+      "tier": "Uncommon",
+      "score": "8.21"
+    },
+    "646": {
+      "tier": "Common",
+      "score": "3.62"
+    },
+    "647": {
+      "tier": "Common",
+      "score": "4.04"
+    },
+    "648": {
+      "tier": "Uncommon",
+      "score": "5.84"
+    },
+    "649": {
+      "tier": "Common",
+      "score": "4.55"
+    },
+    "650": {
+      "tier": "Common",
+      "score": "3.32"
+    },
+    "651": {
+      "tier": "Common",
+      "score": "3.69"
+    },
+    "652": {
+      "tier": "Common",
+      "score": "4.60"
+    },
+    "653": {
+      "tier": "Common",
+      "score": "2.60"
+    },
+    "654": {
+      "tier": "Uncommon",
+      "score": "9.83"
+    },
+    "655": {
+      "tier": "Uncommon",
+      "score": "8.29"
+    },
+    "656": {
+      "tier": "Common",
+      "score": "4.40"
+    },
+    "657": {
+      "tier": "Common",
+      "score": "3.82"
+    },
+    "658": {
+      "tier": "Uncommon",
+      "score": "5.29"
+    },
+    "659": {
+      "tier": "Uncommon",
+      "score": "6.71"
+    },
+    "660": {
+      "tier": "Common",
+      "score": "3.27"
+    },
+    "661": {
+      "tier": "Common",
+      "score": "3.81"
+    },
+    "662": {
+      "tier": "Uncommon",
+      "score": "6.46"
+    },
+    "663": {
+      "tier": "Common",
+      "score": "3.06"
+    },
+    "664": {
+      "tier": "Common",
+      "score": "3.19"
+    },
+    "665": {
+      "tier": "Uncommon",
+      "score": "9.33"
+    },
+    "666": {
+      "tier": "Common",
+      "score": "4.87"
+    },
+    "667": {
+      "tier": "Uncommon",
+      "score": "5.04"
+    },
+    "668": {
+      "tier": "Uncommon",
+      "score": "7.81"
+    },
+    "669": {
+      "tier": "Uncommon",
+      "score": "5.63"
+    },
+    "670": {
+      "tier": "Rare",
+      "score": "10.18"
+    },
+    "671": {
+      "tier": "Common",
+      "score": "4.62"
+    },
+    "672": {
+      "tier": "Uncommon",
+      "score": "9.34"
+    },
+    "673": {
+      "tier": "Common",
+      "score": "4.24"
+    },
+    "674": {
+      "tier": "Common",
+      "score": "4.97"
+    },
+    "675": {
+      "tier": "Uncommon",
+      "score": "7.56"
+    },
+    "676": {
+      "tier": "Uncommon",
+      "score": "7.75"
+    },
+    "677": {
+      "tier": "Common",
+      "score": "4.02"
+    },
+    "678": {
+      "tier": "Common",
+      "score": "3.18"
+    },
+    "679": {
+      "tier": "Common",
+      "score": "4.31"
+    },
+    "680": {
+      "tier": "Common",
+      "score": "3.35"
+    },
+    "681": {
+      "tier": "Common",
+      "score": "4.77"
+    },
+    "682": {
+      "tier": "Common",
+      "score": "4.51"
+    },
+    "683": {
+      "tier": "Common",
+      "score": "4.96"
+    },
+    "684": {
+      "tier": "Uncommon",
+      "score": "5.24"
+    },
+    "685": {
+      "tier": "Uncommon",
+      "score": "7.21"
+    },
+    "686": {
+      "tier": "Common",
+      "score": "2.74"
+    },
+    "687": {
+      "tier": "Uncommon",
+      "score": "6.00"
+    },
+    "688": {
+      "tier": "Uncommon",
+      "score": "8.79"
+    },
+    "689": {
+      "tier": "Common",
+      "score": "3.51"
+    },
+    "690": {
+      "tier": "Uncommon",
+      "score": "5.66"
+    },
+    "691": {
+      "tier": "Uncommon",
+      "score": "5.66"
+    },
+    "692": {
+      "tier": "Common",
+      "score": "4.82"
+    },
+    "693": {
+      "tier": "Uncommon",
+      "score": "5.04"
+    },
+    "694": {
+      "tier": "Common",
+      "score": "3.83"
+    },
+    "695": {
+      "tier": "Uncommon",
+      "score": "7.61"
+    },
+    "696": {
+      "tier": "Common",
+      "score": "4.70"
+    },
+    "697": {
+      "tier": "Common",
+      "score": "3.40"
+    },
+    "698": {
+      "tier": "Uncommon",
+      "score": "7.05"
+    },
+    "699": {
+      "tier": "Common",
+      "score": "3.60"
+    },
+    "700": {
+      "tier": "Common",
+      "score": "3.68"
+    },
+    "701": {
+      "tier": "Common",
+      "score": "3.38"
+    },
+    "702": {
+      "tier": "Uncommon",
+      "score": "5.79"
+    },
+    "703": {
+      "tier": "Uncommon",
+      "score": "5.12"
+    },
+    "704": {
+      "tier": "Uncommon",
+      "score": "6.35"
+    },
+    "705": {
+      "tier": "Common",
+      "score": "4.35"
+    },
+    "706": {
+      "tier": "Uncommon",
+      "score": "8.48"
+    },
+    "707": {
+      "tier": "Common",
+      "score": "3.72"
+    },
+    "708": {
+      "tier": "Uncommon",
+      "score": "7.67"
+    },
+    "709": {
+      "tier": "Common",
+      "score": "3.73"
+    },
+    "710": {
+      "tier": "Uncommon",
+      "score": "5.50"
+    },
+    "711": {
+      "tier": "Uncommon",
+      "score": "5.68"
+    },
+    "712": {
+      "tier": "Common",
+      "score": "4.73"
+    },
+    "713": {
+      "tier": "Uncommon",
+      "score": "7.07"
+    },
+    "714": {
+      "tier": "Uncommon",
+      "score": "7.75"
+    },
+    "715": {
+      "tier": "Uncommon",
+      "score": "7.62"
+    },
+    "716": {
+      "tier": "Rare",
+      "score": "10.58"
+    },
+    "717": {
+      "tier": "Common",
+      "score": "3.55"
+    },
+    "718": {
+      "tier": "Uncommon",
+      "score": "5.59"
+    },
+    "719": {
+      "tier": "Common",
+      "score": "4.46"
+    },
+    "720": {
+      "tier": "Uncommon",
+      "score": "7.12"
+    },
+    "721": {
+      "tier": "Rare",
+      "score": "10.43"
+    },
+    "722": {
+      "tier": "Common",
+      "score": "3.95"
+    },
+    "723": {
+      "tier": "Uncommon",
+      "score": "7.05"
+    },
+    "724": {
+      "tier": "Common",
+      "score": "4.72"
+    },
+    "725": {
+      "tier": "Uncommon",
+      "score": "8.76"
+    },
+    "726": {
+      "tier": "Uncommon",
+      "score": "7.36"
+    },
+    "727": {
+      "tier": "Common",
+      "score": "4.61"
+    },
+    "728": {
+      "tier": "Common",
+      "score": "4.12"
+    },
+    "729": {
+      "tier": "Uncommon",
+      "score": "7.36"
+    },
+    "730": {
+      "tier": "Common",
+      "score": "3.94"
+    },
+    "731": {
+      "tier": "Uncommon",
+      "score": "6.03"
+    },
+    "732": {
+      "tier": "Common",
+      "score": "3.30"
+    },
+    "733": {
+      "tier": "Uncommon",
+      "score": "5.73"
+    },
+    "734": {
+      "tier": "Uncommon",
+      "score": "5.90"
+    },
+    "735": {
+      "tier": "Common",
+      "score": "3.16"
+    },
+    "736": {
+      "tier": "Uncommon",
+      "score": "8.58"
+    },
+    "737": {
+      "tier": "Uncommon",
+      "score": "7.84"
+    },
+    "738": {
+      "tier": "Common",
+      "score": "4.09"
+    },
+    "739": {
+      "tier": "Common",
+      "score": "3.53"
+    },
+    "740": {
+      "tier": "Common",
+      "score": "3.52"
+    },
+    "741": {
+      "tier": "Common",
+      "score": "3.09"
+    },
+    "742": {
+      "tier": "Uncommon",
+      "score": "5.60"
+    },
+    "743": {
+      "tier": "Uncommon",
+      "score": "5.83"
+    },
+    "744": {
+      "tier": "Common",
+      "score": "4.28"
+    },
+    "745": {
+      "tier": "Uncommon",
+      "score": "6.64"
+    },
+    "746": {
+      "tier": "Uncommon",
+      "score": "7.66"
+    },
+    "747": {
+      "tier": "Common",
+      "score": "4.19"
+    },
+    "748": {
+      "tier": "Common",
+      "score": "4.95"
+    },
+    "749": {
+      "tier": "Uncommon",
+      "score": "5.62"
+    },
+    "750": {
+      "tier": "Uncommon",
+      "score": "9.70"
+    },
+    "751": {
+      "tier": "Uncommon",
+      "score": "9.97"
+    },
+    "752": {
+      "tier": "Common",
+      "score": "4.42"
+    },
+    "753": {
+      "tier": "Common",
+      "score": "3.74"
+    },
+    "754": {
+      "tier": "Uncommon",
+      "score": "6.56"
+    },
+    "755": {
+      "tier": "Common",
+      "score": "3.93"
+    },
+    "756": {
+      "tier": "Common",
+      "score": "3.30"
+    },
+    "757": {
+      "tier": "Uncommon",
+      "score": "6.43"
+    },
+    "758": {
+      "tier": "Common",
+      "score": "4.98"
+    },
+    "759": {
+      "tier": "Uncommon",
+      "score": "5.30"
+    },
+    "760": {
+      "tier": "Common",
+      "score": "3.12"
+    },
+    "761": {
+      "tier": "Uncommon",
+      "score": "5.41"
+    },
+    "762": {
+      "tier": "Uncommon",
+      "score": "5.67"
+    },
+    "763": {
+      "tier": "Common",
+      "score": "4.82"
+    },
+    "764": {
+      "tier": "Uncommon",
+      "score": "8.82"
+    },
+    "765": {
+      "tier": "Uncommon",
+      "score": "5.36"
+    },
+    "766": {
+      "tier": "Uncommon",
+      "score": "7.29"
+    },
+    "767": {
+      "tier": "Uncommon",
+      "score": "5.13"
+    },
+    "768": {
+      "tier": "Uncommon",
+      "score": "5.41"
+    },
+    "769": {
+      "tier": "Common",
+      "score": "3.88"
+    },
+    "770": {
+      "tier": "Common",
+      "score": "4.27"
+    },
+    "771": {
+      "tier": "Uncommon",
+      "score": "6.53"
+    },
+    "772": {
+      "tier": "Common",
+      "score": "4.43"
+    },
+    "773": {
+      "tier": "Uncommon",
+      "score": "6.02"
+    },
+    "774": {
+      "tier": "Uncommon",
+      "score": "9.48"
+    },
+    "775": {
+      "tier": "Common",
+      "score": "4.92"
+    },
+    "776": {
+      "tier": "Common",
+      "score": "3.30"
+    },
+    "777": {
+      "tier": "Common",
+      "score": "3.97"
+    }
+  }
+}

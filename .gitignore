@@ -1,0 +1,9 @@
+node_modules
+.env
+dist
+coverage
+.vercel
+.DS_Store
+nft
+smart-contracts/node_modules
+smart-contracts/artifacts
