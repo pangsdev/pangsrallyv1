@@ -7,3 +7,5 @@ coverage
 nft
 smart-contracts/node_modules
 smart-contracts/artifacts
+public/metadata
+public/nft-images
