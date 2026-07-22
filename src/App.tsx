@@ -116,7 +116,7 @@ function App() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setHeroImageIndex(prev => (prev % 1000) + 1);
+      setHeroImageIndex(prev => (prev % 10) + 1);
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -777,7 +777,7 @@ function App() {
     const bots = [];
     const randomFn = prngRef.current || Math.random;
     for (let i = 2; i <= room.participants; i++) {
-      const randImg = Math.floor(randomFn() * 990) + 10;
+      const randImg = Math.floor(randomFn() * 10) + 1;
       bots.push({
         id: i,
         name: `Racer #${randImg}`,
@@ -1033,7 +1033,7 @@ function App() {
     
     const newBots = [];
     for (let i = 0; i < 9; i++) {
-      const randImg = Math.floor(randomFn() * 990) + 10;
+      const randImg = Math.floor(randomFn() * 10) + 1;
       newBots.push({
         id: i + 2,
         name: `Racer #${randImg}`,
