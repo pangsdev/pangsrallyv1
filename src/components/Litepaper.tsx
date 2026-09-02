@@ -18,8 +18,9 @@ const Litepaper: React.FC = () => {
           <h2>1. Introduction</h2>
           <p>
             Pangs Rally is an immersive racing ecosystem built on the Robinhood chain. 
-            The foundation of our economy begins with the launch of the <strong>$PANGS token</strong> on the Trenchor platform. 
-            Following the token launch, our exclusive <strong>Genesis Collection</strong>—1,000 unique Racing Pangolins—will be 
+            The foundation of our economy began with the successful launch of the <strong>$PANGS token</strong> on the Trenchor platform 
+            (Contract: <code>0x3390d9C9ac5e05D1a6eeAa954808d2784302137c</code>). 
+            Following this milestone, our exclusive <strong>Genesis Collection</strong>—2,222 unique Racing Pangolins—will be 
             available to mint directly on our website. These Genesis NFTs are your ultimate ticket to the Pangs Rally universe, 
             granting you access to races, rewards, and future breeding events.
           </p>
@@ -55,7 +56,7 @@ const Litepaper: React.FC = () => {
           <h2>3. The $PANGS Tokenomics</h2>
           <p>
             The <strong>$PANGS</strong> token is the absolute core of our economy. 
-            Once the Trenchor launch is completed, any future minting will be conducted strictly using $PANGS tokens.
+            Since the successful Trenchor launch, any future ecosystem actions and minting will be conducted strictly using $PANGS tokens.
           </p>
           <ul className="lp-list">
             <li><strong>Burn Mechanism:</strong> 50% of the $PANGS revenue generated from NFT minting will be permanently burned, continually reducing the circulating supply.</li>
@@ -73,7 +74,7 @@ const Litepaper: React.FC = () => {
             </div>
             <div style={{ fontSize: '2rem', color: 'var(--pangs-orange)', fontWeight: 'bold' }}>+</div>
             <div style={{ width: '45%' }}>
-              <img src="/nft-images/17.webp" alt="Pangolin Mother" style={{width: '100%', borderRadius: '12px', background: 'var(--bg-dark)', border: '1px solid rgba(255,255,255,0.1)'}} />
+              <img src="/nft-images/5.webp" alt="Pangolin Mother" style={{width: '100%', borderRadius: '12px', background: 'var(--bg-dark)', border: '1px solid rgba(255,255,255,0.1)'}} />
             </div>
           </div>
           <p>
