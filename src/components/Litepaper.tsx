@@ -112,6 +112,20 @@ const Litepaper: React.FC = () => {
           </div>
         </section>
 
+        <div className="divider"></div>
+
+        <section className="lp-section">
+          <h2>6. Multi-Tier Referral System</h2>
+          <p>
+            Growth is rewarded in the Pangs Rally ecosystem. Our on-chain multi-tier referral system allows players to 
+            earn passive income by expanding the racing community.
+          </p>
+          <ul className="lp-list">
+            <li><strong>Direct Referrals (Tier 1):</strong> Create a custom referral code. When a new player uses your code to breed or spend $PANGS in the ecosystem, you receive a direct percentage cut of their fees instantly.</li>
+            <li><strong>Secondary Referrals (Tier 2):</strong> If the players you invited go on to invite others, you also earn a secondary commission from this extended network's activity, creating a sustainable loop of passive yield.</li>
+          </ul>
+        </section>
+
         <div className="litepaper-footer">
           <p>Welcome to the ultimate Web3 racing ecosystem.</p>
         </div>
