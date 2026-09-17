@@ -1705,7 +1705,35 @@
 /* ==========================================================================
    MOBILE RESPONSIVENESS (MEDIA QUERIES)
    ========================================================================== */
+/* ==========================================================================
+   RESPONSIVE: TABLET (1024px)
+   ========================================================================== */
 @media (max-width: 1024px) {
+  /* Navbar */
+  .nav-links {
+    gap: 1.2rem;
+  }
+  .nav-links a {
+    font-size: 0.85rem;
+  }
+  .header-actions {
+    gap: 0.8rem;
+  }
+
+  /* Hero */
+  .hero-title {
+    font-size: 3rem;
+  }
+  .hero-image-container {
+    right: -2%;
+    width: 48%;
+  }
+  .placeholder-pangolin {
+    width: 320px;
+    height: 320px;
+  }
+
+  /* Podium */
   .podium-container {
     gap: 1rem;
   }
@@ -1714,67 +1742,90 @@
   }
 }
 
+/* ==========================================================================
+   RESPONSIVE: SMALL TABLET / LARGE PHONE (768px)
+   ========================================================================== */
 @media (max-width: 768px) {
-  /* Navbar & Header */
+  /* ---- Navbar & Header ---- */
   .app-header {
     height: auto;
-    padding-bottom: 0.5rem;
+    padding: 0.6rem 0;
   }
   .header-container {
-    flex-direction: column;
+    flex-wrap: wrap;
     padding: 0.5rem 1rem;
     gap: 0.5rem;
+    align-items: center;
   }
   .logo {
     height: auto;
-    width: 100%;
-    justify-content: center;
+    flex: 0 0 auto;
   }
   .logo-img {
-    height: 50px;
-    max-width: 100%;
+    height: 46px;
+    max-width: 180px;
     object-position: center;
   }
+  /* Nav links: scrollable row on mobile */
   .nav-links {
+    order: 3;
     width: 100%;
     overflow-x: auto;
     justify-content: flex-start;
-    padding-bottom: 0.5rem;
-    gap: 1rem;
+    padding: 0.4rem 0 0.6rem;
+    gap: 0.9rem;
     -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+  .nav-links a {
+    font-size: 0.8rem;
+    white-space: nowrap;
   }
   .header-actions {
-    width: 100%;
-    justify-content: center;
-    flex-wrap: wrap;
+    order: 2;
+    margin-left: auto;
+    gap: 0.5rem;
+    flex-shrink: 0;
   }
-  
-  /* Landing / Hero */
+  .wallet-connected-badge {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.7rem;
+  }
+  .header-actions .btn {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.8rem;
+  }
+
+  /* ---- Hero Section ---- */
   .hero-section {
     flex-direction: column;
-    padding-top: 220px;
+    padding-top: 160px;
     padding-bottom: 40px;
     text-align: center;
+    min-height: auto;
   }
   .hero-content {
     display: flex;
     flex-direction: column;
     align-items: center;
+    max-width: 100%;
   }
-  .hero-content h1 {
-    font-size: 2.5rem;
+  .hero-title {
+    font-size: 2.4rem;
   }
   .hero-subtitle {
-    font-size: 1rem;
+    font-size: 0.95rem;
+    max-width: 100%;
   }
   .hero-actions {
     flex-direction: column;
     width: 100%;
     align-items: center;
+    gap: 0.75rem;
   }
   .hero-actions .btn {
     width: 100%;
-    max-width: 300px;
+    max-width: 280px;
   }
   .hero-image-container {
     position: relative;
@@ -1782,30 +1833,41 @@
     top: auto;
     width: 100%;
     height: auto;
-    margin-top: 2rem;
+    margin-top: 2.5rem;
+    background-image: none;
+    display: flex;
+    justify-content: center;
   }
   .placeholder-pangolin {
-    width: 250px;
-    height: 250px;
+    width: 220px;
+    height: 220px;
   }
-  
-  /* Grids */
-  .rally-browser-grid, .inventory-grid-page, .features-grid {
+
+  /* ---- General Grids ---- */
+  .rally-browser-grid,
+  .inventory-grid-page,
+  .features-grid {
     grid-template-columns: 1fr;
     padding: 1rem;
   }
-  
-  /* Laboratory */
+  .ref-stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ref-steps-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* ---- Laboratory ---- */
   .parents-selection {
     flex-direction: column;
     align-items: stretch;
   }
   .parent-slot {
     width: 100%;
-    height: 300px;
+    height: 280px;
   }
-  
-  /* Leaderboard Podium -> Stack on mobile */
+
+  /* ---- Leaderboard Podium ---- */
   .podium-container {
     flex-direction: column;
     align-items: center;
@@ -1814,20 +1876,20 @@
   }
   .podium-spot {
     width: 100%;
-    max-width: 300px;
+    max-width: 280px;
   }
   .podium-spot.gold {
     order: -1;
     margin-bottom: 0;
   }
-  
-  /* Leaderboard List */
+
+  /* ---- Leaderboard List ---- */
   .lb-list-header {
     display: none;
   }
   .lb-list-row {
     grid-template-columns: 50px 1fr;
-    grid-template-areas: 
+    grid-template-areas:
       "rank player"
       "rank stats";
     gap: 0.5rem;
@@ -1843,12 +1905,66 @@
   .lb-col-score::before { content: "Score: "; font-weight: normal; color: var(--text-muted); }
   .lb-col-winrate::before { content: "WR: "; font-weight: normal; color: var(--text-muted); }
   .lb-col-races::before { content: "Races: "; font-weight: normal; color: var(--text-muted); }
-  
-  /* Inventory Header Stats */
+
+  /* ---- Inventory Header Stats ---- */
   .inventory-stats {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem !important;
+  }
+
+  /* ---- Referral Page ---- */
+  .referral-page {
+    padding: 140px 1rem 3rem;
+  }
+  .referral-header h2 {
+    font-size: 2rem;
+  }
+
+  /* ---- Page containers ---- */
+  .inventory-page,
+  .leaderboard-page,
+  .laboratory-page,
+  .marketplace-page {
+    padding: 120px 1rem 2rem;
+  }
+}
+
+/* ==========================================================================
+   RESPONSIVE: SMALL PHONE (480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+  .hero-section {
+    padding-top: 155px;
+  }
+  .logo-img {
+    height: 40px;
+    max-width: 150px;
+  }
+  .nav-links a {
+    font-size: 0.75rem;
+  }
+  .placeholder-pangolin {
+    width: 180px;
+    height: 180px;
+  }
+  .ref-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .referral-header h2 {
+    font-size: 1.6rem;
+  }
+  .litepaper-content {
+    padding: 1.2rem;
+  }
+  .litepaper-header h1 {
+    font-size: 1.8rem;
+  }
+  .lp-section h2 {
+    font-size: 1.4rem;
   }
 }
 
