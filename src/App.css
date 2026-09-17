@@ -4,7 +4,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 96px; /* Increased to give larger logos breathing room */
+  height: 80px;
   display: flex;
   align-items: center;
   z-index: 100;
@@ -17,13 +17,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  max-width: 100%;
+  padding: 0 2rem;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  height: 96px; /* Lock to new header height to prevent vertical jumping */
+  height: 80px;
   transition: transform 0.3s ease;
+  flex-shrink: 0;
 }
 
 .logo:hover {
@@ -31,21 +34,22 @@
 }
 
 .logo-img {
-  height: 84px; /* Massive increase in size */
-  max-width: 320px; /* Allow wider spread */
+  height: 70px;
+  max-width: 240px;
   object-fit: contain;
-  object-position: left center; /* Anchor the image to the left center */
+  object-position: left center;
   will-change: transform;
 }
 
 .nav-links {
   display: flex;
-  gap: 2rem;
+  gap: 1.4rem;
+  align-items: center;
 }
 
 .nav-links a {
   font-family: 'Futura', 'Futura Book', 'Century Gothic', sans-serif !important;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: bold; /* Futura Book Bold */
   color: var(--text-muted);
   transition: var(--transition);
