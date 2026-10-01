@@ -4,10 +4,18 @@ import PangsRallyContract from './PangsRally.json';
 import rarityData from './rarity-data.json';
 import seedrandom from 'seedrandom';
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI, RACING_ADDRESS, RACING_ABI, PANGS_TOKEN_ADDRESS, ERC20_ABI } from './contracts';
+import { supabase as _supabase, upsertUser, createRace, joinRaceDB, finishRace, fetchLeaderboard, fetchRaceHistory, markPrizeClaimed } from './supabaseClient';
+import type { LeaderboardEntry } from './supabaseClient';
 import './App.css'
 import Litepaper from './components/Litepaper';
+import RaceLobby from './components/RaceLobby';
+import BotRaceRoom from './components/BotRaceRoom';
+import OnlineRaceRoom from './components/OnlineRaceRoom';
 
-const CONTRACT_ADDRESS = "0xf5DaFf515ECfc3928b24367b8A70B5505d89296f";
+import PangsRallyBetaPassContract from './PangsRallyBetaPass.json';
+
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "0xf5DaFf515ECfc3928b24367b8A70B5505d89296f";
+const BETA_PASS_CONTRACT_ADDRESS = import.meta.env.VITE_BETA_PASS_CONTRACT_ADDRESS || "0x55C18bfaC6A791C88800375C61Aa3B67766Ab288";
 
 const TransparentImage = ({ src, alt, className }: { src: string, alt: string, className?: string }) => {
   let finalSrc = src;
@@ -71,8 +79,18 @@ const fetchBotBodyColor = async (botId: number): Promise<string> => {
     if (!text.startsWith('{')) return "/pangolin_sprite.png";
     const json = JSON.parse(text);
     return getBodySpriteFromAttributes(json.attributes);
-  } catch (e) {
-    return "/pangolin_sprite.png";
+  } catch (err) {
+    // If backend is not running, return a deterministic color based on botId instead of always brown
+    const fallbackSprites = [
+      "/pangolin_sprite_red.png",
+      "/pangolin_sprite_rainbow.png",
+      "/pangolin_sprite_blue.png",
+      "/pangolin_sprite_black.png",
+      "/pangolin_sprite_silver.png",
+      "/pangolin_sprite_gold.png",
+      "/pangolin_sprite.png"
+    ];
+    return fallbackSprites[botId % fallbackSprites.length];
   }
 };
 
@@ -87,7 +105,27 @@ function App() {
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [selectedNFTDetails, setSelectedNFTDetails] = useState<any | null>(null);
   const [renameInput, setRenameInput] = useState('');
-  const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'race-lobby' | 'bot-race' | 'online-race' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral'>('landing');
+  const [_raceMode, setRaceMode] = useState<'bot' | 'online' | null>(null);
+  const [raceSelectedNft, setRaceSelectedNft] = useState<any>(null);
+
+  // Daily race limit (3 per day, reset at midnight UTC)
+  const [dailyRacesUsed, setDailyRacesUsed] = useState<number>(() => {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const stored = localStorage.getItem('pangsrally_daily_races');
+    if (!stored) return 0;
+    try {
+      const { date, count } = JSON.parse(stored);
+      return date === today ? count : 0;
+    } catch { return 0; }
+  });
+
+  const incrementDailyRaces = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const newCount = dailyRacesUsed + 1;
+    setDailyRacesUsed(newCount);
+    localStorage.setItem('pangsrally_daily_races', JSON.stringify({ date: today, count: newCount }));
+  };
   
   // Initialize theme from localStorage or default to 'light'
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -125,6 +163,78 @@ function App() {
   const [activeCategoryInfo, setActiveCategoryInfo] = useState<any>(null); // Selected from Rally Lobby
   const [isSelectingRaceNft, setIsSelectingRaceNft] = useState<boolean>(false);
   const [selectedRacingNft, setSelectedRacingNft] = useState<any>(null);
+
+  // Supabase state
+  const [_supabaseUser, setSupabaseUser] = useState<any>(null);
+  const [currentRaceDbId, setCurrentRaceDbId] = useState<string | null>(null);
+  const [lbData, setLbData] = useState<LeaderboardEntry[]>([]);
+  const [_dbRaceHistory, setDbRaceHistory] = useState<any[]>([]);
+
+  const GUEST_RACER = {
+    id: "guest-0",
+    tokenId: "guest-0",
+    name: "Rookie Pangolin (Guest)",
+    rarity: "Common",
+    trait: "Dirt",
+    level: 1,
+    speed: 15,
+    acceleration: 15,
+    handling: 15,
+    avatar: "nft-images/1.webp",
+    image: "nft-images/1.webp",
+    sprite: "/pangolin_sprite_rainbow.png",
+    isGuest: true
+  };
+
+  const mintRookieNFT = async () => {
+    if (!(window as any).ethereum) {
+        showToast("Please install MetaMask to mint!", "error");
+        return;
+    }
+    try {
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const signer = await provider.getSigner();
+      const nftContract = new ethers.Contract(BETA_PASS_CONTRACT_ADDRESS, PangsRallyBetaPassContract.abi, signer);
+      
+      // Check if sale is active
+      const saleActive = await nftContract.mintIsActive();
+      if (!saleActive) {
+        // Fallback to off-chain guest mode if mint is not active yet
+        showToast("Minting not active yet. Starting in Guest Mode...", "info");
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        setMyNFTs([GUEST_RACER]);
+        setCurrentView('rally');
+        showToast("Guest Mode activated! You received a Rookie Pangolin.", "success");
+        return;
+      }
+      
+      showToast("Requesting $PANGS approval for mint...", "info");
+      const pangsContract = new ethers.Contract(PANGS_TOKEN_ADDRESS, ERC20_ABI, signer);
+      
+      const pangsMintPrice = await nftContract.mintPrice();
+      const approveTx = await pangsContract.approve(BETA_PASS_CONTRACT_ADDRESS, pangsMintPrice);
+      await approveTx.wait();
+      
+      showToast("Minting Rookie Pangolin on-chain...", "info");
+      const tx = await nftContract.mint(1);
+      await tx.wait();
+      
+      showToast("Rookie Pangolin minted on-chain! 🎉", "success");
+      
+      // Refresh NFT inventory
+      const addr = await signer.getAddress();
+      fetchMyNFTs(addr);
+      setCurrentView('rally');
+    } catch (e: any) {
+      console.error('Mint error:', e);
+      // Fallback to guest mode on any error
+      showToast("Mint failed. Starting in Guest Mode...", "info");
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setMyNFTs([GUEST_RACER]);
+      setCurrentView('rally');
+      showToast("Guest Mode activated!", "success");
+    }
+  };
   
   // Inventory & Marketplace State
   const [inventoryFilter, setInventoryFilter] = useState('All');
@@ -157,13 +267,39 @@ function App() {
   const [myRaces, setMyRaces] = useState<any[]>([]);
 
   useEffect(() => {
-    if (currentView === 'my-races') {
-      fetch('http://localhost:3001/api/race/history')
-        .then(res => res.json())
-        .then(data => setMyRaces(data))
-        .catch(err => console.error("Error fetching races:", err));
+    if (currentView === 'my-races' && walletAddress) {
+      // Fetch from race_room_players (Online races) joined with race_rooms
+      import('./supabaseClient').then(({ supabase }) => {
+        supabase
+          .from('race_room_players')
+          .select(`
+            *,
+            race_rooms (
+              room_code, map, class, status, max_players, created_at, finished_at
+            )
+          `)
+          .eq('wallet_address', walletAddress.toLowerCase())
+          .order('joined_at', { ascending: false })
+          .limit(30)
+          .then(({ data, error }) => {
+            if (error) { console.error('Race history error:', error); return; }
+            const formatted = (data || []).map((row: any) => ({
+              id: row.race_rooms?.room_code || row.id,
+              map: `${row.race_rooms?.map || 'Unknown'} Track`,
+              participants: row.race_rooms?.max_players || 10,
+              status: row.race_rooms?.status === 'finished' ? 'completed' : 'pending',
+              position: row.position ? `#${row.position}` : 'DNF',
+              reward: row.prize_earned > 0 ? `${row.prize_earned} $PANGS` : '-',
+              finishTime: row.finish_time,
+              joinedAt: row.joined_at,
+              seed: null,
+              mode: 'online'
+            }));
+            setMyRaces(formatted);
+          });
+      });
     }
-  }, [currentView]);
+  }, [currentView, walletAddress]);
 
   const [isReplayMode, setIsReplayMode] = useState(false);
 
@@ -399,6 +535,55 @@ function App() {
     setIsFetchingNFTs(true);
     try {
       const provider = new ethers.BrowserProvider((window as any).ethereum);
+      
+      // Fetch from Beta Pass Contract
+      const betaNftContract = new ethers.Contract(BETA_PASS_CONTRACT_ADDRESS, PangsRallyBetaPassContract.abi, provider);
+      
+      let betaTokenIds: string[] = [];
+      try {
+        const _betaTokens = await betaNftContract.tokensOfOwner(address); // fixed: use address param not stale state
+        betaTokenIds = _betaTokens.map((t: any) => t.toString());
+      } catch (e) {
+        console.warn("Beta pass fetch failed, might not be deployed yet", e);
+      }
+      
+      const loadedBetaNFTs = await Promise.all(betaTokenIds.map(async (tokenId) => {
+        try {
+          const uri = await betaNftContract.tokenURI(tokenId);
+          let metadata: any = null;
+
+          if (uri.startsWith('data:application/json;base64,')) {
+            const jsonString = atob(uri.split(',')[1]);
+            metadata = JSON.parse(jsonString);
+          } else if (uri.startsWith('http')) {
+            const res = await fetch(uri);
+            metadata = await res.json();
+          }
+
+          if (!metadata) return null;
+
+          // Use the on-chain image URL (Pinata), with local file as fallback
+          const imageUrl = metadata.image || '/beta-pass-nft.png';
+
+          return {
+            id: `beta-${tokenId}`,
+            tokenId: tokenId,
+            name: `Pangs Rally Beta Pass #${tokenId}`,
+            image: imageUrl,
+            avatar: imageUrl,
+            sprite: '/pangolin_sprite_gold.png',  // Gold pangolin in races
+            attributes: metadata.attributes || [],
+            level: 1,
+            rarity: 'Beta',
+            isBeta: true
+          };
+        } catch (e) {
+          console.warn(`Failed to load beta token ${tokenId}`, e);
+          return null;
+        }
+      }));
+
+      // Fetch from Genesis Contract
       const contract = new ethers.Contract(CONTRACT_ADDRESS, PangsRallyContract.abi, provider);
       
       const tokens = await contract.tokensOfOwner(address);
@@ -409,34 +594,21 @@ function App() {
         const tokenIdStr = tokenId.toString();
         
         try {
-          const metadataUrl = `${window.location.origin}/api/metadata/${tokenIdStr}`;
-          
-          let metadata = { name: `Pangs Rally #${tokenIdStr}`, image: ``, attributes: [] as any[] };
-          try {
-            const res = await fetch(metadataUrl);
-            if (res.ok) {
-              const text = await res.text();
-              if (text.startsWith('{')) {
-                metadata = JSON.parse(text);
-              } else {
-                // Local dev fallback
-                const fallbackRes = await fetch(`/metadata/${tokenIdStr}.json`);
-                if (fallbackRes.ok) metadata = await fallbackRes.json();
-              }
-            } else {
-              const fallbackRes = await fetch(`/metadata/${tokenIdStr}.json`);
-              if (fallbackRes.ok) metadata = await fallbackRes.json();
-            }
-          } catch(e) {
+          const uri = await contract.tokenURI(tokenId);
+          let metadata: any = { name: `Pangs Rally #${tokenIdStr}`, image: ``, attributes: [] };
+
+          if (uri.startsWith('data:application/json;base64,')) {
+            const jsonString = atob(uri.split(',')[1]);
+            metadata = JSON.parse(jsonString);
+          } else {
+            // It's revealed, try to fetch local metadata
             try {
-              const fallbackRes = await fetch(`/metadata/${tokenIdStr}.json`);
-              if (fallbackRes.ok) metadata = await fallbackRes.json();
-            } catch(e2) {
-              // ignore
-            }
+              const res = await fetch(`/metadata/${tokenIdStr}.json`);
+              if (res.ok) metadata = await res.json();
+            } catch(e) { /* ignore */ }
           }
           
-          const getTrait = (name: string) => metadata.attributes.find((a: any) => a.trait_type === name)?.value || null;
+          const getTrait = (name: string) => metadata.attributes?.find((a: any) => a.trait_type === name)?.value || null;
           
           let onChainName = "";
           try {
@@ -451,8 +623,11 @@ function App() {
           let imageUrl = metadata.image;
           if (imageUrl && imageUrl.startsWith('ipfs://')) {
               imageUrl = imageUrl.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/');
-          } else if (!imageUrl) {
-              imageUrl = `nft-images/${tokenIdStr}.png`;
+          } else if (!imageUrl || !imageUrl.startsWith('http')) {
+              imageUrl = imageUrl || `nft-images/${tokenIdStr}.png`;
+              if (imageUrl.startsWith('/')) {
+                 // it's an absolute local path like /unrevealed-pangolin.png, leave it
+              }
           }
           
           // Get rarity data
@@ -474,13 +649,14 @@ function App() {
              endurance: 50,
              level: 1,
              bodyColor: getTrait('Body') || 'Default',
-             breedCount: Number(bCount)
+             breedCount: Number(bCount),
+             isBeta: false
           });
         } catch (fetchErr) {
           console.error("Critical error building token object for", tokenId, fetchErr);
         }
       }
-      setMyNFTs(nfts);
+      setMyNFTs([...loadedBetaNFTs.filter(Boolean), ...nfts]);
     } catch (err: any) {
       console.error(err);
       showToast(err.message || 'Mint failed.', 'error');
@@ -580,6 +756,17 @@ function App() {
           
           // Fetch NFTs
           fetchMyNFTs(address);
+          
+          // Register user in Supabase
+          upsertUser(address).then(user => {
+            if (user) setSupabaseUser(user);
+          }).catch(err => console.warn('Supabase user registration:', err));
+          
+          // Load leaderboard
+          fetchLeaderboard().then(data => setLbData(data)).catch(() => {});
+          
+          // Load race history
+          fetchRaceHistory(address).then(data => setDbRaceHistory(data)).catch(() => {});
         }
       } catch (error) {
         console.error("Wallet connection failed:", error);
@@ -756,7 +943,7 @@ function App() {
   };
 
   const mockCategories = [
-    { id: 'cat1', name: 'Class 5', terrain: 'Forest', icon: '🌲', entry: 'Locked', prize: '? $PANGS', color: '#b8ce55', bgClass: 'bg-forest' },
+    { id: 'cat1', name: 'Class 5', terrain: 'Forest', icon: '🌲', entry: 'Free', prize: '10 $PANGS', color: '#b8ce55', bgClass: 'bg-forest' },
     { id: 'cat2', name: 'Class 4', terrain: 'Desert', icon: '🏜️', entry: 'Locked', prize: '? $PANGS', color: '#e67e22', bgClass: 'bg-desert' },
     { id: 'cat3', name: 'Class 3', terrain: 'Volcanic', icon: '🌋', entry: 'Locked', prize: '? $PANGS', color: '#e74c3c', bgClass: 'bg-volcanic' },
     { id: 'cat4', name: 'Class 2', terrain: 'Midnight', icon: '🌙', entry: 'Locked', prize: '? $PANGS', color: '#9b59b6', bgClass: 'bg-midnight' },
@@ -764,7 +951,7 @@ function App() {
 
   const viewRooms = (category: any) => {
     setActiveCategoryInfo(category);
-    setCurrentView('room-browser');
+    setCurrentView('race-lobby'); // Go to new lobby with mode selection
   };
 
   const joinRaceRoom = async (room: any) => {
@@ -879,18 +1066,29 @@ function App() {
     if (raceStatus === 'finished' && !isReplayMode && racers.length > 0 && activeRaceInfo) {
       const isPlayerRacer = racers.find(r => r.isPlayer);
       if (isPlayerRacer) {
-        const prizeNum = parseFloat(activeRaceInfo.prize.split(' ')[0]);
-        const calculatedPrize = isPlayerRacer.position === 1 ? prizeNum * 0.5 : isPlayerRacer.position === 2 ? prizeNum * 0.3 : isPlayerRacer.position === 3 ? prizeNum * 0.2 : 0;
+        const prizePool = 10; // 10 $PANGS per race
+        const calculatedPrize = isPlayerRacer.position === 1 ? prizePool * 0.5 : isPlayerRacer.position === 2 ? prizePool * 0.3 : isPlayerRacer.position === 3 ? prizePool * 0.2 : 0;
         const newRaceRecord = {
           id: Date.now(),
           map: activeRaceInfo.terrain,
-          class: activeRaceInfo.class,
+          class: activeRaceInfo.class || activeRaceInfo.name,
           status: 'Completed',
           position: isPlayerRacer.position,
-          prize: isPlayerRacer.position <= 3 ? `${calculatedPrize.toFixed(4)} ETH` : '-',
+          prize: isPlayerRacer.position <= 3 ? `${calculatedPrize} $PANGS` : '-',
           racersSnapshot: racers.map(r => ({...r}))
         };
         setMyRaces(prev => [newRaceRecord, ...prev]);
+        
+        // Record results to Supabase
+        if (currentRaceDbId && walletAddress) {
+          const fullAddr = localStorage.getItem('pangsRallyWallet') || '';
+          finishRace(currentRaceDbId, [{
+            walletAddress: fullAddr,
+            position: isPlayerRacer.position,
+            finishTime: isPlayerRacer.finishTime || 0,
+            prizeEarned: calculatedPrize
+          }]).catch(err => console.warn('Supabase finishRace error:', err));
+        }
       }
     }
   }, [raceStatus, isReplayMode, activeRaceInfo]);
@@ -899,50 +1097,71 @@ function App() {
   const [isClaimingPrize, setIsClaimingPrize] = useState(false);
 
   const handleClaimPrize = async (position: number) => {
-    if (!(window as any).ethereum) return;
-    setIsClaimingPrize(true);
-    
-    // Prize pool = entry fees collected. Currently 1 real player × 0.0001 ETH = 0.0001 pool
-    // Top 3 positions: 50% for 1st, 30% for 2nd, 20% for 3rd (after 10% platform fee)
-    // Net pool = 0.0001 × 0.9 = 0.00009 ETH
-    let ethAmount = "0";
-    if (position === 1) ethAmount = "0.000045";      // ~50% of net pool
-    else if (position === 2) ethAmount = "0.000027";  // ~30% of net pool
-    else if (position === 3) ethAmount = "0.000018";  // ~20% of net pool
-    else {
+    if (position > 3) {
       showToast("You are not in the top 3!", "error");
-      setIsClaimingPrize(false);
       return;
     }
+    
+    // Calculate $PANGS prize amount
+    let pangsAmount = 0;
+    if (position === 1) pangsAmount = 5;      // 50% = 5 $PANGS
+    else if (position === 2) pangsAmount = 3;  // 30% = 3 $PANGS
+    else if (position === 3) pangsAmount = 2;  // 20% = 2 $PANGS
 
+    setIsClaimingPrize(true);
+    
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
-      const signer = await provider.getSigner();
-      const playerAddress = signer.address;
+      // For Beta: Use Supabase Edge Function for claim verification
+      // The edge function will sign the message and return signature
+      const fullAddr = localStorage.getItem('pangsRallyWallet') || '';
       
-      showToast("Requesting authorization from server...", "info");
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
       
-      // Request signature from backend
-      const res = await fetch('http://localhost:3001/api/claim', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerAddress, amount: ethAmount })
-      });
-      
-      if (!res.ok) {
-        throw new Error("Failed to get authorization from server");
+      if (SUPABASE_URL) {
+        // Production: Call Supabase Edge Function
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/claim-verify`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ''}`
+          },
+          body: JSON.stringify({ 
+            walletAddress: fullAddr, 
+            raceId: currentRaceDbId,
+            position: position,
+            amount: pangsAmount.toString()
+          })
+        });
+        
+        if (!res.ok) throw new Error('Failed to get claim authorization');
+        
+        const { amountWei, nonce, signature } = await res.json();
+        
+        if (!(window as any).ethereum) throw new Error('Wallet not connected');
+        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        const signer = await provider.getSigner();
+        const raceContract = new ethers.Contract(RACING_ADDRESS, RACING_ABI, signer);
+        
+        showToast("Claiming $PANGS on blockchain...", "info");
+        const tx = await raceContract.claimPrize(amountWei, nonce, signature);
+        await tx.wait();
+        
+        // Mark as claimed in Supabase
+        if (currentRaceDbId) {
+          markPrizeClaimed(currentRaceDbId, fullAddr, tx.hash);
+        }
+        
+        showToast(`🏆 ${pangsAmount} $PANGS claimed successfully!`, "success");
+      } else {
+        // Fallback: Off-chain Beta mode (no Supabase configured yet)
+        showToast(`🏆 Top ${position}! You earned ${pangsAmount} $PANGS (Beta - recorded off-chain)`, "success");
+        
+        // Still record to Supabase if available
+        if (currentRaceDbId) {
+          const fullAddr2 = localStorage.getItem('pangsRallyWallet') || '';
+          markPrizeClaimed(currentRaceDbId, fullAddr2, 'beta-offchain').catch(() => {});
+        }
       }
-      
-      const { amountWei, nonce, signature } = await res.json();
-      
-      const raceContract = new ethers.Contract(RACING_ADDRESS, RACING_ABI, signer);
-      
-      showToast("Confirming on blockchain...", "info");
-      // Call the secure claim function on the smart contract
-      const tx = await raceContract.claimPrize(amountWei, nonce, signature);
-      await tx.wait();
-      
-      showToast(`Top ${position} Prize (${ethAmount} ETH) claimed successfully!`, "success");
     } catch(e: any) {
       console.error(e);
       showToast(e.reason || e.message || "Failed to claim prize", "error");
@@ -957,68 +1176,126 @@ function App() {
     }
     
     if (!isReplay) {
-      if (!(window as any).ethereum) return;
-      setIsJoiningRace(true);
-      try {
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
-        const signer = await provider.getSigner();
-        const playerAddress = signer.address;
-        const raceContract = new ethers.Contract(RACING_ADDRESS, RACING_ABI, signer);
+      const bodyColor = getBodySpriteFromAttributes(selectedRacingNft?.attributes || []);
+      
+      if (selectedRacingNft?.isGuest) {
+        // Guest/Beta mode: No on-chain TX, but record in Supabase
+        setIsJoiningRace(true);
+        await new Promise(r => setTimeout(r, 1500));
         
-        showToast("Joining race...", "info");
-        const entryFee = ethers.parseEther("0.0001");
+        // Create race in Supabase
+        const raceRecord = await createRace({
+          roomId: activeRaceInfo.id || 'cat1',
+          map: activeRaceInfo.terrain || 'Forest',
+          raceClass: activeRaceInfo.name || 'Class 5',
+          prizePool: 10,
+          entryFee: 0,
+        }).catch(() => null);
         
-        // Ensure roomId is an integer since mock ids are like 'cat1'
-        const roomIdStr = activeRaceInfo?.id ? String(activeRaceInfo.id).replace(/\D/g, '') : '1';
-        const roomId = parseInt(roomIdStr) || 1;
-        
-        const tx = await raceContract.joinRace(roomId, selectedRacingNft.tokenId, { value: entryFee });
-        await tx.wait();
-        showToast("Successfully joined on-chain!", "success");
-
-        // Now register with backend to get deterministic seed
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 1500);
-          const res = await fetch('http://localhost:3001/api/race/join', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ playerAddress, map: activeRaceInfo.terrain, nftData: selectedRacingNft }),
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-          const data = await res.json();
-          prngRef.current = seedrandom(data.seed);
-        } catch(backendErr) {
-          console.warn('Backend unavailable, using local seed:', backendErr);
-          const fallbackSeed = `${playerAddress}-${Date.now()}-${Math.random()}`;
+        if (raceRecord) {
+          setCurrentRaceDbId(raceRecord.id);
+          prngRef.current = seedrandom(raceRecord.seed);
+          
+          // Record participant
+          const fullAddr = localStorage.getItem('pangsRallyWallet') || 'guest-' + Date.now();
+          await joinRaceDB({
+            raceId: raceRecord.id,
+            walletAddress: fullAddr,
+            nftTokenId: 0,
+            nftName: selectedRacingNft.name || 'Rookie Pangolin',
+            nftBodyColor: bodyColor,
+          }).catch(() => {});
+        } else {
+          const fallbackSeed = `guest-${Date.now()}-${Math.random()}`;
           prngRef.current = seedrandom(fallbackSeed);
         }
-      } catch(e: any) {
-        console.error(e);
-        showToast(e.reason || "Failed to join race", "error");
+        
+        showToast("Joined race (Beta Mode)!", "success");
         setIsJoiningRace(false);
-        return;
+      } else {
+        // Real on-chain mode: joinRace TX + Supabase record
+        if (!(window as any).ethereum) return;
+        setIsJoiningRace(true);
+        try {
+          const provider = new ethers.BrowserProvider((window as any).ethereum);
+          const signer = await provider.getSigner();
+          const playerAddress = signer.address;
+          
+          // Create race in Supabase first to get seed
+          const raceRecord = await createRace({
+            roomId: activeRaceInfo.id || 'cat1',
+            map: activeRaceInfo.terrain || 'Forest',
+            raceClass: activeRaceInfo.name || 'Class 5',
+            prizePool: 10,
+            entryFee: 0,
+          }).catch(() => null);
+          
+          if (raceRecord) {
+            setCurrentRaceDbId(raceRecord.id);
+            prngRef.current = seedrandom(raceRecord.seed);
+            
+            await joinRaceDB({
+              raceId: raceRecord.id,
+              walletAddress: playerAddress,
+              nftTokenId: parseInt(selectedRacingNft.tokenId) || 0,
+              nftName: selectedRacingNft.name || 'Unknown',
+              nftBodyColor: bodyColor,
+            }).catch(() => {});
+          } else {
+            const fallbackSeed = `${playerAddress}-${Date.now()}-${Math.random()}`;
+            prngRef.current = seedrandom(fallbackSeed);
+          }
+          
+          showToast("Race joined! Starting...", "success");
+        } catch(e: any) {
+          console.error(e);
+          showToast(e.reason || "Failed to join race", "error");
+          setIsJoiningRace(false);
+          return;
+        }
+        setIsJoiningRace(false);
       }
-      setIsJoiningRace(false);
     }
     
     setIsReplayMode(isReplay);
     setHasPlayerJoined(true);
     setCurrentView('live-race');
     setRaceStatus('waiting');
+    showToast("Waiting for other players to join...", "info");
+    
+    // Simulate lobby wait time
+    await new Promise(r => setTimeout(r, 2500));
     
     // Generate racers deterministically using the seed (works for both live and replay)
     setCameraProgress(0);
     const randomFn = prngRef.current || Math.random;
     
+    const getTeaserSprite = (id: number): string => {
+      const map: Record<number, string> = {
+        1: "/pangolin_sprite_rainbow.png",
+        2: "/pangolin_sprite_gold.png",
+        3: "/pangolin_sprite.png",
+        4: "/pangolin_sprite_rainbow.png",
+        5: "/pangolin_sprite.png",
+        6: "/pangolin_sprite.png",
+        7: "/pangolin_sprite_blue.png",
+        8: "/pangolin_sprite.png",
+        9: "/pangolin_sprite_rainbow.png",
+        10: "/pangolin_sprite_rainbow.png",
+      };
+      return map[id] || "/pangolin_sprite.png";
+    };
+
     const fetchBotSpriteForSeed = async (botTokenId: number): Promise<string> => {
-        return await fetchBotBodyColor(botTokenId);
+        // Use hardcoded mapping for the 1-10 teaser images to ensure visual consistency
+        return getTeaserSprite(botTokenId);
     };
     
     // Create player racer object
     const playerRacer = {
       id: 1,
+      isPlayer: true,
+      isGuest: selectedRacingNft?.isGuest,
       name: selectedRacingNft.name || 'Replay Racer',
       distance: 0,
       speed: 0,
@@ -1027,7 +1304,6 @@ function App() {
       image: selectedRacingNft.image || `nft-images/${selectedRacingNft.tokenId || 1}.webp`,
       avatar: selectedRacingNft.avatar || `nft-images/${selectedRacingNft.tokenId || 1}.webp`,
       sprite: getBodySpriteFromAttributes(selectedRacingNft.attributes || []),
-      isPlayer: true,
       finishTime: null
     };
     
@@ -1285,11 +1561,10 @@ function App() {
                   </p>
                   <div className="hero-actions">
                     <button className="btn btn-primary" onClick={mintNFT} disabled style={{ opacity: 0.5, cursor: 'not-allowed', background: '#333' }}>Mint Locked 🔒</button>
-                    <a href="https://app.virtuals.io/virtuals/115020" target="_blank" rel="noopener noreferrer" className="btn btn-outline" style={{ borderColor: 'var(--pangs-orange)', color: 'var(--pangs-orange)', textDecoration: 'none' }}>Trade $PANGS</a>
-                    <button className="btn btn-outline" onClick={() => setCurrentView('rally')}>Enter Game</button>
+                    <button className="btn btn-primary" onClick={mintRookieNFT}>Mint Rookie (Free) 🆓</button>
                   </div>
                   <p style={{ marginTop: '1rem', color: 'var(--pangs-orange)', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                    * Minting will begin after the $PANGS Token Launch.
+                    * Genesis mint details coming soon. Stay tuned!
                   </p>
                 </div>
                 <div className="hero-image-container">
@@ -1373,6 +1648,50 @@ function App() {
               </div>
             </div>
           </section>
+        )}
+
+        {/* ===== NEW: Race Lobby (Mode Selector) ===== */}
+        {currentView === 'race-lobby' && activeCategoryInfo && (
+          <RaceLobby
+            categoryInfo={activeCategoryInfo}
+            myNFTs={myNFTs}
+            walletAddress={walletAddress}
+            dailyRacesUsed={dailyRacesUsed}
+            onSelectMode={(mode, nft) => {
+              setRaceMode(mode);
+              setRaceSelectedNft(nft);
+              setCurrentView(mode === 'bot' ? 'bot-race' : 'online-race');
+            }}
+            onBack={() => setCurrentView('rally')}
+          />
+        )}
+
+        {/* ===== NEW: Bot Race ===== */}
+        {currentView === 'bot-race' && activeCategoryInfo && raceSelectedNft && (
+          <BotRaceRoom
+            categoryInfo={activeCategoryInfo}
+            selectedNft={raceSelectedNft}
+            walletAddress={walletAddress}
+            onBack={() => setCurrentView('race-lobby')}
+            onFinished={(position, prize) => {
+              incrementDailyRaces();
+              console.log(`Bot race finished: position ${position}, prize ${prize}`);
+            }}
+          />
+        )}
+
+        {/* ===== NEW: Online Race ===== */}
+        {currentView === 'online-race' && activeCategoryInfo && raceSelectedNft && (
+          <OnlineRaceRoom
+            categoryInfo={activeCategoryInfo}
+            selectedNft={raceSelectedNft}
+            walletAddress={walletAddress}
+            onBack={() => setCurrentView('race-lobby')}
+            onFinished={(position, prize) => {
+              incrementDailyRaces();
+              console.log(`Online race finished: position ${position}, prize ${prize}`);
+            }}
+          />
         )}
 
         {currentView === 'room-browser' && activeCategoryInfo && (
@@ -1612,6 +1931,26 @@ function App() {
                           bottom: `${racer.distance}px`
                         }}
                       >
+                        {racer.isPlayer && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '-35px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            background: 'rgba(255, 215, 0, 0.9)',
+                            color: '#000',
+                            padding: '4px 8px',
+                            borderRadius: '12px',
+                            fontWeight: 'bold',
+                            fontSize: '14px',
+                            boxShadow: '0 0 15px rgba(255, 215, 0, 1)',
+                            whiteSpace: 'nowrap',
+                            zIndex: 10,
+                            animation: 'pulse 1.5s infinite'
+                          }}>
+                            ▼ YOU
+                          </div>
+                        )}
                         <div 
                           className={`racer-trail ${raceStatus === 'running' ? 'dust-active' : ''}`}
                           style={{ height: `${200 + (racer.speed * 0.8)}px` }}
@@ -1657,7 +1996,7 @@ function App() {
                 
                 return (
                   <div style={{display: 'flex', gap: '1rem'}}>
-                    {isTop3 && (
+                    {isTop3 && !player.isGuest && (
                       <button 
                         className="btn btn-primary" 
                         onClick={() => handleClaimPrize(player.position)}
@@ -1702,30 +2041,41 @@ function App() {
                   <h3>Loading your Pangolins from Web3...</h3>
                 </div>
               ) : activeInventory.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem', width: '100%', gridColumn: '1 / -1' }}>
-                  <h3>No Pangolins found!</h3>
-                  <p>Go to the Home page to get your first racer.</p>
+                <div className="empty-state" style={{gridColumn: '1/-1', textAlign: 'center', padding: '4rem', background: 'var(--bg-card)', borderRadius: '16px'}}>
+                  <h3 style={{marginBottom: '1rem'}}>No Pangolins Found</h3>
+                  <p style={{color: 'var(--text-muted)', marginBottom: '2rem'}}>You need a Pangolin NFT to race. Buy one on the marketplace or mint a free Rookie.</p>
+                  <button className="btn btn-primary" onClick={mintRookieNFT}>Mint Rookie (Free) 🆓</button>
                 </div>
               ) : (
                 filteredInventory.map(nft => (
-                  <div key={nft.id} className="inventory-card glass-panel">
+                  <div key={nft.id} className="inventory-card glass-panel" style={nft.isBeta ? { border: '2px solid rgba(255,215,0,0.6)', boxShadow: '0 0 20px rgba(255,215,0,0.15)' } : {}}>
                     <div className="inv-card-header">
-                      <span className="inv-id">{nft.id}</span>
+                      <span className="inv-id">{nft.isBeta ? '🏆' : nft.id}</span>
                       <span className="lvl-badge">LVL {nft.level}</span>
-                      <span className={`badge rarity-${nft.rarity?.toLowerCase() || 'common'}`}>{nft.rarity || 'Common'}</span>
+                      {nft.isBeta
+                        ? <span className="badge" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', color: '#000', fontWeight: 'bold' }}>BETA</span>
+                        : <span className={`badge rarity-${nft.rarity?.toLowerCase() || 'common'}`}>{nft.rarity || 'Common'}</span>
+                      }
                     </div>
-                    <div className="inv-card-image" style={{cursor: 'pointer'}} onClick={() => setExpandedImage(nft.avatar.startsWith('http') ? nft.avatar : `/${nft.avatar}`)}>
-                      <TransparentImage src={nft.avatar.startsWith('http') ? nft.avatar : `/${nft.avatar}`} alt={nft.name} />
+                    <div className="inv-card-image" style={{cursor: 'pointer'}} onClick={() => setExpandedImage(
+                      nft.avatar?.startsWith('http') || nft.avatar?.startsWith('/') ? nft.avatar : `/${nft.avatar}`
+                    )}>
+                      <TransparentImage 
+                        src={nft.avatar?.startsWith('http') || nft.avatar?.startsWith('/') ? nft.avatar : `/${nft.avatar || 'pangolin_sprite.png'}`} 
+                        alt={nft.name} 
+                      />
                     </div>
                     <div className="inv-card-body">
                       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                        <h3 style={{margin: 0}}>{nft.name}</h3>
-                        {walletConnected && nft.tokenId && (
+                        <h3 style={{margin: 0, fontSize: nft.isBeta ? '0.85rem' : undefined}}>{nft.name}</h3>
+                        {walletConnected && nft.tokenId && !nft.isBeta && (
                           <button onClick={() => handleRename(nft.tokenId, nft.name)} style={{background: 'transparent', border: '1px solid var(--primary)', color: 'var(--primary)', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '10px'}}>Rename</button>
                         )}
                       </div>
-                      <span className="badge trait-badge" style={{marginTop: '0.5rem', display: 'inline-block'}}>{nft.trait}</span>
-                      
+                      {nft.isBeta
+                        ? <span className="badge" style={{ marginTop: '0.5rem', display: 'inline-block', background: 'rgba(255,215,0,0.1)', color: '#ffd700', border: '1px solid rgba(255,215,0,0.3)' }}>Beta Tester</span>
+                        : <span className="badge trait-badge" style={{marginTop: '0.5rem', display: 'inline-block'}}>{nft.trait}</span>
+                      }
                       <button onClick={() => setSelectedNFTDetails(nft)} className="btn btn-outline" style={{width: '100%', marginTop: '1rem', padding: '0.5rem'}}>View Details</button>
                     </div>
                   </div>
@@ -1832,17 +2182,37 @@ function App() {
         )}
 
         {currentView === 'leaderboard' && (
-          <section className="leaderboard-section" style={{ paddingTop: '140px', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <div className="container" style={{ textAlign: 'center' }}>
-              <h1 className="section-title" style={{ fontSize: '4rem', color: 'var(--primary)' }}>Coming Soon</h1>
-              <p className="text-muted" style={{ fontSize: '1.5rem', marginTop: '1rem' }}>Global Leaderboards and Seasonal Rewards are currently under construction.</p>
-              <button 
-                className="btn btn-primary" 
-                style={{ marginTop: '2rem' }}
-                onClick={() => setCurrentView('landing')}
-              >
-                Back to Home
-              </button>
+          <section className="inventory-page animated-enter">
+            <div className="inventory-header-bar">
+              <h2>Global Leaderboard</h2>
+              <div className="inventory-stats">
+                <span>Top Racers: <strong style={{color: 'var(--primary)'}}>{lbData.length}</strong></span>
+              </div>
+            </div>
+            
+            <div className="leaderboard-list glass-panel" style={{marginTop: '2rem'}}>
+              <div className="lb-list-header" style={{gridTemplateColumns: '1fr 3fr 1fr 1fr 1fr'}}>
+                <div>Rank</div>
+                <div>Wallet</div>
+                <div>Races</div>
+                <div>Wins</div>
+                <div>Earned</div>
+              </div>
+              {lbData.length > 0 ? (
+                lbData.map((entry, index) => (
+                  <div key={entry.wallet_address} className="lb-list-row" style={{gridTemplateColumns: '1fr 3fr 1fr 1fr 1fr', background: index === 0 ? 'rgba(255, 215, 0, 0.1)' : index === 1 ? 'rgba(192, 192, 192, 0.1)' : index === 2 ? 'rgba(205, 127, 50, 0.1)' : 'transparent', borderLeft: index === 0 ? '4px solid #ffd700' : index === 1 ? '4px solid #c0c0c0' : index === 2 ? '4px solid #cd7f32' : '4px solid transparent'}}>
+                    <div style={{fontWeight: 'bold', color: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : 'var(--text-muted)'}}>#{index + 1}</div>
+                    <div style={{fontFamily: 'monospace'}}>{entry.username || `${entry.wallet_address.substring(0,6)}...${entry.wallet_address.substring(38)}`}</div>
+                    <div>{entry.total_races}</div>
+                    <div style={{color: 'var(--color-success)'}}>{entry.wins}</div>
+                    <div style={{color: 'var(--pangs-orange)', fontWeight: 'bold'}}>{entry.total_earnings} $PANGS</div>
+                  </div>
+                ))
+              ) : (
+                <div style={{padding: '2rem', textAlign: 'center', color: 'var(--text-muted)'}}>
+                  No leaderboard data available yet.
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -1850,69 +2220,87 @@ function App() {
         {currentView === 'my-races' && (
           <section className="inventory-page animated-enter">
             <div className="inventory-header-bar">
-              <h2>My Races (Race History)</h2>
+              <h2>My Race History</h2>
               <div className="inventory-stats">
                 <span>Total Races: <strong style={{color: 'var(--primary)'}}>{myRaces.length}</strong></span>
+                <span style={{marginLeft: '2rem'}}>
+                  Wins: <strong style={{color: '#ffd700'}}>{myRaces.filter((r: any) => r.position === '#1').length}</strong>
+                </span>
               </div>
             </div>
-            
-            <div className="leaderboard-list glass-panel" style={{marginTop: '2rem'}}>
-              <div className="lb-list-header" style={{gridTemplateColumns: '1fr 2fr 1fr 1fr 1fr 1fr'}}>
-                <div>Race ID</div>
-                <div>Map</div>
-                <div>Status</div>
-                <div>Position</div>
-                <div>Reward</div>
-                <div>Action</div>
+
+            {!walletConnected ? (
+              <div style={{padding: '4rem', textAlign: 'center', color: 'var(--text-muted)'}}>
+                <div style={{fontSize: '3rem', marginBottom: '1rem'}}>🔒</div>
+                <h3>Connect your wallet to view race history</h3>
               </div>
-              {walletConnected ? (
-                <>
-                  {myRaces.map((race) => (
-                    <div key={race.id} className="lb-list-row" style={{gridTemplateColumns: '1fr 2fr 1fr 1fr 1fr 1fr'}}>
-                      <div style={{fontWeight: 'bold', color: 'var(--text-muted)'}}>{race.id}</div>
-                      <div>{race.map} <span style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>({race.participants}/10)</span></div>
-                      <div>
-                        {race.status === 'completed' ? (
-                          <span className="badge" style={{background: 'rgba(0, 255, 136, 0.2)', color: 'var(--color-success)'}}>Completed</span>
-                        ) : (
-                          <span className="badge" style={{background: 'rgba(255, 215, 0, 0.2)', color: '#ffd700'}}>Pending</span>
-                        )}
+            ) : myRaces.length === 0 ? (
+              <div style={{padding: '4rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-card)', borderRadius: '16px', marginTop: '2rem'}}>
+                <div style={{fontSize: '3rem', marginBottom: '1rem'}}>🏁</div>
+                <h3>No races yet</h3>
+                <p style={{marginTop: '0.5rem'}}>Join a race from The Rally to get started!</p>
+                <button className="btn btn-primary" style={{marginTop: '1.5rem'}} onClick={() => setCurrentView('rally')}>
+                  Go to The Rally
+                </button>
+              </div>
+            ) : (
+              <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '2rem'}}>
+                {myRaces.map((race: any) => (
+                  <div key={race.id} className="glass-panel" style={{
+                    display: 'grid',
+                    gridTemplateColumns: '120px 1fr auto auto auto',
+                    alignItems: 'center',
+                    gap: '1.5rem',
+                    padding: '1.25rem 1.75rem',
+                    borderLeft: race.position === '#1' ? '3px solid #ffd700' : race.status === 'completed' ? '3px solid var(--color-success)' : '3px solid rgba(255,255,255,0.1)'
+                  }}>
+                    {/* Position */}
+                    <div style={{textAlign: 'center'}}>
+                      <div style={{fontSize: '2rem'}}>
+                        {race.position === '#1' ? '🥇' : race.position === '#2' ? '🥈' : race.position === '#3' ? '🥉' : race.position === 'DNF' ? '🏁' : `${race.position}`}
                       </div>
-                      <div style={{fontWeight: 'bold'}}>{race.position}</div>
-                      <div style={{color: '#ffd700', fontWeight: 'bold'}}>{race.reward}</div>
-                      <div>
-                        {race.status === 'completed' && (
-                          <button 
-                            className="btn btn-outline" 
-                            style={{padding: '0.5rem 1rem', fontSize: '0.9rem'}}
-                            onClick={() => {
-                              setActiveRaceInfo({ terrain: race.map, class: 'Replay' });
-                              prngRef.current = seedrandom(race.seed);
-                              // We need a dummy racer to watch
-                              setSelectedRacingNft({
-                                tokenId: 1, name: 'Replay Racer', speed: 50, attributes: [], image: 'nft-images/1.webp'
-                              });
-                              startRaceSimulation(true); // Pass true to enable replay mode
-                            }}
-                          >
-                            Watch Replay
-                          </button>
-                        )}
+                      <div style={{fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px'}}>Position</div>
+                    </div>
+
+                    {/* Race Info */}
+                    <div>
+                      <div style={{fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '4px'}}>{race.map}</div>
+                      <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
+                        <span className="badge" style={{background: race.mode === 'online' ? 'rgba(0,200,255,0.15)' : 'rgba(255,215,0,0.15)', color: race.mode === 'online' ? '#00c8ff' : '#ffd700', fontSize: '0.75rem'}}>
+                          {race.mode === 'online' ? 'Online' : 'Bot Race'}
+                        </span>
+                        <span style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>
+                          {race.joinedAt ? new Date(race.joinedAt).toLocaleDateString('tr-TR', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) : ''}
+                        </span>
                       </div>
                     </div>
-                  ))}
-                  {myRaces.length === 0 && (
-                    <div style={{padding: '3rem', textAlign: 'center', color: 'var(--text-muted)'}}>
-                      You haven't participated in any races yet.
+
+                    {/* Status */}
+                    <div style={{minWidth: '90px', textAlign: 'center'}}>
+                      {race.status === 'completed' ? (
+                        <span className="badge" style={{background: 'rgba(0,255,136,0.15)', color: 'var(--color-success)'}}>Finished</span>
+                      ) : (
+                        <span className="badge" style={{background: 'rgba(255,215,0,0.15)', color: '#ffd700'}}>Pending</span>
+                      )}
                     </div>
-                  )}
-                </>
-              ) : (
-                <div style={{padding: '3rem', textAlign: 'center', color: 'var(--text-muted)'}}>
-                  Please connect your wallet to view your race history.
-                </div>
-              )}
-            </div>
+
+                    {/* Reward */}
+                    <div style={{minWidth: '100px', textAlign: 'right'}}>
+                      {race.reward !== '-' ? (
+                        <span style={{color: '#ffd700', fontWeight: 'bold', fontSize: '1.1rem'}}>{race.reward}</span>
+                      ) : (
+                        <span style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>No prize</span>
+                      )}
+                    </div>
+
+                    {/* Room ID */}
+                    <div style={{minWidth: '80px', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.8rem'}}>
+                      {race.id}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         )}
 
