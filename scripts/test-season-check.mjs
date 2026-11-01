@@ -151,6 +151,17 @@ ok('login with a real wallet signature');
   ok('leaderboard is sorted and totals match each player\'s races');
 }
 
+// --- artwork: only the 10 public teasers, one per racer ---------------------
+{
+  const { buildTestField } = await import('../supabase/functions/test-season/race/testSeason.ts');
+  for (const wallets of [[], ['0x' + 'a'.repeat(40)], Array.from({ length: 4 }, (_, i) => '0x' + String(i + 1).repeat(40)), Array.from({ length: 10 }, (_, i) => '0x' + i.toString(16).repeat(40))]) {
+    const field = buildTestField(`art-${wallets.length}`, wallets, () => 'Brown');
+    assert.equal(field.length, FIELD_SIZE);
+    assert.deepEqual(field.map(f => f.tokenId).sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], `${wallets.length} players`);
+  }
+  ok('every racer wears a distinct public teaser (tokens 1-10), for 0-10 players');
+}
+
 // --- fairness: identical stats → ~10% win rate per racer -------------------
 {
   const N = 2000;

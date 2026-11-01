@@ -10,7 +10,7 @@
  * (form, bursts, stumbles) decides a race: each of the 10 racers has a ~10%
  * chance to win.
  */
-import { RaceSimulation, generateBots, DEFAULT_RACE_DISTANCE, type RacerInput, type RacerStats } from './simulation.ts';
+import { RaceSimulation, DEFAULT_RACE_DISTANCE, type RacerInput, type RacerStats } from './simulation.ts';
 import { callNameForToken } from './callNames.ts';
 import type { BodyColor } from './sprites.ts';
 
@@ -25,7 +25,11 @@ export const TEST_TERRAINS = ['Forest'];
 /** The lone player of a bot race always runs in lane 5 (the caller's player lines are baked for number 5). */
 export const BOT_RACE_PLAYER_LANE = 5;
 const TEST_STATS: RacerStats = { speed: 50, burst: 50, endurance: 50 };
-const COLLECTION_SIZE = 1000;
+/**
+ * Only collection tokens 1–10 have public artwork (public/nft-images); the rest stays private until
+ * the mint. A race has exactly 10 racers, so each one wears one of the ten teasers.
+ */
+export const PUBLIC_TOKENS = FIELD_SIZE;
 
 export type TokenBodyLookup = (tokenId: number) => BodyColor | null;
 
@@ -62,7 +66,7 @@ export function shortWallet(wallet: string): string {
   return wallet.length > 12 ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : wallet;
 }
 
-/** The collection artwork a wallet races with during the test season (stable per wallet). */
+/** The teaser artwork a wallet prefers during the test season (stable per wallet). */
 export function testTokenFor(wallet: string): number {
   let h = 2166136261;
   const w = wallet.toLowerCase();
@@ -70,7 +74,7 @@ export function testTokenFor(wallet: string): number {
     h ^= w.charCodeAt(i);
     h = Math.imul(h, 16777619);
   }
-  return 1 + ((h >>> 0) % COLLECTION_SIZE);
+  return 1 + ((h >>> 0) % PUBLIC_TOKENS);
 }
 
 /**
@@ -85,11 +89,13 @@ export function buildTestField(seed: string, wallets: string[], bodyOf: TokenBod
   const usedTokens = new Set<number>();
   const playerTokens = players.map(w => {
     let t = testTokenFor(w);
-    while (usedTokens.has(t)) t = (t % COLLECTION_SIZE) + 1;
+    while (usedTokens.has(t)) t = (t % PUBLIC_TOKENS) + 1;
     usedTokens.add(t);
     return t;
   });
-  const bots = generateBots(seed, FIELD_SIZE - players.length, new Set([...usedTokens].map(String)));
+  // Bots wear the teasers the players did not take, in a seeded order.
+  const rng = seededRandom(`${seed}:teasers`);
+  const botTokens = shuffle(Array.from({ length: PUBLIC_TOKENS }, (_, i) => i + 1).filter(t => !usedTokens.has(t)), rng);
 
   const usedNames = new Set<string>();
   const field: (TestRacer | null)[] = Array(FIELD_SIZE).fill(null);
@@ -100,7 +106,7 @@ export function buildTestField(seed: string, wallets: string[], bodyOf: TokenBod
   let b = 0;
   for (let lane = 0; lane < FIELD_SIZE; lane++) {
     if (field[lane]) continue;
-    const tokenId = bots[b].tokenId;
+    const tokenId = botTokens[b];
     const name = callNameForToken(tokenId, usedNames);
     usedNames.add(name);
     field[lane] = racer(`bot-${b}`, name, tokenId, bodyOf);
@@ -134,17 +140,25 @@ function racer(id: string, name: string, tokenId: number, bodyOf: TokenBodyLooku
 /** 1-based lanes for the players, in join order. */
 function assignLanes(seed: string, count: number): number[] {
   if (count === 1) return [BOT_RACE_PLAYER_LANE];
-  const lanes = Array.from({ length: FIELD_SIZE }, (_, i) => i + 1);
-  // Seeded Fisher–Yates; FNV-1a + xorshift keeps this free of extra dependencies.
+  const lanes = shuffle(Array.from({ length: FIELD_SIZE }, (_, i) => i + 1), seededRandom(seed));
+  return lanes.slice(0, count);
+}
+
+/** Small seeded RNG (FNV-1a hash + xorshift) so this module needs no extra dependencies. */
+function seededRandom(seed: string): () => number {
   let s = 2166136261;
   for (let i = 0; i < seed.length; i++) s = Math.imul(s ^ seed.charCodeAt(i), 16777619);
-  const next = () => {
+  return () => {
     s ^= s << 13; s ^= s >>> 17; s ^= s << 5;
     return (s >>> 0) / 4294967296;
   };
-  for (let i = lanes.length - 1; i > 0; i--) {
-    const j = Math.floor(next() * (i + 1));
-    [lanes[i], lanes[j]] = [lanes[j], lanes[i]];
+}
+
+function shuffle<T>(items: T[], rng: () => number): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
   }
-  return lanes.slice(0, count);
+  return out;
 }
