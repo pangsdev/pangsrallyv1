@@ -35,6 +35,7 @@ const SKY_FRAC = 0.24;         // share of the view height used by the sky/horiz
 const INTRO_DISTANCE = 170;    // racers jog in from this far left of the start line
 const INTRO_DURATION = 1.15;
 const MESH_X = 7, MESH_Y = 11; // deformation grid for the open-pose artwork
+const BARE_BODY_FRAC = 0.509;  // a pangolin's body height / artwork canvas height (228 of 448 px in the cut-out)
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -735,7 +736,9 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
             // pivot at the feet (bottom centre of the opaque pixels)
             open.pivot.set(art.bbox.x + art.bbox.w / 2, art.bbox.y + art.bbox.h);
             const targetH = laneH * 1.02;            // body height on screen (a hint of overlap into the lane above is fine)
-            openBaseScale = targetH / art.bbox.h;
+            // Scale by the artwork canvas, not by the opaque bounding box: hats, halos and crowns make the
+            // box taller, which used to shrink those pangolins' bodies by up to 20% next to bare ones.
+            openBaseScale = targetH / (BARE_BODY_FRAC * art.texture.height);
             open.scale.set(-openBaseScale, openBaseScale); // artwork faces left → flip to run right
             root.addChild(open);
           }
