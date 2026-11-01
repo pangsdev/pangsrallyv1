@@ -1,0 +1,105 @@
+/**
+ * In-memory Store for `npm run dev` and tests. Mirrors the uniqueness rules of
+ * supabase/migrations/003_test_season.sql so limits behave like production.
+ * Data is lost when the dev server restarts.
+ */
+import type { EntryRow, LeaderRow, RaceRow, Store } from './core.ts';
+
+export function createMemoryStore(): Store {
+  const sessions = new Map<string, { wallet: string; expiresAt: number }>();
+  const players = new Map<string, { created: string; lastSeen: string }>();
+  const races = new Map<string, RaceRow>();
+  let entries: EntryRow[] = [];
+
+  const clone = <T>(v: T): T => (v === null || v === undefined ? v : JSON.parse(JSON.stringify(v)));
+
+  return {
+    async getSessionWallet(tokenHash, now) {
+      const s = sessions.get(tokenHash);
+      return s && s.expiresAt > now.getTime() ? s.wallet : null;
+    },
+    async createSession(tokenHash, wallet, expiresAt) {
+      sessions.set(tokenHash, { wallet, expiresAt: expiresAt.getTime() });
+    },
+    async upsertPlayer(wallet, now) {
+      const p = players.get(wallet);
+      players.set(wallet, { created: p?.created ?? now.toISOString(), lastSeen: now.toISOString() });
+    },
+    async countEntriesOnDay(wallet, day) {
+      return entries.filter(e => e.wallet === wallet && e.day === day).length;
+    },
+    async insertRace(race) {
+      races.set(race.id, clone(race));
+    },
+    async deleteRace(id) {
+      races.delete(id);
+      entries = entries.filter(e => e.race_id !== id);
+    },
+    async insertEntry(entry) {
+      const clash = entries.some(e =>
+        (e.race_id === entry.race_id && e.wallet === entry.wallet) ||
+        (e.wallet === entry.wallet && e.day === entry.day && e.slot === entry.slot));
+      if (clash) return 'conflict';
+      entries.push(clone(entry));
+      return 'ok';
+    },
+    async deleteEntry(raceId, wallet) {
+      entries = entries.filter(e => !(e.race_id === raceId && e.wallet === wallet));
+    },
+    async getRace(id) {
+      return clone(races.get(id) ?? null);
+    },
+    async listEntries(raceId) {
+      return clone(entries.filter(e => e.race_id === raceId));
+    },
+    async findOpenRoom(terrain, now) {
+      const open = [...races.values()]
+        .filter(r => r.kind === 'online' && r.status === 'open' && r.terrain === terrain && r.closes_at && Date.parse(r.closes_at) > now.getTime())
+        .sort((a, b) => a.created_at.localeCompare(b.created_at));
+      return clone(open[0] ?? null);
+    },
+    async openRoomsFor(wallet) {
+      const ids = new Set(entries.filter(e => e.wallet === wallet).map(e => e.race_id));
+      return clone([...races.values()].filter(r => ids.has(r.id) && r.kind === 'online' && r.status === 'open'));
+    },
+    async finishRace(id, patch) {
+      const r = races.get(id);
+      if (!r || r.status !== 'open') return false;
+      races.set(id, { ...r, ...clone(patch), status: 'finished' });
+      return true;
+    },
+    async setEntryResult(raceId, wallet, position, points) {
+      const e = entries.find(x => x.race_id === raceId && x.wallet === wallet);
+      if (e) { e.position = position; e.points = points; }
+    },
+    async leaderboard(limit) {
+      const by = new Map<string, LeaderRow>();
+      for (const e of entries) {
+        const row = by.get(e.wallet) ?? { wallet: e.wallet, races: 0, points: 0, wins: 0, podiums: 0, last_race: null };
+        if (e.position !== null) {
+          row.races++;
+          row.points += e.points;
+          if (e.position === 1) row.wins++;
+          if (e.position <= 3) row.podiums++;
+        }
+        if (!row.last_race || e.joined_at > row.last_race) row.last_race = e.joined_at;
+        by.set(e.wallet, row);
+      }
+      return sortLeaderboard([...by.values()]).slice(0, limit);
+    },
+    async history(wallet, limit) {
+      return entries
+        .filter(e => e.wallet === wallet && races.has(e.race_id))
+        .sort((a, b) => b.joined_at.localeCompare(a.joined_at))
+        .slice(0, limit)
+        .map(e => ({ ...clone(e), race: clone(races.get(e.race_id)!) }));
+    },
+  };
+}
+
+/** Points, then wins, then whoever got there first. Shared with the Postgres store. */
+export function sortLeaderboard(rows: LeaderRow[]): LeaderRow[] {
+  return rows
+    .filter(r => r.races > 0)
+    .sort((a, b) => b.points - a.points || b.wins - a.wins || (a.last_race ?? '').localeCompare(b.last_race ?? ''));
+}

@@ -2,7 +2,9 @@ const pinataSDK = require('@pinata/sdk');
 const fs = require('fs');
 const path = require('path');
 
-const JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiIwMzI4ZDBlOC1kNmNhLTQ1MGQtOTc3Ni1kZmI1NTEwZjUzMGUiLCJlbWFpbCI6ImVvc2NvZGVyN0BnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJGUkExIn0seyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJOWUMxIn1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiMjAwODU3MWZiMDkyZDg4MzYxMmIiLCJzY29wZWRLZXlTZWNyZXQiOiJkMzIxMTlhYjkyODdkYjczNGY0NDliN2Q3Nzk3YjBiMGQ0ZjYwNDk5MDMyM2NlODhjOTEzYjNjOWUzYTVlYjU2IiwiZXhwIjoxODE1NzgwMDg1fQ.ElFHU0qoQRnfzE9eFy5a83NSmweKEytmW4zIL8BA3k8';
+// Set PINATA_JWT in .env (never commit the key).
+const JWT = process.env.PINATA_JWT;
+if (!JWT) throw new Error('PINATA_JWT is not set');
 const pinata = new pinataSDK({ pinataJWTKey: JWT });
 
 const originalJsonPath = path.join(__dirname, 'nft', 'json');

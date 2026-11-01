@@ -1,48 +1,6 @@
 {
   "_format": "hh-sol-cache-2",
   "files": {
-    "/Users/macintoshi/Desktop/ai-agents/pangsrally/smart-contracts/contracts/PangsRally.sol": {
-      "lastModificationDate": 1784272376886,
-      "contentHash": "d59b32a23a8b3a248283cbadb35f3772",
-      "sourceName": "contracts/PangsRally.sol",
-      "solcConfig": {
-        "version": "0.8.27",
-        "settings": {
-          "evmVersion": "cancun",
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "erc721a/contracts/ERC721A.sol",
-        "erc721a/contracts/extensions/ERC721AQueryable.sol",
-        "@openzeppelin/contracts/access/Ownable.sol",
-        "@openzeppelin/contracts/utils/Strings.sol",
-        "@openzeppelin/contracts/token/ERC20/IERC20.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.24"
-      ],
-      "artifacts": [
-        "PangsRally"
-      ]
-    },
     "/Users/macintoshi/Desktop/ai-agents/pangsrally/smart-contracts/node_modules/erc721a/contracts/ERC721A.sol": {
       "lastModificationDate": 1784135210920,
       "contentHash": "f00e8b038a7d958f397c9fb8d107ec1c",
@@ -1188,6 +1146,211 @@
       ],
       "artifacts": [
         "PangsRallyOfficial"
+      ]
+    },
+    "/Users/macintoshi/Desktop/ai-agents/pangsrally/smart-contracts/contracts/PangsRallyBetaPass.sol": {
+      "lastModificationDate": 1785835262492,
+      "contentHash": "df1b14f168246058ef2da2baa06e3aac",
+      "sourceName": "contracts/PangsRallyBetaPass.sol",
+      "solcConfig": {
+        "version": "0.8.27",
+        "settings": {
+          "evmVersion": "cancun",
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol",
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/token/common/ERC2981.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "PangsRallyBetaPass"
+      ]
+    },
+    "/Users/macintoshi/Desktop/ai-agents/pangsrally/smart-contracts/node_modules/@openzeppelin/contracts/interfaces/IERC2981.sol": {
+      "lastModificationDate": 1784136417477,
+      "contentHash": "901590b5e5c1683756629ed6308451ea",
+      "sourceName": "@openzeppelin/contracts/interfaces/IERC2981.sol",
+      "solcConfig": {
+        "version": "0.8.27",
+        "settings": {
+          "evmVersion": "cancun",
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../utils/introspection/IERC165.sol"
+      ],
+      "versionPragmas": [
+        ">=0.6.2"
+      ],
+      "artifacts": [
+        "IERC2981"
+      ]
+    },
+    "/Users/macintoshi/Desktop/ai-agents/pangsrally/smart-contracts/node_modules/@openzeppelin/contracts/token/common/ERC2981.sol": {
+      "lastModificationDate": 1784137776104,
+      "contentHash": "754b35c95a7abb4fb6677869bfd7912f",
+      "sourceName": "@openzeppelin/contracts/token/common/ERC2981.sol",
+      "solcConfig": {
+        "version": "0.8.27",
+        "settings": {
+          "evmVersion": "cancun",
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../../interfaces/IERC2981.sol",
+        "../../utils/introspection/ERC165.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ERC2981"
+      ]
+    },
+    "/Users/macintoshi/Desktop/ai-agents/pangsrally/smart-contracts/contracts/PangsRally_DEPRECATED.sol": {
+      "lastModificationDate": 1785914279884,
+      "contentHash": "775af2397da5cfe8775c6f5081afd9c3",
+      "sourceName": "contracts/PangsRally_DEPRECATED.sol",
+      "solcConfig": {
+        "version": "0.8.27",
+        "settings": {
+          "evmVersion": "cancun",
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "erc721a/contracts/ERC721A.sol",
+        "erc721a/contracts/extensions/ERC721AQueryable.sol",
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/utils/Strings.sol",
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/token/common/ERC2981.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "PangsRally"
+      ]
+    },
+    "/Users/macintoshi/Desktop/ai-agents/pangsrally/smart-contracts/contracts/PangsRallyGen1.sol": {
+      "lastModificationDate": 1785914272322,
+      "contentHash": "4c3bd0103dc4aae63345dd70457137fd",
+      "sourceName": "contracts/PangsRallyGen1.sol",
+      "solcConfig": {
+        "version": "0.8.27",
+        "settings": {
+          "evmVersion": "cancun",
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "erc721a/contracts/ERC721A.sol",
+        "erc721a/contracts/extensions/ERC721AQueryable.sol",
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/utils/Strings.sol",
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/token/common/ERC2981.sol",
+        "@openzeppelin/contracts/token/ERC721/IERC721.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "PangsRallyGen1"
       ]
     }
   }

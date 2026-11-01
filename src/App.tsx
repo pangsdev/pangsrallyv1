@@ -1,16 +1,30 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { ethers } from 'ethers';
 import PangsRallyContract from './PangsRally.json';
 import rarityData from './rarity-data.json';
 import seedrandom from 'seedrandom';
-import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI, RACING_ADDRESS, RACING_ABI, PANGS_TOKEN_ADDRESS, ERC20_ABI } from './contracts';
-import { supabase as _supabase, upsertUser, createRace, joinRaceDB, finishRace, fetchLeaderboard, fetchRaceHistory, markPrizeClaimed } from './supabaseClient';
-import type { LeaderboardEntry } from './supabaseClient';
+import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI, RACING_ADDRESS, RACING_ABI, PANGS_TOKEN_ADDRESS } from './contracts';
+import { supabase as _supabase, createRace, joinRaceDB, finishRace, markPrizeClaimed } from './supabaseClient';
+import { unlockAnnounce } from './race/announce';
 import './App.css'
-import Litepaper from './components/Litepaper';
 import RaceLobby from './components/RaceLobby';
-import BotRaceRoom from './components/BotRaceRoom';
-import OnlineRaceRoom from './components/OnlineRaceRoom';
+import { SeasonLeaderboard, MyRaces, SignInGate, NoWalletModal } from './components/SeasonPages';
+import { clearSession, getSession, hasWallet, signInWithWallet, testSeason, type PlayerStatus } from './testSeason/api';
+import { shortWallet } from './race/testSeason';
+
+// Heavy, rarely-visited views are split out of the initial bundle (the race rooms pull in PixiJS).
+const Litepaper = lazy(() => import('./components/Litepaper'));
+const RaceRoom = lazy(() => import('./components/RaceRoom'));
+const OnlineRoom = lazy(() => import('./components/OnlineRoom'));
+
+const ViewLoader = () => (
+  <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center', paddingTop: '120px', color: 'var(--text-secondary, #888)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ width: 22, height: 22, borderRadius: '50%', border: '3px solid rgba(128,128,128,0.25)', borderTopColor: '#ffd700', animation: 'spin 0.9s linear infinite' }} />
+      Loading…
+    </div>
+  </div>
+);
 
 import PangsRallyBetaPassContract from './PangsRallyBetaPass.json';
 
@@ -29,14 +43,17 @@ const TransparentImage = ({ src, alt, className }: { src: string, alt: string, c
 
 // Custom Toast Component
 const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error' | 'info', onClose: () => void }) => {
+  // App re-renders constantly and passes a fresh onClose each time; keep the latest in a ref so the timer is set once.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
-    const timer = setTimeout(onClose, 5000);
+    const timer = setTimeout(() => onCloseRef.current(), type === 'error' ? 6000 : 3500);
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, [type]);
 
   const bgColor = type === 'success' ? 'linear-gradient(135deg, #00ff88, #00cc6a)' : type === 'error' ? 'linear-gradient(135deg, #ff4466, #cc0033)' : 'linear-gradient(135deg, #6c5ce7, #a29bfe)';
   return (
-    <div style={{position: 'fixed', top: '90px', right: '20px', zIndex: 10000, background: bgColor, color: 'white', padding: '1rem 1.5rem', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', maxWidth: '400px', animation: 'slideInRight 0.3s ease', display: 'flex', alignItems: 'center', gap: '12px', backdropFilter: 'blur(10px)'}}>
+    <div style={{background: bgColor, color: 'white', padding: '0.8rem 1.2rem', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', maxWidth: 'min(400px, calc(100vw - 40px))', animation: 'slideInRight 0.3s ease', display: 'flex', alignItems: 'center', gap: '12px', backdropFilter: 'blur(10px)', pointerEvents: 'auto'}}>
       <span style={{fontSize: '1.2rem'}}>{type === 'success' ? '✅' : type === 'error' ? '❌' : '🔔'}</span>
       <span style={{flex: 1, fontSize: '0.95rem', fontWeight: 500}}>{message}</span>
       <button onClick={onClose} style={{background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', width: '24px', height: '24px', borderRadius: '50%', cursor: 'pointer', fontSize: '12px'}}>✕</button>
@@ -105,28 +122,8 @@ function App() {
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [selectedNFTDetails, setSelectedNFTDetails] = useState<any | null>(null);
   const [renameInput, setRenameInput] = useState('');
-  const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'race-lobby' | 'bot-race' | 'online-race' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral'>('landing');
-  const [_raceMode, setRaceMode] = useState<'bot' | 'online' | null>(null);
-  const [raceSelectedNft, setRaceSelectedNft] = useState<any>(null);
+  const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'race-lobby' | 'bot-race' | 'online-race' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral' | 'replay'>('landing');
 
-  // Daily race limit (3 per day, reset at midnight UTC)
-  const [dailyRacesUsed, setDailyRacesUsed] = useState<number>(() => {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const stored = localStorage.getItem('pangsrally_daily_races');
-    if (!stored) return 0;
-    try {
-      const { date, count } = JSON.parse(stored);
-      return date === today ? count : 0;
-    } catch { return 0; }
-  });
-
-  const incrementDailyRaces = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const newCount = dailyRacesUsed + 1;
-    setDailyRacesUsed(newCount);
-    localStorage.setItem('pangsrally_daily_races', JSON.stringify({ date: today, count: newCount }));
-  };
-  
   // Initialize theme from localStorage or default to 'light'
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const savedTheme = localStorage.getItem('pangsRallyTheme');
@@ -165,81 +162,69 @@ function App() {
   const [selectedRacingNft, setSelectedRacingNft] = useState<any>(null);
 
   // Supabase state
-  const [_supabaseUser, setSupabaseUser] = useState<any>(null);
   const [currentRaceDbId, setCurrentRaceDbId] = useState<string | null>(null);
-  const [lbData, setLbData] = useState<LeaderboardEntry[]>([]);
-  const [_dbRaceHistory, setDbRaceHistory] = useState<any[]>([]);
 
-  const GUEST_RACER = {
-    id: "guest-0",
-    tokenId: "guest-0",
-    name: "Rookie Pangolin (Guest)",
-    rarity: "Common",
-    trait: "Dirt",
-    level: 1,
-    speed: 15,
-    acceleration: 15,
-    handling: 15,
-    avatar: "nft-images/1.webp",
-    image: "nft-images/1.webp",
-    sprite: "/pangolin_sprite_rainbow.png",
-    isGuest: true
+  /* ---------- Test season: wallet sign-in, daily races, points (server-side) ---------- */
+  const [player, setPlayer] = useState<PlayerStatus | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
+  const [noWalletHelp, setNoWalletHelp] = useState(false);
+  /** bumps to start a fresh bot race ("Race Again") */
+  const [raceKey, setRaceKey] = useState(0);
+  /** online room to resume from My Races (null → join a new one) */
+  const [onlineRaceId, setOnlineRaceId] = useState<string | null>(null);
+  const [replayRaceId, setReplayRaceId] = useState<string | null>(null);
+
+  const applyPlayer = (status: PlayerStatus) => {
+    const { wallet, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt } = status;
+    setPlayer({ wallet, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt });
+    setWalletConnected(true);
+    setFullWalletAddress(wallet);
+    setWalletAddress(shortWallet(wallet));
   };
 
-  const mintRookieNFT = async () => {
-    if (!(window as any).ethereum) {
-        showToast("Please install MetaMask to mint!", "error");
-        return;
+  const signOut = () => {
+    clearSession();
+    setPlayer(null);
+    setWalletConnected(false);
+    setWalletAddress('');
+    setFullWalletAddress('');
+    setMyNFTs([]);
+    setUserReferralCode('');
+  };
+
+  const refreshPlayer = () => {
+    if (!getSession()) return;
+    testSeason.me().then(applyPlayer).catch((e) => { if (e?.status === 401) signOut(); });
+  };
+
+  /** Connect + sign the free sign-in message. Resolves to the signed-in player, or null. */
+  const signIn = async (): Promise<PlayerStatus | null> => {
+    if (player) return player;
+    if (!hasWallet()) {
+      setNoWalletHelp(true);
+      return null;
     }
+    setSigningIn(true);
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
-      const signer = await provider.getSigner();
-      const nftContract = new ethers.Contract(BETA_PASS_CONTRACT_ADDRESS, PangsRallyBetaPassContract.abi, signer);
-      
-      // Check if sale is active
-      const saleActive = await nftContract.mintIsActive();
-      if (!saleActive) {
-        // Fallback to off-chain guest mode if mint is not active yet
-        showToast("Minting not active yet. Starting in Guest Mode...", "info");
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        setMyNFTs([GUEST_RACER]);
-        setCurrentView('rally');
-        showToast("Guest Mode activated! You received a Rookie Pangolin.", "success");
-        return;
-      }
-      
-      showToast("Requesting $PANGS approval for mint...", "info");
-      const pangsContract = new ethers.Contract(PANGS_TOKEN_ADDRESS, ERC20_ABI, signer);
-      
-      const pangsMintPrice = await nftContract.mintPrice();
-      const approveTx = await pangsContract.approve(BETA_PASS_CONTRACT_ADDRESS, pangsMintPrice);
-      await approveTx.wait();
-      
-      showToast("Minting Rookie Pangolin on-chain...", "info");
-      const tx = await nftContract.mint(1);
-      await tx.wait();
-      
-      showToast("Rookie Pangolin minted on-chain! 🎉", "success");
-      
-      // Refresh NFT inventory
-      const addr = await signer.getAddress();
-      fetchMyNFTs(addr);
-      setCurrentView('rally');
+      const status = await signInWithWallet();
+      applyPlayer(status);
+      showToast('Wallet connected. Welcome to the test season!', 'success');
+      return status;
     } catch (e: any) {
-      console.error('Mint error:', e);
-      // Fallback to guest mode on any error
-      showToast("Mint failed. Starting in Guest Mode...", "info");
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setMyNFTs([GUEST_RACER]);
-      setCurrentView('rally');
-      showToast("Guest Mode activated!", "success");
+      showToast(e?.message || 'Wallet connection failed. Please try again.', 'error');
+      return null;
+    } finally {
+      setSigningIn(false);
     }
+  };
+
+  const joinTestSeason = async () => {
+    if (await signIn()) setCurrentView('rally');
   };
   
   // Inventory & Marketplace State
   const [inventoryFilter, setInventoryFilter] = useState('All');
   const [playerBalance, setPlayerBalance] = useState('0.00');
-  const [pangsBalance, setPangsBalance] = useState('0.00');
   const [marketListings, setMarketListings] = useState<any[]>([]);
   const [isProcessingBuy, setIsProcessingBuy] = useState(false);
   const [buySuccess, setBuySuccess] = useState<any>(null);
@@ -259,47 +244,6 @@ function App() {
       localStorage.setItem('pangsrally_referrer', ref);
     }
   }, []);
-
-  // Leaderboard State
-  // (Leaderboard coming soon)
-
-  // My Races State (Replays)
-  const [myRaces, setMyRaces] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (currentView === 'my-races' && walletAddress) {
-      // Fetch from race_room_players (Online races) joined with race_rooms
-      import('./supabaseClient').then(({ supabase }) => {
-        supabase
-          .from('race_room_players')
-          .select(`
-            *,
-            race_rooms (
-              room_code, map, class, status, max_players, created_at, finished_at
-            )
-          `)
-          .eq('wallet_address', walletAddress.toLowerCase())
-          .order('joined_at', { ascending: false })
-          .limit(30)
-          .then(({ data, error }) => {
-            if (error) { console.error('Race history error:', error); return; }
-            const formatted = (data || []).map((row: any) => ({
-              id: row.race_rooms?.room_code || row.id,
-              map: `${row.race_rooms?.map || 'Unknown'} Track`,
-              participants: row.race_rooms?.max_players || 10,
-              status: row.race_rooms?.status === 'finished' ? 'completed' : 'pending',
-              position: row.position ? `#${row.position}` : 'DNF',
-              reward: row.prize_earned > 0 ? `${row.prize_earned} $PANGS` : '-',
-              finishTime: row.finish_time,
-              joinedAt: row.joined_at,
-              seed: null,
-              mode: 'online'
-            }));
-            setMyRaces(formatted);
-          });
-      });
-    }
-  }, [currentView, walletAddress]);
 
   const [isReplayMode, setIsReplayMode] = useState(false);
 
@@ -370,13 +314,8 @@ function App() {
           const balanceWei = await provider.getBalance(accounts[0]);
           setPlayerBalance(Number(ethers.formatEther(balanceWei)).toFixed(4));
           
-          try {
-            const pangsContract = new ethers.Contract(PANGS_TOKEN_ADDRESS, ERC20_ABI, provider);
-            const pBalance = await pangsContract.balanceOf(accounts[0]);
-            const pDecimals = await pangsContract.decimals();
-            setPangsBalance(Number(ethers.formatUnits(pBalance, pDecimals)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-            
-            // Fetch Referral Stats
+          {
+            // Fetch Referral Stats ($PANG has not launched yet, so there is no token balance to read)
             try {
               const pRallyContract = new ethers.Contract(CONTRACT_ADDRESS, PangsRallyContract.abi, provider);
               const dRefs = await pRallyContract.directReferralsCount(accounts[0]);
@@ -392,8 +331,6 @@ function App() {
               console.error("Failed to fetch Referral stats (contract might not be updated yet)", err);
             }
             
-          } catch (err) {
-            console.error("Failed to fetch PANGS balance", err);
           }
         }
       } catch(e) { console.error(e); }
@@ -496,31 +433,30 @@ function App() {
     localStorage.setItem('pangsRallyTheme', theme);
   }, [theme]);
 
-  // Auto-reconnect wallet on page load
+  // Keep points / races left fresh when moving between the season pages.
   useEffect(() => {
-    const savedAddress = localStorage.getItem('pangsRallyWallet');
-    if (savedAddress && (window as any).ethereum) {
-      (async () => {
-        try {
-          const provider = new ethers.BrowserProvider((window as any).ethereum);
-          const accounts = await provider.send('eth_accounts', []);
-          if (accounts.length > 0) {
-            const addr = accounts[0];
-            setWalletConnected(true);
-            setFullWalletAddress(addr);
-            setWalletAddress(`${addr.substring(0, 5)}...${addr.substring(addr.length - 4)}`);
-            fetchMyNFTs(addr);
-          }
-        } catch (e) {
-          console.error('Auto-reconnect failed:', e);
-        }
-      })();
-    }
+    if (['rally', 'race-lobby', 'leaderboard', 'my-races'].includes(currentView)) refreshPlayer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView]);
+
+  // Restore the test-season session on page load; drop it if the wallet switches account.
+  useEffect(() => {
+    refreshPlayer();
+    const eth = (window as any).ethereum;
+    if (!eth?.on) return;
+    const onAccounts = (accounts: string[]) => {
+      const session = getSession();
+      if (session && accounts[0]?.toLowerCase() !== session.wallet) signOut();
+    };
+    eth.on('accountsChanged', onAccounts);
+    return () => eth.removeListener?.('accountsChanged', onAccounts);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const showToast = (message: string, type: 'success'|'error'|'info' = 'info') => {
     const id = Date.now() + Math.random();
-    setToasts(prev => [...prev, { id, message, type }]);
+    // Replace an identical message instead of stacking it, and keep at most 3 on screen.
+    setToasts(prev => [...prev.filter(t => t.message !== message), { id, message, type }].slice(-3));
   };
 
   const removeToast = (id: number) => {
@@ -646,7 +582,7 @@ function App() {
              purity: 100,
              speed: getTrait('Speed') || 50,
              acceleration: getTrait('Burst Power') || 50,
-             endurance: 50,
+             endurance: getTrait('Endurance') || 50,
              level: 1,
              bodyColor: getTrait('Body') || 'Default',
              breedCount: Number(bCount),
@@ -727,54 +663,9 @@ function App() {
     }
   };
 
+  /** Header button: test-season sign-in (MetaMask connect + a free signature). */
   const connectWallet = async () => {
-    if (typeof (window as any).ethereum !== 'undefined') {
-      try {
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
-        
-        // Add Robinhood Mainnet automatically for the user
-        try {
-          await provider.send('wallet_switchEthereumChain', [{ chainId: '0x1237' }]);
-        } catch (switchError: any) {
-          if (switchError.code === 4902) {
-            await provider.send('wallet_addEthereumChain', [{
-              chainId: '0x1237',
-              chainName: 'Robinhood Chain',
-              rpcUrls: ['https://rpc.mainnet.chain.robinhood.com'],
-              nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }
-            }]);
-          }
-        }
-
-        const accounts = await provider.send("eth_requestAccounts", []);
-        if (accounts.length > 0) {
-          setWalletConnected(true);
-          const address = accounts[0];
-          setFullWalletAddress(address);
-          setWalletAddress(`${address.substring(0, 5)}...${address.substring(address.length - 4)}`);
-          localStorage.setItem('pangsRallyWallet', address);
-          
-          // Fetch NFTs
-          fetchMyNFTs(address);
-          
-          // Register user in Supabase
-          upsertUser(address).then(user => {
-            if (user) setSupabaseUser(user);
-          }).catch(err => console.warn('Supabase user registration:', err));
-          
-          // Load leaderboard
-          fetchLeaderboard().then(data => setLbData(data)).catch(() => {});
-          
-          // Load race history
-          fetchRaceHistory(address).then(data => setDbRaceHistory(data)).catch(() => {});
-        }
-      } catch (error) {
-        console.error("Wallet connection failed:", error);
-        showToast('Wallet connection failed. Please try again.', 'error');
-      }
-    } else {
-      showToast('No Web3 wallet detected. Please install MetaMask or Rabby.', 'error');
-    }
+    await signIn();
   };
 
   const mintNFT = async () => {
@@ -809,7 +700,7 @@ function App() {
       
       const allowance = await pangsContract.allowance(signer.address, CONTRACT_ADDRESS);
       if (allowance < price) {
-        showToast('Approving $PANGS for mint...', 'info');
+        showToast('Approving $PANG for mint...', 'info');
         const txApprove = await pangsContract.approve(CONTRACT_ADDRESS, price);
         await txApprove.wait();
       }
@@ -943,10 +834,10 @@ function App() {
   };
 
   const mockCategories = [
-    { id: 'cat1', name: 'Class 5', terrain: 'Forest', icon: '🌲', entry: 'Free', prize: '10 $PANGS', color: '#b8ce55', bgClass: 'bg-forest' },
-    { id: 'cat2', name: 'Class 4', terrain: 'Desert', icon: '🏜️', entry: 'Locked', prize: '? $PANGS', color: '#e67e22', bgClass: 'bg-desert' },
-    { id: 'cat3', name: 'Class 3', terrain: 'Volcanic', icon: '🌋', entry: 'Locked', prize: '? $PANGS', color: '#e74c3c', bgClass: 'bg-volcanic' },
-    { id: 'cat4', name: 'Class 2', terrain: 'Midnight', icon: '🌙', entry: 'Locked', prize: '? $PANGS', color: '#9b59b6', bgClass: 'bg-midnight' },
+    { id: 'cat1', name: 'Class 5', terrain: 'Forest', icon: '🌲', entry: 'Free', prize: 'Season points', color: '#b8ce55', bgClass: 'bg-forest' },
+    { id: 'cat2', name: 'Class 4', terrain: 'Desert', icon: '🏜️', entry: 'Locked', prize: 'Coming soon', color: '#e67e22', bgClass: 'bg-desert' },
+    { id: 'cat3', name: 'Class 3', terrain: 'Volcanic', icon: '🌋', entry: 'Locked', prize: 'Coming soon', color: '#e74c3c', bgClass: 'bg-volcanic' },
+    { id: 'cat4', name: 'Class 2', terrain: 'Midnight', icon: '🌙', entry: 'Locked', prize: 'Coming soon', color: '#9b59b6', bgClass: 'bg-midnight' },
   ];
 
   const viewRooms = (category: any) => {
@@ -1066,19 +957,9 @@ function App() {
     if (raceStatus === 'finished' && !isReplayMode && racers.length > 0 && activeRaceInfo) {
       const isPlayerRacer = racers.find(r => r.isPlayer);
       if (isPlayerRacer) {
-        const prizePool = 10; // 10 $PANGS per race
+        const prizePool = 10;
         const calculatedPrize = isPlayerRacer.position === 1 ? prizePool * 0.5 : isPlayerRacer.position === 2 ? prizePool * 0.3 : isPlayerRacer.position === 3 ? prizePool * 0.2 : 0;
-        const newRaceRecord = {
-          id: Date.now(),
-          map: activeRaceInfo.terrain,
-          class: activeRaceInfo.class || activeRaceInfo.name,
-          status: 'Completed',
-          position: isPlayerRacer.position,
-          prize: isPlayerRacer.position <= 3 ? `${calculatedPrize} $PANGS` : '-',
-          racersSnapshot: racers.map(r => ({...r}))
-        };
-        setMyRaces(prev => [newRaceRecord, ...prev]);
-        
+
         // Record results to Supabase
         if (currentRaceDbId && walletAddress) {
           const fullAddr = localStorage.getItem('pangsRallyWallet') || '';
@@ -1102,11 +983,11 @@ function App() {
       return;
     }
     
-    // Calculate $PANGS prize amount
+    // Calculate $PANG prize amount
     let pangsAmount = 0;
-    if (position === 1) pangsAmount = 5;      // 50% = 5 $PANGS
-    else if (position === 2) pangsAmount = 3;  // 30% = 3 $PANGS
-    else if (position === 3) pangsAmount = 2;  // 20% = 2 $PANGS
+    if (position === 1) pangsAmount = 5;      // 50% = 5 $PANG
+    else if (position === 2) pangsAmount = 3;  // 30% = 3 $PANG
+    else if (position === 3) pangsAmount = 2;  // 20% = 2 $PANG
 
     setIsClaimingPrize(true);
     
@@ -1142,7 +1023,7 @@ function App() {
         const signer = await provider.getSigner();
         const raceContract = new ethers.Contract(RACING_ADDRESS, RACING_ABI, signer);
         
-        showToast("Claiming $PANGS on blockchain...", "info");
+        showToast("Claiming $PANG on blockchain...", "info");
         const tx = await raceContract.claimPrize(amountWei, nonce, signature);
         await tx.wait();
         
@@ -1151,10 +1032,10 @@ function App() {
           markPrizeClaimed(currentRaceDbId, fullAddr, tx.hash);
         }
         
-        showToast(`🏆 ${pangsAmount} $PANGS claimed successfully!`, "success");
+        showToast(`🏆 ${pangsAmount} $PANG claimed successfully!`, "success");
       } else {
         // Fallback: Off-chain Beta mode (no Supabase configured yet)
-        showToast(`🏆 Top ${position}! You earned ${pangsAmount} $PANGS (Beta - recorded off-chain)`, "success");
+        showToast(`🏆 Top ${position}! You earned ${pangsAmount} $PANG (Beta - recorded off-chain)`, "success");
         
         // Still record to Supabase if available
         if (currentRaceDbId) {
@@ -1341,9 +1222,13 @@ function App() {
   return (
     <>
       {/* Toast Notifications */}
-      {toasts.map(toast => (
-        <Toast key={toast.id} message={toast.message} type={toast.type} onClose={() => removeToast(toast.id)} />
-      ))}
+      <div style={{position: 'fixed', top: '90px', right: '20px', zIndex: 10000, display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end', pointerEvents: 'none'}}>
+        {toasts.map(toast => (
+          <Toast key={toast.id} message={toast.message} type={toast.type} onClose={() => removeToast(toast.id)} />
+        ))}
+      </div>
+
+      {noWalletHelp && <NoWalletModal onClose={() => setNoWalletHelp(false)} />}
 
       {/* Rename Modal */}
       {renameModal && (
@@ -1454,7 +1339,7 @@ function App() {
       <header className="app-header">
         <div className="container header-container">
           <div className="logo" onClick={() => setCurrentView('landing')} style={{cursor: 'pointer', display: 'flex', alignItems: 'center'}}>
-            <img src={theme === 'light' ? "/light-logo.png" : "/dark-logo.png"} alt="Pangs Rally Logo" className="logo-img" />
+            <img src={theme === 'light' ? "/light-logo.webp" : "/dark-logo.webp"} alt="Pangs Rally Logo" className="logo-img" width={640} height={213} fetchPriority="high" />
           </div>
           <nav className="nav-links">
             <a 
@@ -1506,13 +1391,6 @@ function App() {
             >
               My Races
             </a>
-            <a 
-              className={currentView === 'referral' ? 'active' : ''} 
-              onClick={() => setCurrentView('referral')}
-              style={{cursor: 'pointer', color: 'var(--pangs-orange)'}}
-            >
-              Refer & Earn
-            </a>
           </nav>
           <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle Theme">
@@ -1522,10 +1400,7 @@ function App() {
               <div 
                 className="wallet-connected-badge glass-panel" 
                 onClick={() => {
-                  setWalletConnected(false);
-                  setWalletAddress('');
-                  setMyNFTs([]);
-                  setUserReferralCode('');
+                  signOut();
                   showToast('Wallet disconnected', 'info');
                 }}
                 title="Click to disconnect"
@@ -1533,9 +1408,10 @@ function App() {
               >
                   <span className="wallet-dot"></span>
                   {walletAddress}
+                  {player && <span className="wallet-points">{player.points} pts</span>}
               </div>
             ) : (
-              <button className="btn btn-primary" onClick={connectWallet}>Connect Wallet</button>
+              <button className="btn btn-primary" onClick={connectWallet} disabled={signingIn}>{signingIn ? 'Check wallet…' : 'Connect Wallet'}</button>
             )}
             <a href="https://x.com/PangsRally" target="_blank" rel="noopener noreferrer" className="x-social-btn">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
@@ -1547,6 +1423,7 @@ function App() {
       </header>
 
       <main>
+       <Suspense fallback={<ViewLoader />}>
         {currentView === 'landing' && (
           <>
             <section className="hero-section">
@@ -1557,11 +1434,11 @@ function App() {
                     <span className="text-gradient">Dominate the Track.</span>
                   </h1>
                   <p className="hero-subtitle">
-                    Collect unique Pangolin NFTs, strategize your traits for different terrains, and race to earn $PANG in the ultimate Web3 auto-racing experience.
+                    The test season is live: connect MetaMask, race free up to 3 times a day, and climb the leaderboard with season points. Genesis Pangolin NFTs are coming soon.
                   </p>
                   <div className="hero-actions">
                     <button className="btn btn-primary" onClick={mintNFT} disabled style={{ opacity: 0.5, cursor: 'not-allowed', background: '#333' }}>Mint Locked 🔒</button>
-                    <button className="btn btn-primary" onClick={mintRookieNFT}>Mint Rookie (Free) 🆓</button>
+                    <button className="btn btn-primary" onClick={joinTestSeason}>Join the Test Season 🏁</button>
                   </div>
                   <p style={{ marginTop: '1rem', color: 'var(--pangs-orange)', fontWeight: 'bold', fontSize: '0.9rem' }}>
                     * Genesis mint details coming soon. Stay tuned!
@@ -1597,7 +1474,7 @@ function App() {
                     <div className="feature-icon">⚡</div>
                     <h3 className="feature-title">Level & Progress</h3>
                     <p className="feature-desc">
-                      Gain experience by dominating the tracks. Pay a $PANGS fee to Level Up your Pangolin and unlock permanent racing advantages.
+                      Gain experience by dominating the tracks, Level Up your Pangolin and unlock permanent racing advantages.
                     </p>
                   </div>
                 </div>
@@ -1650,47 +1527,66 @@ function App() {
           </section>
         )}
 
-        {/* ===== NEW: Race Lobby (Mode Selector) ===== */}
+        {/* ===== Test season: lobby, bot race, online race, replay ===== */}
         {currentView === 'race-lobby' && activeCategoryInfo && (
-          <RaceLobby
+          player ? (
+            <RaceLobby
+              categoryInfo={activeCategoryInfo}
+              player={player}
+              onSelectMode={(mode) => {
+                unlockAnnounce();
+                setOnlineRaceId(null);
+                setRaceKey(k => k + 1);
+                setCurrentView(mode === 'bot' ? 'bot-race' : 'online-race');
+              }}
+              onBack={() => setCurrentView('rally')}
+            />
+          ) : (
+            <SignInGate signingIn={signingIn} onSignIn={signIn} />
+          )
+        )}
+
+        {currentView === 'bot-race' && activeCategoryInfo && player && (
+          <RaceRoom
+            key={`bot-${raceKey}`}
             categoryInfo={activeCategoryInfo}
-            myNFTs={myNFTs}
-            walletAddress={walletAddress}
-            dailyRacesUsed={dailyRacesUsed}
-            onSelectMode={(mode, nft) => {
-              setRaceMode(mode);
-              setRaceSelectedNft(nft);
-              setCurrentView(mode === 'bot' ? 'bot-race' : 'online-race');
+            title="Bot Race"
+            playerWallet={player.wallet}
+            loadRace={async () => {
+              const res = await testSeason.botRace(activeCategoryInfo.terrain);
+              applyPlayer(res);
+              return { race: res.race, you: res.you };
             }}
-            onBack={() => setCurrentView('rally')}
+            onBack={() => { refreshPlayer(); setCurrentView('race-lobby'); }}
+            raceAgain={{
+              label: 'Race Again!',
+              enabled: player.unlimited || player.racesLeft > 0,
+              hint: `Daily limit reached. New races at ${new Date(player.resetsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}.`,
+              onClick: () => { unlockAnnounce(); setRaceKey(k => k + 1); },
+            }}
           />
         )}
 
-        {/* ===== NEW: Bot Race ===== */}
-        {currentView === 'bot-race' && activeCategoryInfo && raceSelectedNft && (
-          <BotRaceRoom
+        {currentView === 'online-race' && activeCategoryInfo && player && (
+          <OnlineRoom
+            key={`online-${raceKey}-${onlineRaceId ?? 'new'}`}
             categoryInfo={activeCategoryInfo}
-            selectedNft={raceSelectedNft}
-            walletAddress={walletAddress}
-            onBack={() => setCurrentView('race-lobby')}
-            onFinished={(position, prize) => {
-              incrementDailyRaces();
-              console.log(`Bot race finished: position ${position}, prize ${prize}`);
-            }}
+            playerWallet={player.wallet}
+            raceId={onlineRaceId}
+            onBack={() => { refreshPlayer(); setCurrentView(onlineRaceId ? 'my-races' : 'race-lobby'); }}
+            onFinished={refreshPlayer}
           />
         )}
 
-        {/* ===== NEW: Online Race ===== */}
-        {currentView === 'online-race' && activeCategoryInfo && raceSelectedNft && (
-          <OnlineRaceRoom
-            categoryInfo={activeCategoryInfo}
-            selectedNft={raceSelectedNft}
-            walletAddress={walletAddress}
-            onBack={() => setCurrentView('race-lobby')}
-            onFinished={(position, prize) => {
-              incrementDailyRaces();
-              console.log(`Online race finished: position ${position}, prize ${prize}`);
-            }}
+        {currentView === 'replay' && replayRaceId && (
+          <RaceRoom
+            key={`replay-${replayRaceId}`}
+            categoryInfo={mockCategories[0]}
+            title="Replay"
+            playerWallet={player?.wallet ?? null}
+            loadRace={() => testSeason.race(replayRaceId)}
+            onBack={() => setCurrentView('my-races')}
+            backLabel="← Back to My Races"
           />
         )}
 
@@ -2044,7 +1940,7 @@ function App() {
                 <div className="empty-state" style={{gridColumn: '1/-1', textAlign: 'center', padding: '4rem', background: 'var(--bg-card)', borderRadius: '16px'}}>
                   <h3 style={{marginBottom: '1rem'}}>No Pangolins Found</h3>
                   <p style={{color: 'var(--text-muted)', marginBottom: '2rem'}}>You need a Pangolin NFT to race. Buy one on the marketplace or mint a free Rookie.</p>
-                  <button className="btn btn-primary" onClick={mintRookieNFT}>Mint Rookie (Free) 🆓</button>
+                  <button className="btn btn-primary" onClick={joinTestSeason}>Join the Test Season 🏁</button>
                 </div>
               ) : (
                 filteredInventory.map(nft => (
@@ -2108,7 +2004,6 @@ function App() {
               <div className="inventory-stats">
                 <span style={{display: 'flex', gap: '15px'}}>
                   <span>ETH: <strong style={{color: '#ffd700', fontSize: '1.5rem'}}>{playerBalance}</strong></span>
-                  <span>$PANGS: <strong style={{color: 'var(--pangs-orange)', fontSize: '1.5rem'}}>{pangsBalance}</strong></span>
                 </span>
               </div>
             </div>
@@ -2182,126 +2077,22 @@ function App() {
         )}
 
         {currentView === 'leaderboard' && (
-          <section className="inventory-page animated-enter">
-            <div className="inventory-header-bar">
-              <h2>Global Leaderboard</h2>
-              <div className="inventory-stats">
-                <span>Top Racers: <strong style={{color: 'var(--primary)'}}>{lbData.length}</strong></span>
-              </div>
-            </div>
-            
-            <div className="leaderboard-list glass-panel" style={{marginTop: '2rem'}}>
-              <div className="lb-list-header" style={{gridTemplateColumns: '1fr 3fr 1fr 1fr 1fr'}}>
-                <div>Rank</div>
-                <div>Wallet</div>
-                <div>Races</div>
-                <div>Wins</div>
-                <div>Earned</div>
-              </div>
-              {lbData.length > 0 ? (
-                lbData.map((entry, index) => (
-                  <div key={entry.wallet_address} className="lb-list-row" style={{gridTemplateColumns: '1fr 3fr 1fr 1fr 1fr', background: index === 0 ? 'rgba(255, 215, 0, 0.1)' : index === 1 ? 'rgba(192, 192, 192, 0.1)' : index === 2 ? 'rgba(205, 127, 50, 0.1)' : 'transparent', borderLeft: index === 0 ? '4px solid #ffd700' : index === 1 ? '4px solid #c0c0c0' : index === 2 ? '4px solid #cd7f32' : '4px solid transparent'}}>
-                    <div style={{fontWeight: 'bold', color: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : 'var(--text-muted)'}}>#{index + 1}</div>
-                    <div style={{fontFamily: 'monospace'}}>{entry.username || `${entry.wallet_address.substring(0,6)}...${entry.wallet_address.substring(38)}`}</div>
-                    <div>{entry.total_races}</div>
-                    <div style={{color: 'var(--color-success)'}}>{entry.wins}</div>
-                    <div style={{color: 'var(--pangs-orange)', fontWeight: 'bold'}}>{entry.total_earnings} $PANGS</div>
-                  </div>
-                ))
-              ) : (
-                <div style={{padding: '2rem', textAlign: 'center', color: 'var(--text-muted)'}}>
-                  No leaderboard data available yet.
-                </div>
-              )}
-            </div>
-          </section>
+          <SeasonLeaderboard playerWallet={player?.wallet ?? null} />
         )}
 
         {currentView === 'my-races' && (
-          <section className="inventory-page animated-enter">
-            <div className="inventory-header-bar">
-              <h2>My Race History</h2>
-              <div className="inventory-stats">
-                <span>Total Races: <strong style={{color: 'var(--primary)'}}>{myRaces.length}</strong></span>
-                <span style={{marginLeft: '2rem'}}>
-                  Wins: <strong style={{color: '#ffd700'}}>{myRaces.filter((r: any) => r.position === '#1').length}</strong>
-                </span>
-              </div>
-            </div>
-
-            {!walletConnected ? (
-              <div style={{padding: '4rem', textAlign: 'center', color: 'var(--text-muted)'}}>
-                <div style={{fontSize: '3rem', marginBottom: '1rem'}}>🔒</div>
-                <h3>Connect your wallet to view race history</h3>
-              </div>
-            ) : myRaces.length === 0 ? (
-              <div style={{padding: '4rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-card)', borderRadius: '16px', marginTop: '2rem'}}>
-                <div style={{fontSize: '3rem', marginBottom: '1rem'}}>🏁</div>
-                <h3>No races yet</h3>
-                <p style={{marginTop: '0.5rem'}}>Join a race from The Rally to get started!</p>
-                <button className="btn btn-primary" style={{marginTop: '1.5rem'}} onClick={() => setCurrentView('rally')}>
-                  Go to The Rally
-                </button>
-              </div>
-            ) : (
-              <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '2rem'}}>
-                {myRaces.map((race: any) => (
-                  <div key={race.id} className="glass-panel" style={{
-                    display: 'grid',
-                    gridTemplateColumns: '120px 1fr auto auto auto',
-                    alignItems: 'center',
-                    gap: '1.5rem',
-                    padding: '1.25rem 1.75rem',
-                    borderLeft: race.position === '#1' ? '3px solid #ffd700' : race.status === 'completed' ? '3px solid var(--color-success)' : '3px solid rgba(255,255,255,0.1)'
-                  }}>
-                    {/* Position */}
-                    <div style={{textAlign: 'center'}}>
-                      <div style={{fontSize: '2rem'}}>
-                        {race.position === '#1' ? '🥇' : race.position === '#2' ? '🥈' : race.position === '#3' ? '🥉' : race.position === 'DNF' ? '🏁' : `${race.position}`}
-                      </div>
-                      <div style={{fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px'}}>Position</div>
-                    </div>
-
-                    {/* Race Info */}
-                    <div>
-                      <div style={{fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '4px'}}>{race.map}</div>
-                      <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
-                        <span className="badge" style={{background: race.mode === 'online' ? 'rgba(0,200,255,0.15)' : 'rgba(255,215,0,0.15)', color: race.mode === 'online' ? '#00c8ff' : '#ffd700', fontSize: '0.75rem'}}>
-                          {race.mode === 'online' ? 'Online' : 'Bot Race'}
-                        </span>
-                        <span style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>
-                          {race.joinedAt ? new Date(race.joinedAt).toLocaleDateString('tr-TR', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) : ''}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Status */}
-                    <div style={{minWidth: '90px', textAlign: 'center'}}>
-                      {race.status === 'completed' ? (
-                        <span className="badge" style={{background: 'rgba(0,255,136,0.15)', color: 'var(--color-success)'}}>Finished</span>
-                      ) : (
-                        <span className="badge" style={{background: 'rgba(255,215,0,0.15)', color: '#ffd700'}}>Pending</span>
-                      )}
-                    </div>
-
-                    {/* Reward */}
-                    <div style={{minWidth: '100px', textAlign: 'right'}}>
-                      {race.reward !== '-' ? (
-                        <span style={{color: '#ffd700', fontWeight: 'bold', fontSize: '1.1rem'}}>{race.reward}</span>
-                      ) : (
-                        <span style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>No prize</span>
-                      )}
-                    </div>
-
-                    {/* Room ID */}
-                    <div style={{minWidth: '80px', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.8rem'}}>
-                      {race.id}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          <MyRaces
+            signedIn={!!player}
+            onSignIn={signIn}
+            onReplay={(id) => { unlockAnnounce(); setReplayRaceId(id); setCurrentView('replay'); }}
+            onOpenRoom={(id) => {
+              unlockAnnounce();
+              setActiveCategoryInfo(mockCategories[0]);
+              setOnlineRaceId(id);
+              setCurrentView('online-race');
+            }}
+            onGoRace={() => setCurrentView('rally')}
+          />
         )}
 
         {currentView === 'laboratory' && (
@@ -2309,7 +2100,7 @@ function App() {
             <div className="container">
               <div className="lab-header">
                 <h1 className="section-title">The Laboratory</h1>
-                <p className="text-muted">Select two Pangolins to incubate a new egg. Breeding costs $PANGS and requires both parents to be off cooldown.</p>
+                <p className="text-muted">Select two Pangolins to incubate a new egg. Breeding opens after the Genesis mint; costs will be announced then.</p>
               </div>
 
               <div className="lab-grid">
@@ -2394,7 +2185,7 @@ function App() {
                     <div className="cost-label">Breeding Cost</div>
                     <div className="cost-value">
                       <span className="token-icon">🪙</span>
-                      {parentA && parentB ? '? $PANGS' : '? $PANGS'}
+                      TBA
                     </div>
                   </div>
 
@@ -2559,7 +2350,7 @@ function App() {
               <section className="referral-page">
                 <div className="referral-header">
                   <h2>Refer & Earn</h2>
-                  <p>Invite your friends, share the Rally, and earn $PANGS commissions directly to your wallet.</p>
+                  <p>Invite your friends, share the Rally, and earn $PANG commissions directly to your wallet.</p>
                 </div>
                 
                 <div className="ref-stats-grid">
@@ -2615,7 +2406,7 @@ function App() {
                         <button className="copy-btn" style={{background: 'var(--pangs-orange)', color: '#fff', fontWeight: 'bold'}} onClick={handleClaimCommissions}>Claim</button>
                       )}
                     </div>
-                    <div className="ref-stat-value" style={{color: 'var(--pangs-orange)'}}>{claimableComms} <span style={{fontSize: '1rem', fontWeight: 'normal'}}>$PANGS</span></div>
+                    <div className="ref-stat-value" style={{color: 'var(--pangs-orange)'}}>{claimableComms} <span style={{fontSize: '1rem', fontWeight: 'normal'}}>$PANG</span></div>
                   </div>
                 </div>
                 
@@ -2643,7 +2434,7 @@ function App() {
                 </div>
               </section>
             )}
-
+       </Suspense>
       </main>
     </>
   )

@@ -9,3 +9,9 @@ smart-contracts/node_modules
 smart-contracts/artifacts
 public/metadata
 public/nft-images
+
+# Scripts holding wallet private keys: keep keys in .env, never in git
+smart-contracts/check_priv_key.mjs
+smart-contracts/scripts/setup_beta.cjs
+smart-contracts/.env
+backend/*.db

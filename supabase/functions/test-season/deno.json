@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.110.8",
+    "ethers": "npm:ethers@6.17.0",
+    "seedrandom": "npm:seedrandom@3.0.5"
+  }
+}

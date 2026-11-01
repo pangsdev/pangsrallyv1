@@ -1769,6 +1769,9 @@
     padding: 0.6rem 0;
   }
   .header-container {
+    /* Without this the container sizes to its content (the nav alone is ~490px) and widens the whole page. */
+    width: 100%;
+    min-width: 0;
     flex-wrap: wrap;
     padding: 0.5rem 1rem;
     gap: 0.5rem;
@@ -1821,7 +1824,13 @@
     text-align: center;
     min-height: auto;
   }
+  /* The base rule lays the hero out as a two-column row; stack it, or the text column collapses to 0px. */
+  .hero-section .container {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
   .hero-content {
+    width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1854,6 +1863,33 @@
   .placeholder-pangolin {
     width: 220px;
     height: 220px;
+  }
+
+  /* ---- Rally lobby cards: stack instead of one wide row ---- */
+  .race-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.9rem;
+    padding: 1.1rem 1.2rem;
+  }
+  .race-card:hover {
+    transform: none;
+  }
+  .race-info {
+    gap: 1rem;
+    justify-content: space-between;
+  }
+  .race-class {
+    min-width: 0;
+    font-size: 1.3rem;
+  }
+  .race-economy {
+    justify-content: space-between;
+    text-align: left;
+    gap: 1rem;
+  }
+  .join-btn {
+    width: 100%;
   }
 
   /* ---- General Grids ---- */
@@ -2044,3 +2080,34 @@
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
+
+/* ==========================================================================
+   TEST SEASON: leaderboard + my races
+   ========================================================================== */
+.season-rules { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; margin: 1rem 0 0; }
+.season-board { margin-top: 1.5rem; }
+.season-grid { grid-template-columns: 70px minmax(0, 3fr) 1fr 1fr 1fr; }
+.season-name { font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.season-me { background: rgba(255, 215, 0, 0.1); }
+.season-empty { padding: 2rem; text-align: center; color: var(--text-muted); }
+.season-empty.big { padding: 4rem 1rem; background: var(--bg-card); border-radius: 16px; margin-top: 2rem; }
+.season-history { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 2rem; }
+.season-race { display: grid; grid-template-columns: 60px 1fr auto auto; align-items: center; gap: 1.25rem; padding: 1rem 1.5rem; }
+.season-race-pos { font-size: 1.8rem; text-align: center; font-weight: bold; color: var(--text-main); }
+.season-race-meta { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+.season-kind { padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; }
+.season-kind.bot { background: rgba(255, 215, 0, 0.15); color: #c9a400; }
+.season-kind.online { background: rgba(0, 200, 255, 0.15); color: #0098c4; }
+.season-race-pts { color: var(--pangs-orange); font-weight: bold; white-space: nowrap; }
+.season-race-btn { padding: 0.5rem 1rem; font-size: 0.85rem; white-space: nowrap; }
+@media (max-width: 640px) {
+  .season-grid { grid-template-columns: 44px minmax(0, 1fr) 52px 44px 40px; font-size: 0.85rem; }
+  .season-race { grid-template-columns: 44px 1fr auto; gap: 0.75rem; padding: 0.9rem 1rem; }
+  .season-race-btn { grid-column: 1 / -1; width: 100%; }
+}
+.season-modal-backdrop { position: fixed; inset: 0; z-index: 10001; background: rgba(0, 0, 0, 0.6); display: grid; place-items: center; padding: 1rem; }
+.season-modal { max-width: 400px; width: 100%; padding: 2rem 1.5rem; text-align: center; background: var(--bg-card); border-radius: 18px; }
+.season-modal h3 { margin: 0.5rem 0; color: var(--text-main); }
+.season-modal p { color: var(--text-muted); line-height: 1.6; margin: 0 0 1.25rem; }
+.season-modal-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+.wallet-points { margin-left: 8px; padding: 2px 8px; border-radius: 10px; background: rgba(255, 215, 0, 0.15); color: #c9a400; font-size: 0.75rem; font-weight: 700; }

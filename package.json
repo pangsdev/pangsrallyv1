@@ -4,14 +4,19 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "node scripts/sync-race-shared.mjs && vite",
+    "build": "node scripts/sync-race-shared.mjs && tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "bake:announcer": "node scripts/bake-announcer.mjs",
+    "sync:server": "node scripts/sync-race-shared.mjs",
+    "test:season": "node scripts/test-season-check.mjs"
   },
   "dependencies": {
     "@pinata/sdk": "^2.1.0",
+    "@supabase/supabase-js": "^2.110.8",
     "ethers": "^6.17.0",
+    "pixi.js": "^8.22.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "seedrandom": "^3.0.5",
