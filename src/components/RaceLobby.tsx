@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { PlayerStatus } from '../testSeason/api';
+import './lobby.css';
 import { POINTS_BY_POSITION, shortWallet, testTokenFor } from '../race/testSeason';
 
 interface Props {

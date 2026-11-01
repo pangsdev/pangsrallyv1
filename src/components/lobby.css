@@ -1,0 +1,20 @@
+/* Race lobby (mode picker). Imported by RaceLobby so it is styled before any race page loads. */
+.lobby-root { min-height: 100vh; background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 100%); padding-top: 100px; padding-bottom: 3rem; font-family: Inter, sans-serif; color: #fff; }
+.lobby-inner { max-width: 900px; margin: 0 auto; padding: 0 1.25rem; }
+.lobby-back { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+.lobby-pill { display: inline-block; margin-top: 0.9rem; padding: 6px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9rem; }
+.lobby-pill.ok { background: rgba(0,255,100,0.08); border: 1px solid rgba(0,255,100,0.2); color: #00ff64; }
+.lobby-pill.out { background: rgba(255,50,50,0.08); border: 1px solid rgba(255,50,50,0.2); color: #ff6680; }
+.lobby-me { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; margin-bottom: 1rem; background: rgba(255,215,0,0.06); border: 1px solid rgba(255,215,0,0.25); border-radius: 16px; }
+.lobby-me img { width: 64px; height: 64px; object-fit: contain; border-radius: 12px; background: rgba(255,255,255,0.05); flex-shrink: 0; }
+.lobby-me-title { font-size: 0.75rem; letter-spacing: 0.5px; text-transform: uppercase; color: rgba(255,215,0,0.8); }
+.lobby-me-wallet { font-family: monospace; font-size: 1rem; margin: 2px 0 6px; }
+.lobby-me-stats { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.85rem; color: rgba(255,255,255,0.7); }
+.lobby-me-stats strong { color: #ffd700; }
+.lobby-rules { color: rgba(255,255,255,0.6); font-size: 0.88rem; line-height: 1.6; margin: 0 0 1.5rem; }
+.lobby-rules strong { color: #fff; }
+.lobby-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+.lobby-cta { padding: 12px 24px; border-radius: 10px; font-weight: 700; font-size: 1rem; display: inline-block; }
+@media (max-width: 640px) {
+  .lobby-modes { grid-template-columns: 1fr; }
+}
