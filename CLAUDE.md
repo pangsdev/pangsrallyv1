@@ -45,6 +45,10 @@ Server-authoritative: the browser never decides results or points.
 - Online rooms resolve lazily (any status/history/me call after the wait). A player who leaves is still scored.
 - `npm run test:season` — 16 end-to-end checks (signatures, parallel daily-limit abuse, online rooms, replay determinism, fairness).
 
+### Troubleshooting
+- Site shows "The race server is not available right now": the `test-season` function is not reachable. Production URL is `https://<project>.supabase.co/functions/v1/test-season` (falls back to the project URL in `src/testSeason/api.ts` when `VITE_SUPABASE_URL` is unset, so hosting needs no env var for it).
+- Nov 2026: `rzpcppmzpyocoqnjwrwp.supabase.co` did not resolve on public DNS → the Supabase project looked **paused** (free plan) or deleted. Restore it in the dashboard first, then deploy.
+
 ### Deploy (needs the owner)
 1. Rotate the Supabase secret key; put a **publishable** key in `VITE_SUPABASE_ANON_KEY` (the old value was an `sb_secret_` key → it would ship in the JS bundle).
 2. Run `supabase/migrations/003_test_season.sql` in the Supabase SQL editor.

@@ -5,8 +5,11 @@
 import { BrowserProvider } from 'ethers';
 import { signInMessage, type TestRacer, type TestRaceResult } from '../race/testSeason';
 
+/** The Supabase project's public URL (not a secret). Used when the host sets no VITE_SUPABASE_URL. */
+const PROJECT_URL = 'https://rzpcppmzpyocoqnjwrwp.supabase.co';
 const BASE: string = import.meta.env.VITE_TEST_SEASON_API
-  || (import.meta.env.DEV ? '/api/test-season' : `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/test-season`);
+  || (import.meta.env.DEV ? '/api/test-season' : `${import.meta.env.VITE_SUPABASE_URL || PROJECT_URL}/functions/v1/test-season`);
+const UNAVAILABLE = 'The race server is not available right now. Please try again in a few minutes.';
 const SESSION_KEY = 'pangsrally_test_session';
 
 export interface PlayerStatus {
@@ -102,11 +105,14 @@ async function call<T>(action: string, params: Record<string, unknown> = {}): Pr
   } catch {
     throw new ApiError(0, 'network', 'Cannot reach the race server. Check your connection and try again.');
   }
-  const body = await res.json().catch(() => ({}));
+  const body = await res.json().catch(() => null);
+  // Our server always answers with JSON { error, message }; anything else (HTML, empty 404/5xx) is the
+  // hosting layer saying the function is not there or is down.
   if (!res.ok) {
-    if (res.status === 401) clearSession();
-    throw new ApiError(res.status, body.error || 'error', body.message || 'Something went wrong. Please try again.');
+    if (res.status === 401 && body?.error) clearSession();
+    throw new ApiError(res.status, body?.error || 'unavailable', body?.message || UNAVAILABLE);
   }
+  if (!body) throw new ApiError(res.status, 'unavailable', UNAVAILABLE);
   return body as T;
 }
 
@@ -124,6 +130,8 @@ export function metamaskDeepLink(): string {
 export async function signInWithWallet(): Promise<PlayerStatus> {
   const eth = (window as unknown as { ethereum?: unknown }).ethereum;
   if (!eth) throw new ApiError(0, 'no_wallet', 'No wallet found. Install MetaMask to join the test season.');
+  // Check the server first so nobody is asked to sign a message that cannot be used.
+  await call('leaderboard');
   const provider = new BrowserProvider(eth as never);
   await provider.send('eth_requestAccounts', []);
   const signer = await provider.getSigner();
