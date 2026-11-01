@@ -45,6 +45,10 @@ Server-authoritative: the browser never decides results or points.
 - Online rooms resolve lazily (any status/history/me call after the wait). A player who leaves is still scored.
 - `npm run test:season` — 16 end-to-end checks (signatures, parallel daily-limit abuse, online rooms, replay determinism, fairness).
 
+### Racer art and ball colours (must match)
+- Test-season racers wear only the 10 public teasers (`public/nft-images/1-10.webp`; the rest of the art stays out of git until the mint). Their bodies come from `TEASER_BODIES` in `src/race/testSeason.ts`, checked against the art: 1/4/9/10 `Aurora` (teal→blue→purple, own ball `ball_aurora.png` from `scripts/make-aurora-ball.mjs`), 2/7 `Blue`, 3/5/6/8 `Brown`. `npm run test:season` fails if a racer's ball does not match.
+- **Do not take bodies from `token-index.json` / `public/metadata` for the local images**: the teasers are promo drawings, and even the full local `public/nft-images/{id}.webp` set does not line up with `metadata/{id}.json` (e.g. #12 is "Blue" in metadata but brown in the image; likely the metadata shuffle in `shuffle_and_upload.cjs`). After the mint, take image *and* Body from the same on-chain metadata.
+
 ### Troubleshooting
 - "The race server is not available right now": the `test-season` function is unreachable. Production URL is `https://<project>.supabase.co/functions/v1/test-season`; `src/testSeason/api.ts` falls back to this project's public URL when `VITE_SUPABASE_URL` is unset, so hosting needs no env var for it.
 - Nov 2026: a transient local-network DNS failure made the project host look dead for a while; the project itself was `ACTIVE_HEALTHY` all along. Check with `supabase projects list` before assuming it is paused.

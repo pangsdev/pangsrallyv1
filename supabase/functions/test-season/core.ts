@@ -12,7 +12,6 @@ import {
   buildTestField, pointsFor, runTestRace, shortWallet, signInMessage,
   type TestRacer, type TestRaceResult,
 } from './race/testSeason.ts';
-import { bodyOfToken } from './race/tokenBodies.ts';
 
 export interface RaceRow {
   id: string;
@@ -197,7 +196,7 @@ async function botRace(deps: Deps, wallet: string, terrain: string) {
   const now = deps.now();
   const id = deps.uuid();
   const seed = `bot-${id}`;
-  const field = buildTestField(seed, [wallet], bodyOfToken);
+  const field = buildTestField(seed, [wallet]);
   const results = runTestRace(seed, field, terrain);
   const mine = results.find(r => r.id === field.find(f => f.wallet === wallet)?.id);
   if (!mine) throw new Error('player missing from field');
@@ -273,7 +272,7 @@ async function settleIfDue(deps: Deps, race: RaceRow): Promise<RaceRow> {
     return { ...race, status: 'finished' };
   }
 
-  const field = buildTestField(race.seed, entries.map(e => e.wallet), bodyOfToken);
+  const field = buildTestField(race.seed, entries.map(e => e.wallet));
   const results = runTestRace(race.seed, field, race.terrain);
   const won = await deps.store.finishRace(race.id, { field, results, finished_at: now.toISOString() });
   if (won) {

@@ -155,11 +155,23 @@ ok('login with a real wallet signature');
 {
   const { buildTestField } = await import('../supabase/functions/test-season/race/testSeason.ts');
   for (const wallets of [[], ['0x' + 'a'.repeat(40)], Array.from({ length: 4 }, (_, i) => '0x' + String(i + 1).repeat(40)), Array.from({ length: 10 }, (_, i) => '0x' + i.toString(16).repeat(40))]) {
-    const field = buildTestField(`art-${wallets.length}`, wallets, () => 'Brown');
+    const field = buildTestField(`art-${wallets.length}`, wallets);
     assert.equal(field.length, FIELD_SIZE);
     assert.deepEqual(field.map(f => f.tokenId).sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], `${wallets.length} players`);
   }
   ok('every racer wears a distinct public teaser (tokens 1-10), for 0-10 players');
+
+  // The ball a racer rolls into must match the pangolin it runs as: body comes from the
+  // checked teaser table, and both the artwork and the ball sprite must exist.
+  const { TEASER_BODIES } = await import('../supabase/functions/test-season/race/testSeason.ts');
+  const { existsSync } = await import('node:fs');
+  const field = buildTestField('colours', ['0x' + 'b'.repeat(40)]);
+  for (const r of field) {
+    assert.equal(r.body, TEASER_BODIES[r.tokenId], `token ${r.tokenId} body`);
+    assert.ok(existsSync(new URL(`../public/nft-images/${r.tokenId}.webp`, import.meta.url)), `artwork ${r.tokenId}`);
+    assert.ok(existsSync(new URL(`../public/sprites/ball_${r.body.toLowerCase()}.png`, import.meta.url)), `ball for ${r.body}`);
+  }
+  ok('each racer\'s ball colour matches its teaser artwork, and every file exists');
 }
 
 // --- fairness: identical stats → ~10% win rate per racer -------------------
@@ -169,7 +181,7 @@ ok('login with a real wallet signature');
   const { buildTestField } = await import('../supabase/functions/test-season/race/testSeason.ts');
   for (let i = 0; i < N; i++) {
     const seed = `fair-${i}`;
-    const field = buildTestField(seed, ['0x' + 'a'.repeat(40)], () => 'Brown');
+    const field = buildTestField(seed, ['0x' + 'a'.repeat(40)]);
     const res = runTestRace(seed, field, 'Forest');
     wins[res.find(r => r.position === 1) ? field.findIndex(f => f.id === res.find(r => r.position === 1).id) : 0]++;
   }

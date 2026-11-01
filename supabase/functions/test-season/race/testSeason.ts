@@ -31,7 +31,15 @@ const TEST_STATS: RacerStats = { speed: 50, burst: 50, endurance: 50 };
  */
 export const PUBLIC_TOKENS = FIELD_SIZE;
 
-export type TokenBodyLookup = (tokenId: number) => BodyColor | null;
+/**
+ * Body of each public teaser, checked against the artwork itself. The teasers are separate
+ * promo drawings, not collection tokens 1–10, so token-index / metadata bodies do not apply
+ * (they put brown balls under teal pangolins). The ball a racer rolls into must match this.
+ */
+export const TEASER_BODIES: Record<number, BodyColor> = {
+  1: 'Aurora', 2: 'Blue', 3: 'Brown', 4: 'Aurora', 5: 'Brown',
+  6: 'Brown', 7: 'Blue', 8: 'Brown', 9: 'Aurora', 10: 'Aurora',
+};
 
 /** A racer as stored and sent by the server: a simulation input plus who owns it. */
 export interface TestRacer extends RacerInput {
@@ -82,7 +90,7 @@ export function testTokenFor(wallet: string): number {
  * bots fill the remaining lanes. A single-player (bot) race puts the player
  * in lane 5; with several players the seed shuffles who runs where.
  */
-export function buildTestField(seed: string, wallets: string[], bodyOf: TokenBodyLookup): TestRacer[] {
+export function buildTestField(seed: string, wallets: string[]): TestRacer[] {
   const players = wallets.slice(0, FIELD_SIZE).map(w => w.toLowerCase());
   const lanes = assignLanes(seed, players.length);
 
@@ -101,7 +109,7 @@ export function buildTestField(seed: string, wallets: string[], bodyOf: TokenBod
   const field: (TestRacer | null)[] = Array(FIELD_SIZE).fill(null);
   players.forEach((wallet, i) => {
     const tokenId = playerTokens[i];
-    field[lanes[i] - 1] = racer(`p-${wallet}`, shortWallet(wallet), tokenId, bodyOf, wallet);
+    field[lanes[i] - 1] = racer(`p-${wallet}`, shortWallet(wallet), tokenId, wallet);
   });
   let b = 0;
   for (let lane = 0; lane < FIELD_SIZE; lane++) {
@@ -109,7 +117,7 @@ export function buildTestField(seed: string, wallets: string[], bodyOf: TokenBod
     const tokenId = botTokens[b];
     const name = callNameForToken(tokenId, usedNames);
     usedNames.add(name);
-    field[lane] = racer(`bot-${b}`, name, tokenId, bodyOf);
+    field[lane] = racer(`bot-${b}`, name, tokenId);
     b++;
   }
   return field as TestRacer[];
@@ -123,12 +131,12 @@ export function runTestRace(seed: string, field: RacerInput[], terrain: string):
   return sim.racers.map(r => ({ id: r.id, position: r.position, finishTime: r.finishTime }));
 }
 
-function racer(id: string, name: string, tokenId: number, bodyOf: TokenBodyLookup, wallet?: string): TestRacer {
+function racer(id: string, name: string, tokenId: number, wallet?: string): TestRacer {
   return {
     id,
     name,
     tokenId,
-    body: bodyOf(tokenId) ?? 'Brown',
+    body: TEASER_BODIES[tokenId] ?? 'Brown',
     avatarUrl: `/nft-images/${tokenId}.webp`,
     isPlayer: false,
     stats: { ...TEST_STATS },

@@ -29,13 +29,4 @@ for (const file of ['simulation', 'testSeason', 'callNames']) {
 // The server only needs the BodyColor type from sprites.ts, not its browser helpers.
 writeFileSync(join(out, 'sprites.ts'), `${HEADER}export type BodyColor = string;\n`);
 
-// Body colour per collection token (index entries are [Body, Weather, Speed, Burst, Endurance]).
-const index = JSON.parse(readFileSync(join(src, 'token-index.json'), 'utf8'));
-const bodies = Object.fromEntries(Object.entries(index).map(([id, e]) => [id, e[0]]));
-writeFileSync(
-  join(out, 'tokenBodies.ts'),
-  `${HEADER}const BODIES: Record<string, string> = ${JSON.stringify(bodies)};\n\n` +
-  'export function bodyOfToken(tokenId: number): string | null {\n  return BODIES[String(tokenId)] ?? null;\n}\n',
-);
-
 console.log(`Synced race modules → ${out.replace(root + '/', '')}`);
