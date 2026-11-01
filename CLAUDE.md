@@ -46,10 +46,14 @@ Server-authoritative: the browser never decides results or points.
 - `npm run test:season` — 16 end-to-end checks (signatures, parallel daily-limit abuse, online rooms, replay determinism, fairness).
 
 ### Troubleshooting
-- Site shows "The race server is not available right now": the `test-season` function is not reachable. Production URL is `https://<project>.supabase.co/functions/v1/test-season` (falls back to the project URL in `src/testSeason/api.ts` when `VITE_SUPABASE_URL` is unset, so hosting needs no env var for it).
-- Nov 2026: `rzpcppmzpyocoqnjwrwp.supabase.co` did not resolve on public DNS → the Supabase project looked **paused** (free plan) or deleted. Restore it in the dashboard first, then deploy.
+- "The race server is not available right now": the `test-season` function is unreachable. Production URL is `https://<project>.supabase.co/functions/v1/test-season`; `src/testSeason/api.ts` falls back to this project's public URL when `VITE_SUPABASE_URL` is unset, so hosting needs no env var for it.
+- Nov 2026: a transient local-network DNS failure made the project host look dead for a while; the project itself was `ACTIVE_HEALTHY` all along. Check with `supabase projects list` before assuming it is paused.
+- On the owner's Mac `npx supabase …` hangs (`~/.npmrc` has `prefix=`, which clashes with nvm; also Node 18 is first on PATH). Use the official release binary instead (verify its sha256 against the GitHub release digest) or fix nvm.
 
-### Deploy (needs the owner)
+### Status (2 Nov 2026)
+`test-season` is **deployed** to project `rzpcppmzpyocoqnjwrwp` and migration 003 is applied. Live end-to-end passed (sign-in, forged-signature rejection, session check, bot race, history, leaderboard). Redeploy after changing `core.ts` / `src/race/*`: `npm run sync:server`, then `supabase functions deploy test-season --no-verify-jwt --use-api --project-ref rzpcppmzpyocoqnjwrwp`.
+
+### Deploy (first time)
 1. Rotate the Supabase secret key; put a **publishable** key in `VITE_SUPABASE_ANON_KEY` (the old value was an `sb_secret_` key → it would ship in the JS bundle).
 2. Run `supabase/migrations/003_test_season.sql` in the Supabase SQL editor.
 3. `npx supabase login`, then `npm run sync:server && npx supabase functions deploy test-season --no-verify-jwt --project-ref rzpcppmzpyocoqnjwrwp`.
