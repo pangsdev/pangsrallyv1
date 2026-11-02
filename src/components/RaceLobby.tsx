@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { PlayerStatus } from '../testSeason/api';
 import './lobby.css';
-import { POINTS_BY_POSITION, shortWallet, testTokenFor } from '../race/testSeason';
+import { BETA_RACER_ART, POINTS_BY_POSITION, shortWallet } from '../race/testSeason';
 
 interface Props {
   categoryInfo: any;
@@ -13,7 +13,6 @@ interface Props {
 export default function RaceLobby({ categoryInfo, player, onSelectMode, onBack }: Props) {
   const [hovered, setHovered] = useState<'bot' | 'online' | null>(null);
   const canRace = player.unlimited || player.racesLeft > 0;
-  const tokenId = testTokenFor(player.wallet);
   const resets = new Date(player.resetsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
   const card = (mode: 'bot' | 'online', accent: string) => ({
@@ -49,9 +48,9 @@ export default function RaceLobby({ categoryInfo, player, onSelectMode, onBack }
         </div>
 
         <div className="lobby-me">
-          <img src={`/nft-images/${tokenId}.webp`} alt="" onError={(e) => { (e.target as HTMLImageElement).src = '/unrevealed-pangolin.png'; }} />
+          <img src={BETA_RACER_ART} alt="" />
           <div style={{ minWidth: 0 }}>
-            <div className="lobby-me-title">Your test pangolin</div>
+            <div className="lobby-me-title">Your Beta racer</div>
             <div className="lobby-me-wallet">{shortWallet(player.wallet)}</div>
             <div className="lobby-me-stats">
               <span><strong>{player.points}</strong> pts</span>

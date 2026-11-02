@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
@@ -12,8 +13,9 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
  *         Only wallets that joined the test season with an invite code can mint:
  *         the game server signs a voucher for the caller's address, and the
  *         contract checks it. Every token shares the same artwork (constant URI).
+ *         Freely transferable; resales pay a royalty (ERC-2981, 5% by default).
  */
-contract PangsRallyBeta is ERC721, Ownable {
+contract PangsRallyBeta is ERC721, ERC2981, Ownable {
     using MessageHashUtils for bytes32;
 
     uint256 public totalMinted;
@@ -27,12 +29,13 @@ contract PangsRallyBeta is ERC721, Ownable {
 
     event Minted(address indexed player, uint256 indexed tokenId);
 
-    constructor(address initialOwner, address signer_, string memory uri_)
+    constructor(address initialOwner, address signer_, address royaltyReceiver, string memory uri_)
         ERC721("Pangs Rally Beta", "PRBETA")
         Ownable(initialOwner)
     {
         voucherSigner = signer_;
         _uri = uri_;
+        _setDefaultRoyalty(royaltyReceiver, 500); // 5%
     }
 
     /// @notice Message the server signs: tied to this chain, this contract and one wallet.
@@ -67,10 +70,20 @@ contract PangsRallyBeta is ERC721, Ownable {
         _uri = uri_;
     }
 
+    /// @notice Resale royalty, at most 10% (1000 basis points).
+    function setRoyalty(address receiver, uint96 basisPoints) external onlyOwner {
+        require(basisPoints <= 1000, "Max royalty is 10%");
+        _setDefaultRoyalty(receiver, basisPoints);
+    }
+
     // ------------------------------------------------------------------ views
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         _requireOwned(tokenId);
         return _uri;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC2981) returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 }

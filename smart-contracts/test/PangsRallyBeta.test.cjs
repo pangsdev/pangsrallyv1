@@ -13,7 +13,7 @@ describe("PangsRallyBeta (free, voucher-gated test season pass)", function () {
 
   beforeEach(async function () {
     [owner, server, alice, bob] = await ethers.getSigners();
-    beta = await (await ethers.getContractFactory("PangsRallyBeta")).deploy(owner.address, server.address, "ipfs://beta.json");
+    beta = await (await ethers.getContractFactory("PangsRallyBeta")).deploy(owner.address, server.address, owner.address, "ipfs://beta.json");
     await beta.waitForDeployment();
   });
 
@@ -36,6 +36,15 @@ describe("PangsRallyBeta (free, voucher-gated test season pass)", function () {
     await beta.connect(alice).transferFrom(alice.address, bob.address, 1);
     expect(await beta.hasMinted(alice.address)).to.equal(true);
     expect(await beta.hasMinted(bob.address)).to.equal(false);
+  });
+
+  it("is transferable and pays a 5% royalty on resale (max 10%)", async function () {
+    const [receiver, amount] = await beta.royaltyInfo(1, ethers.parseEther("1"));
+    expect(receiver).to.equal(owner.address);
+    expect(amount).to.equal(ethers.parseEther("0.05"));
+    expect(await beta.supportsInterface("0x2a55205a")).to.equal(true); // ERC-2981
+    await expect(beta.setRoyalty(owner.address, 1001)).to.be.revertedWith("Max royalty is 10%");
+    await expect(beta.connect(alice).setRoyalty(alice.address, 100)).to.be.reverted;
   });
 
   it("owner can close the mint and rotate the signer; others cannot", async function () {

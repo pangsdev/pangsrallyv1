@@ -181,27 +181,33 @@ ok('login with a real wallet signature');
   ok('leaderboard is sorted and totals match each player\'s races');
 }
 
-// --- artwork: only the 10 public teasers, one per racer ---------------------
+// --- artwork: players in the Beta pass, bots in distinct public teasers -------
 {
-  const { buildTestField } = await import('../supabase/functions/test-season/race/testSeason.ts');
+  const { buildTestField, TEASER_BODIES, BETA_RACER_ART } = await import('../supabase/functions/test-season/race/testSeason.ts');
+  const { existsSync } = await import('node:fs');
+  const file = (url) => existsSync(new URL(`../public${url}`, import.meta.url));
   for (const wallets of [[], ['0x' + 'a'.repeat(40)], Array.from({ length: 4 }, (_, i) => '0x' + String(i + 1).repeat(40)), Array.from({ length: 10 }, (_, i) => '0x' + i.toString(16).repeat(40))]) {
     const field = buildTestField(`art-${wallets.length}`, wallets);
     assert.equal(field.length, FIELD_SIZE);
-    assert.deepEqual(field.map(f => f.tokenId).sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], `${wallets.length} players`);
+    const players = field.filter(f => f.wallet), bots = field.filter(f => !f.wallet);
+    assert.equal(players.length, wallets.length);
+    for (const p of players) assert.deepEqual([p.tokenId, p.body, p.avatarUrl], [0, 'Beta', BETA_RACER_ART]);
+    const botTokens = bots.map(b => b.tokenId);
+    assert.equal(new Set(botTokens).size, bots.length, 'bots never share a teaser');
+    assert.ok(botTokens.every(t => t >= 1 && t <= 10));
   }
-  ok('every racer wears a distinct public teaser (tokens 1-10), for 0-10 players');
+  ok('players race in the Beta pass; bots wear distinct public teasers (1-10)');
 
-  // The ball a racer rolls into must match the pangolin it runs as: body comes from the
-  // checked teaser table, and both the artwork and the ball sprite must exist.
-  const { TEASER_BODIES } = await import('../supabase/functions/test-season/race/testSeason.ts');
-  const { existsSync } = await import('node:fs');
-  const field = buildTestField('colours', ['0x' + 'b'.repeat(40)]);
-  for (const r of field) {
-    assert.equal(r.body, TEASER_BODIES[r.tokenId], `token ${r.tokenId} body`);
-    assert.ok(existsSync(new URL(`../public/nft-images/${r.tokenId}.webp`, import.meta.url)), `artwork ${r.tokenId}`);
-    assert.ok(existsSync(new URL(`../public/sprites/ball_${r.body.toLowerCase()}.png`, import.meta.url)), `ball for ${r.body}`);
+  // The ball a racer rolls into must match the pangolin it runs as, and every file must exist.
+  for (const r of buildTestField('colours', ['0x' + 'b'.repeat(40), '0x' + 'c'.repeat(40)])) {
+    if (r.wallet) assert.ok(file(BETA_RACER_ART), 'Beta racer art');
+    else {
+      assert.equal(r.body, TEASER_BODIES[r.tokenId], `token ${r.tokenId} body`);
+      assert.ok(file(`/nft-images/${r.tokenId}.webp`), `artwork ${r.tokenId}`);
+    }
+    assert.ok(file(`/sprites/ball_${r.body.toLowerCase()}.png`), `ball for ${r.body}`);
   }
-  ok('each racer\'s ball colour matches its teaser artwork, and every file exists');
+  ok('each racer\'s ball matches its artwork (Beta ball for players), and every file exists');
 }
 
 // --- fairness: identical stats → ~10% win rate per racer -------------------

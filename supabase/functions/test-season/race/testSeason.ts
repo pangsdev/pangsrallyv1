@@ -74,17 +74,6 @@ export function shortWallet(wallet: string): string {
   return wallet.length > 12 ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : wallet;
 }
 
-/** The teaser artwork a wallet prefers during the test season (stable per wallet). */
-export function testTokenFor(wallet: string): number {
-  let h = 2166136261;
-  const w = wallet.toLowerCase();
-  for (let i = 0; i < w.length; i++) {
-    h ^= w.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return 1 + ((h >>> 0) % PUBLIC_TOKENS);
-}
-
 /**
  * The 10-racer field for a race. `wallets` are the players in join order;
  * bots fill the remaining lanes. A single-player (bot) race puts the player
@@ -94,22 +83,14 @@ export function buildTestField(seed: string, wallets: string[]): TestRacer[] {
   const players = wallets.slice(0, FIELD_SIZE).map(w => w.toLowerCase());
   const lanes = assignLanes(seed, players.length);
 
-  const usedTokens = new Set<number>();
-  const playerTokens = players.map(w => {
-    let t = testTokenFor(w);
-    while (usedTokens.has(t)) t = (t % PUBLIC_TOKENS) + 1;
-    usedTokens.add(t);
-    return t;
-  });
-  // Bots wear the teasers the players did not take, in a seeded order.
+  // Players race in their Beta pass; bots wear the public teasers in a seeded order.
   const rng = seededRandom(`${seed}:teasers`);
-  const botTokens = shuffle(Array.from({ length: PUBLIC_TOKENS }, (_, i) => i + 1).filter(t => !usedTokens.has(t)), rng);
+  const botTokens = shuffle(Array.from({ length: PUBLIC_TOKENS }, (_, i) => i + 1), rng);
 
   const usedNames = new Set<string>();
   const field: (TestRacer | null)[] = Array(FIELD_SIZE).fill(null);
   players.forEach((wallet, i) => {
-    const tokenId = playerTokens[i];
-    field[lanes[i] - 1] = racer(`p-${wallet}`, shortWallet(wallet), tokenId, wallet);
+    field[lanes[i] - 1] = betaRacer(`p-${wallet}`, shortWallet(wallet), wallet);
   });
   let b = 0;
   for (let lane = 0; lane < FIELD_SIZE; lane++) {
@@ -143,6 +124,13 @@ function racer(id: string, name: string, tokenId: number, wallet?: string): Test
     terrainAffinity: null,
     ...(wallet ? { wallet } : {}),
   };
+}
+
+/** The test season pass racer (scripts/make-beta-nft.mjs, ball from make-beta-ball.mjs). tokenId 0 = not a collection token. */
+export const BETA_RACER_ART = '/beta/beta-racer.webp';
+
+function betaRacer(id: string, name: string, wallet: string): TestRacer {
+  return { ...racer(id, name, 0, wallet), body: 'Beta', avatarUrl: BETA_RACER_ART };
 }
 
 /** 1-based lanes for the players, in join order. */

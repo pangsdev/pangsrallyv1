@@ -8,10 +8,10 @@
 
 import tokenIndex from './token-index.json';
 
-/** Collection bodies, plus `Aurora`: the teal → blue → purple body of teaser artworks 1, 4, 9 and 10. */
-export type BodyColor = 'Brown' | 'Red' | 'Rainbow' | 'Blue' | 'Black' | 'Silver' | 'Albino' | 'Gold' | 'Aurora';
+/** Collection bodies, plus `Aurora` (teal → blue → purple, teasers 1, 4, 9, 10) and `Beta` (the test season pass: violet → gold). */
+export type BodyColor = 'Brown' | 'Red' | 'Rainbow' | 'Blue' | 'Black' | 'Silver' | 'Albino' | 'Gold' | 'Aurora' | 'Beta';
 
-export const BODY_COLORS: BodyColor[] = ['Brown', 'Red', 'Rainbow', 'Blue', 'Black', 'Silver', 'Albino', 'Gold', 'Aurora'];
+export const BODY_COLORS: BodyColor[] = ['Brown', 'Red', 'Rainbow', 'Blue', 'Black', 'Silver', 'Albino', 'Gold', 'Aurora', 'Beta'];
 
 /** Legacy 2x2 sprite sheets (still used by the old live-race view and the lobby thumbnails). */
 export const BODY_SPRITES: Record<BodyColor, string> = {
@@ -24,6 +24,7 @@ export const BODY_SPRITES: Record<BodyColor, string> = {
   Albino: '/pangolin_sprite_albino.png',
   Gold: '/pangolin_sprite_gold.png',
   Aurora: '/pangolin_sprite_blue.png',
+  Beta: '/pangolin_sprite_rainbow.png',
 };
 
 /** Transparent single-frame ball sprites generated from the sheets (public/sprites/). */
@@ -37,6 +38,7 @@ export const BALL_SPRITES: Record<BodyColor, string> = {
   Albino: '/sprites/ball_albino.png',
   Gold: '/sprites/ball_gold.png',
   Aurora: '/sprites/ball_aurora.png', // scripts/make-aurora-ball.mjs
+  Beta: '/sprites/ball_beta.png', // scripts/make-beta-ball.mjs
 };
 
 /** Accent colour per body, used for name tags / trails / glow. */
@@ -50,6 +52,7 @@ export const BODY_ACCENT: Record<BodyColor, number> = {
   Albino: 0xf2e6d8,
   Gold: 0xf5c542,
   Aurora: 0x4a6fc4,
+  Beta: 0xc23fb0,
 };
 
 export interface NftAttribute { trait_type: string; value: string | number }
