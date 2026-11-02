@@ -1,0 +1,10 @@
+{
+  "address": "0xD131531DCee2D60eA0C134d2ca50297b065C0549",
+  "chainId": 4663,
+  "owner": "0x8c01588c75A7c634842de93dc724B87D26A25eF6",
+  "voucherSigner": "0x0A9d628De4e644a7778c3B0d067e85680405464c",
+  "royaltyReceiver": "0x10D0BAbDAaB09A3c2cC5C3F89A5D644B8a0Ae02e",
+  "tokenURI": "ipfs://Qmf1rAoRYfpTbqdzk3PtFtsVTZbYEpPtNqd7YfJ7maHRbE",
+  "tx": "0x9d8bf5e75c1845f755e4c74652284faf293d48c541e272fc2fb58cd109be0acd",
+  "deployedAt": "2026-11-02T19:24:14.656Z"
+}
