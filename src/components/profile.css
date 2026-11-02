@@ -1,0 +1,78 @@
+/* Profile page */
+.pf-page { max-width: 1180px; margin: 0 auto; padding: 110px clamp(1rem, 3vw, 2rem) 3rem; color: var(--text-main); }
+.pf-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.8rem; padding: 4rem 1rem; border-radius: 22px; background: var(--bg-panel); border: 1px solid var(--border-color); }
+.pf-empty img { width: 110px; height: 110px; border-radius: 20px; }
+.pf-empty p { color: var(--text-muted); max-width: 440px; }
+.pf-empty.small { padding: 2rem 1rem; }
+
+.pf-hero { display: flex; align-items: center; gap: 1.4rem; padding: 1.4rem; border-radius: 22px; background: linear-gradient(135deg, rgba(84, 50, 211, 0.22), rgba(255, 209, 102, 0.06)); border: 1px solid rgba(255, 209, 102, 0.3); }
+.pf-avatar { width: 96px; height: 96px; border-radius: 20px; object-fit: cover; border: 2px solid rgba(255, 209, 102, 0.5); flex: none; }
+.pf-id { min-width: 0; }
+.pf-eyebrow { font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: #ffd166; font-weight: 700; }
+.pf-id h2 { margin: 0.2rem 0 0.6rem; font-family: ui-monospace, Menlo, monospace; font-size: 1.6rem; }
+.pf-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.pf-badge { padding: 4px 12px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; background: rgba(255,255,255,0.08); }
+.pf-badge.gold { background: rgba(255, 209, 102, 0.16); color: #ffd166; }
+.pf-badge.muted { font-weight: 500; color: var(--text-muted); }
+.pf-race { margin-left: auto; }
+
+.pf-tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.8rem; margin: 1.2rem 0; }
+.pf-tiles div { padding: 1rem; border-radius: 16px; background: var(--bg-panel); border: 1px solid var(--border-color); display: flex; flex-direction: column; }
+.pf-tiles strong { font-family: var(--font-heading); font-size: 1.7rem; line-height: 1.1; }
+.pf-tiles span { color: var(--text-muted); font-size: 0.82rem; }
+
+.pf-grid { display: grid; grid-template-columns: 1.3fr 1fr 0.9fr; gap: 1rem; }
+.pf-card { padding: 1.3rem; border-radius: 20px; background: var(--bg-panel); border: 1px solid var(--border-color); }
+.pf-card h3 { margin: 0; font-size: 1.15rem; }
+.pf-sub { color: var(--text-muted); font-size: 0.85rem; margin: 0.2rem 0 1rem; }
+
+.pf-bars { list-style: none; display: grid; grid-template-columns: repeat(10, 1fr); gap: 0.35rem; align-items: end; margin: 0; padding: 0; }
+.pf-bars li { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+.pf-bar { width: 100%; height: 110px; display: flex; align-items: flex-end; border-radius: 8px; background: rgba(255,255,255,0.04); overflow: hidden; }
+.pf-bar span { width: 100%; min-height: 2px; border-radius: 8px 8px 0 0; background: linear-gradient(180deg, #7b5cff, #5432d3); }
+.pf-bars li.top .pf-bar span { background: linear-gradient(180deg, #ffd166, #e0a400); }
+.pf-bars em { font-style: normal; font-weight: 800; font-size: 0.85rem; }
+.pf-bars small { color: var(--text-muted); font-size: 0.72rem; }
+
+.pf-mode { display: grid; grid-template-columns: 1fr auto; padding: 0.75rem 0.9rem; border-radius: 14px; margin-bottom: 0.6rem; background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); }
+.pf-mode.bot { border-left: 3px solid #ffd166; }
+.pf-mode.online { border-left: 3px solid #4cc9ff; }
+.pf-mode strong { grid-row: span 2; align-self: center; font-size: 1.15rem; }
+.pf-mode small { color: var(--text-muted); }
+.pf-today { margin-top: 0.8rem; color: var(--text-muted); font-size: 0.85rem; }
+
+.pf-pass { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; }
+.pf-pass h3 { align-self: flex-start; }
+.pf-pass img { width: 150px; height: 150px; border-radius: 16px; border: 1px solid rgba(255, 209, 102, 0.4); margin-top: 0.4rem; }
+.pf-pass small { color: var(--text-muted); }
+
+.pf-section { margin: 2rem 0 0.9rem; font-size: 1.3rem; }
+
+@media (max-width: 1000px) {
+  .pf-tiles { grid-template-columns: repeat(3, 1fr); }
+  .pf-grid { grid-template-columns: 1fr 1fr; }
+  .pf-pass { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .pf-page { padding-top: 96px; }
+  .pf-hero { flex-wrap: wrap; }
+  .pf-race { margin-left: 0; width: 100%; }
+  .pf-tiles { grid-template-columns: repeat(2, 1fr); }
+  .pf-grid { grid-template-columns: 1fr; }
+}
+
+/* Inventory: Beta pass section */
+.pf-inv { margin: 0 0 2rem; }
+.pf-inv-head { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 0.8rem; }
+.pf-inv-head h3 { margin: 0; font-size: 1.3rem; }
+.pf-inv-head span { color: var(--text-muted); font-size: 0.88rem; }
+.pf-inv-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
+.pf-inv-card { display: flex; gap: 1rem; padding: 1rem; border-radius: 18px; background: linear-gradient(135deg, rgba(84, 50, 211, 0.18), rgba(255, 209, 102, 0.06)); border: 1px solid rgba(255, 209, 102, 0.35); }
+.pf-inv-card.empty { opacity: 0.85; border-style: dashed; }
+.pf-inv-card img { width: 120px; height: 120px; border-radius: 14px; object-fit: cover; flex: none; }
+.pf-inv-card strong { display: block; font-size: 1.05rem; }
+.pf-inv-card small { display: block; color: var(--text-muted); margin: 0.15rem 0 0.6rem; }
+.pf-inv-card dl { display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem 0.8rem; margin: 0; }
+.pf-inv-card dt { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.pf-inv-card dd { margin: 0; font-weight: 700; font-size: 0.9rem; }
+.pf-inv-card .btn { padding: 0.5rem 1rem; font-size: 0.9rem; }

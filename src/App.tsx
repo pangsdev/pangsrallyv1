@@ -9,8 +9,9 @@ import { unlockAnnounce } from './race/announce';
 import './App.css'
 import RaceLobby from './components/RaceLobby';
 import OnlineRooms from './components/OnlineRooms';
+import Profile, { BetaInventory } from './components/Profile';
 import Landing from './components/Landing';
-import { SeasonLeaderboard, MyRaces, SignInGate, NoWalletModal, InviteCodeModal, BetaMintModal } from './components/SeasonPages';
+import { SeasonLeaderboard, SignInGate, NoWalletModal, InviteCodeModal, BetaMintModal } from './components/SeasonPages';
 import { clearSession, getSession, hasWallet, mintBetaPass, signInWithWallet, testSeason, type PlayerStatus } from './testSeason/api';
 import { shortWallet } from './race/testSeason';
 
@@ -804,7 +805,7 @@ function App() {
   /* so back/forward, refresh and shared links work.                   */
   /* ---------------------------------------------------------------- */
   const SIMPLE_PATHS: Partial<Record<typeof currentView, string>> = {
-    landing: '/', 'how-to-play': '/vision', rally: '/rally', leaderboard: '/leaderboard', 'my-races': '/races',
+    landing: '/', 'how-to-play': '/vision', rally: '/rally', leaderboard: '/leaderboard', 'my-races': '/profile',
     inventory: '/inventory', marketplace: '/marketplace', laboratory: '/lab',
   };
   const pathForView = (): string | null => {
@@ -830,6 +831,7 @@ function App() {
       if (cat) { setActiveCategoryInfo(cat); setOnlineRaceId(null); setCurrentView(parts[2] === 'rooms' ? 'online-rooms' : 'race-lobby'); return; }
       setCurrentView('rally'); return;
     }
+    if (parts[0] === 'races') { setCurrentView('my-races'); return; } // old address of My Races
     if (parts[0] === 'race' && parts[1]) { setReplayRaceId(parts[1]); setCurrentView('replay'); return; }
     if (parts[0] === 'room' && parts[1]) { setActiveCategoryInfo(mockCategories[0]); setOnlineRaceId(parts[1]); setCurrentView('online-race'); return; }
     if (!byPath) window.history.replaceState(null, '', '/' + window.location.search); // unknown address → home
@@ -1413,7 +1415,7 @@ function App() {
               onClick={() => setCurrentView('my-races')}
               style={{cursor: 'pointer'}}
             >
-              My Races
+              Profile
             </a>
           </nav>
           <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -1574,7 +1576,7 @@ function App() {
             playerWallet={player?.wallet ?? null}
             loadRace={() => testSeason.race(replayRaceId)}
             onBack={() => setCurrentView('my-races')}
-            backLabel="← Back to My Races"
+            backLabel="← Back to Profile"
           />
         )}
 
@@ -1907,6 +1909,8 @@ function App() {
               </div>
             </div>
             
+            {player && <BetaInventory wallet={player.wallet} contract={player.beta?.contract ?? null} onMintBeta={() => setBetaOpen(true)} />}
+            <h3 style={{ margin: '0 0 0.8rem', fontSize: '1.3rem' }}>Genesis Pangolins</h3>
             <div className="filter-tabs">
               {['All', 'Legendary', 'Rare', 'Uncommon', 'Common'].map(filter => (
                 <button 
@@ -1926,9 +1930,9 @@ function App() {
                 </div>
               ) : activeInventory.length === 0 ? (
                 <div className="empty-state" style={{gridColumn: '1/-1', textAlign: 'center', padding: '4rem', background: 'var(--bg-card)', borderRadius: '16px'}}>
-                  <h3 style={{marginBottom: '1rem'}}>No Pangolins Found</h3>
-                  <p style={{color: 'var(--text-muted)', marginBottom: '2rem'}}>You need a Pangolin NFT to race. Buy one on the marketplace or mint a free Rookie.</p>
-                  <button className="btn btn-primary" onClick={joinTestSeason}>Join the Test Season 🏁</button>
+                  <h3 style={{marginBottom: '1rem'}}>No Genesis Pangolins yet</h3>
+                  <p style={{color: 'var(--text-muted)', marginBottom: player ? 0 : '2rem'}}>Genesis Pangolins arrive with the Genesis mint. During the Beta season you race with your Beta pass.</p>
+                  {!player && <button className="btn btn-primary" onClick={joinTestSeason}>Join the Beta Season</button>}
                 </div>
               ) : (
                 filteredInventory.map(nft => (
@@ -2069,9 +2073,11 @@ function App() {
         )}
 
         {currentView === 'my-races' && (
-          <MyRaces
+          <Profile
             signedIn={!!player}
+            signingIn={signingIn}
             onSignIn={signIn}
+            onMintBeta={() => setBetaOpen(true)}
             onReplay={(id) => { unlockAnnounce(); setReplayRaceId(id); setCurrentView('replay'); }}
             onOpenRoom={(id) => {
               unlockAnnounce();
