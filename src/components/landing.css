@@ -153,71 +153,17 @@
 @keyframes ld-float { 50% { transform: translate(-50%, calc(-50% - 14px)); } }
 .ld-card-main img { position: absolute; inset: 0; opacity: 0; transition: opacity 0.6s ease; }
 .ld-card-main img.on { opacity: 1; }
-/* Runner lane under the card fan. One 7 s loop, all on the compositor:
-   0-42% the racer jogs in on its feet, 42-50% it curls (cross-fade to the ball),
-   50-88% the ball rolls off to the right, then it fades and starts again. */
+/* Runner lane under the card fan; HeroRunner draws the race gallop / curl / roll on a canvas. */
 .ld-lane {
   position: absolute;
   z-index: 3;
-  left: 0; right: 0;
-  bottom: -2%;
-  height: var(--runner-h);
-  --runner-h: clamp(64px, 6.4vw, 96px);
-  --lane: clamp(300px, 36vw, 560px);
+  left: -4%; right: -4%;
+  bottom: -7%;
+  height: clamp(105px, 10vw, 155px);
   pointer-events: none;
 }
-.ld-lane::after { /* soft ground shadow line */
-  content: '';
-  position: absolute;
-  left: 8%; right: 8%; bottom: -6px;
-  height: 10px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.28), transparent);
-}
-.ld-mover {
-  position: absolute;
-  left: 0; bottom: 0;
-  height: 100%;
-  width: calc(var(--runner-h) * 1.71);
-  animation: ld-move 7s linear infinite;
-}
-.ld-runner, .ld-ball {
-  position: absolute;
-  bottom: 0;
-  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.35));
-}
-.ld-runner {
-  left: 0;
-  width: 100%;
-  animation: ld-runner 7s linear infinite, ld-jog 0.36s ease-in-out infinite;
-}
-.ld-ball {
-  left: 50%;
-  width: var(--runner-h);
-  margin-left: calc(var(--runner-h) / -2);
-  animation: ld-roll 7s linear infinite;
-}
-@keyframes ld-move {
-  0%   { transform: translateX(-10%); opacity: 0; }
-  6%   { opacity: 1; }
-  42%  { transform: translateX(calc(var(--lane) * 0.34)); }
-  50%  { transform: translateX(calc(var(--lane) * 0.38)); }
-  88%  { transform: translateX(calc(var(--lane) * 0.92)); opacity: 1; }
-  96%, 100% { transform: translateX(calc(var(--lane) * 0.98)); opacity: 0; }
-}
-/* NFT art faces left; the race runs left to right. */
-@keyframes ld-runner {
-  0%, 42% { opacity: 1; transform: scaleX(-1); }
-  50%, 100% { opacity: 0; transform: scaleX(-0.55) scaleY(0.55) translateY(40%); }
-}
-@keyframes ld-jog {
-  50% { translate: 0 -6%; rotate: 1.5deg; }
-}
-@keyframes ld-roll {
-  0%, 42% { opacity: 0; transform: scale(0.5) rotate(0deg); }
-  50% { opacity: 1; transform: scale(1) rotate(90deg); }
-  88%, 100% { opacity: 1; transform: scale(1) rotate(560deg); }
-}
+.ld-runner-canvas { display: block; width: 100%; height: 100%; }
+
 
 /* ---------- Generic section ---------- */
 .ld-section { padding: clamp(70px, 9vw, 120px) 0; }
@@ -399,7 +345,7 @@
   .ld-actions { justify-content: center; }
   .ld-stats { grid-template-columns: repeat(2, auto); justify-content: center; text-align: center; }
   .ld-hero-art { height: 360px; }
-  .ld-lane { --runner-h: 60px; --lane: calc(100vw - 2rem - 103px); }
+  .ld-lane { left: 0; right: 0; bottom: -4%; }
   .ld-card { width: 210px; }
   .ld-steps { grid-template-columns: 1fr; }
   .ld-banner-shade { background: rgba(11, 6, 20, 0.8); }
@@ -414,8 +360,5 @@
   .ld-footer nav { margin-left: 0; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ld-card-main, .ld-dot, .ld-mover, .ld-runner, .ld-ball { animation: none; }
-  .ld-ball { display: none; }
-  .ld-mover { transform: translateX(calc(var(--lane) * 0.3)); }
-  .ld-runner { transform: scaleX(-1); }
+  .ld-card-main, .ld-dot { animation: none; }
 }

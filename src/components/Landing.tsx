@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { POINTS_BY_POSITION, DAILY_RACE_LIMIT, FIELD_SIZE } from '../race/testSeason';
+import HeroRunner from './HeroRunner';
 import './landing.css';
 
 interface Props {
@@ -82,13 +83,8 @@ export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision
               {/* All ten stay mounted so the swap is a cross-fade, never an empty frame. */}
               {TEASERS.map(id => <img key={id} src={`/nft-images/${id}.webp`} alt="" className={id === hero ? 'on' : ''} />)}
             </div>
-            {/* A racer jogs in on its feet, curls up and rolls off: the race in four seconds. */}
-            <div className="ld-lane">
-              <div className="ld-mover">
-                <img className="ld-runner" src="/landing/runner.webp" alt="" />
-                <img className="ld-ball" src="/sprites/ball_aurora.png" alt="" />
-              </div>
-            </div>
+            {/* A racer gallops in on its feet, curls up and rolls off: the race in a few seconds. */}
+            <div className="ld-lane"><HeroRunner /></div>
           </div>
         </div>
       </section>
