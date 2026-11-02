@@ -135,6 +135,7 @@ export async function handle(deps: Deps, action: string, body: Record<string, un
       case 'online-status': return ok(await onlineStatus(deps, str(body.raceId)));
       case 'race': return ok(await replay(deps, str(body.raceId)));
       case 'history': return ok(await history(deps, await requireWallet(deps, token)));
+      case 'profile': return ok(await profile(deps, await requireWallet(deps, token)));
       case 'leaderboard': return ok(await leaderboard(deps));
       case 'beta-voucher': return ok(await betaVoucher(deps, await requireWallet(deps, token)));
       default: throw new HttpError(404, 'unknown_action', 'Unknown action.');
@@ -431,6 +432,32 @@ async function history(deps: Deps, wallet: string) {
       position: r.position,
       points: r.points,
     })),
+  };
+}
+
+/** Everything the Profile page shows: the player status plus season stats over all finished races. */
+async function profile(deps: Deps, wallet: string) {
+  const status = await me(deps, wallet);
+  const rows = (await deps.store.history(wallet, 2000)).filter(r => r.race.status === 'finished' && r.position !== null);
+  const by = (kind: 'bot' | 'online') => {
+    const list = rows.filter(r => r.race.kind === kind);
+    return { races: list.length, points: list.reduce((n, r) => n + r.points, 0), wins: list.filter(r => r.position === 1).length };
+  };
+  const positions = rows.map(r => r.position as number);
+  const finishes = Array.from({ length: FIELD_SIZE }, (_, i) => positions.filter(p => p === i + 1).length);
+  return {
+    ...status,
+    stats: {
+      races: rows.length,
+      winRate: rows.length ? status.wins / rows.length : 0,
+      avgPosition: rows.length ? positions.reduce((a, b) => a + b, 0) / rows.length : null,
+      best: positions.length ? Math.min(...positions) : null,
+      finishes,
+      bot: by('bot'),
+      online: by('online'),
+      firstRace: rows.length ? rows[rows.length - 1].joined_at : null,
+      lastRace: rows.length ? rows[0].joined_at : null,
+    },
   };
 }
 

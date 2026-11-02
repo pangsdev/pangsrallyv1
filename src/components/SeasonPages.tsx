@@ -216,27 +216,34 @@ export function MyRaces({ signedIn, onSignIn, onReplay, onOpenRoom, onGoRace }: 
           <button className="btn btn-primary" style={{ marginTop: '1.25rem' }} onClick={onGoRace}>Go to The Rally</button>
         </div>
       ) : (
-        <div className="season-history">
-          {rows.map(r => (
-            <div key={r.raceId} className="glass-panel season-race">
-              <div className="season-race-pos">{medal(r.position)}</div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{r.terrain} Track</div>
-                <div className="season-race-meta">
-                  <span className={`season-kind ${r.kind}`}>{r.kind === 'online' ? 'Online' : 'Bot Race'}</span>
-                  <span>{new Date(r.joinedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-              </div>
-              <div className="season-race-pts">{r.status === 'finished' ? `+${r.points} pts` : 'Waiting'}</div>
-              {r.status === 'finished' ? (
-                <button className="btn btn-outline season-race-btn" onClick={() => onReplay(r.raceId)}>▶ Replay</button>
-              ) : (
-                <button className="btn btn-primary season-race-btn" onClick={() => onOpenRoom(r.raceId)}>Open Room</button>
-              )}
-            </div>
-          ))}
-        </div>
+        <RaceHistoryList rows={rows} onReplay={onReplay} onOpenRoom={onOpenRoom} />
       )}
     </section>
+  );
+}
+
+/** Race rows with Replay / Open Room buttons (My Races and the Profile page). */
+export function RaceHistoryList({ rows, onReplay, onOpenRoom }: { rows: HistoryRow[]; onReplay: (raceId: string) => void; onOpenRoom: (raceId: string) => void }) {
+  return (
+    <div className="season-history">
+    {rows.map(r => (
+      <div key={r.raceId} className="glass-panel season-race">
+        <div className="season-race-pos">{medal(r.position)}</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{r.terrain} Track</div>
+          <div className="season-race-meta">
+            <span className={`season-kind ${r.kind}`}>{r.kind === 'online' ? 'Online' : 'Bot Race'}</span>
+            <span>{new Date(r.joinedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+        </div>
+        <div className="season-race-pts">{r.status === 'finished' ? `+${r.points} pts` : 'Waiting'}</div>
+        {r.status === 'finished' ? (
+          <button className="btn btn-outline season-race-btn" onClick={() => onReplay(r.raceId)}>▶ Replay</button>
+        ) : (
+          <button className="btn btn-primary season-race-btn" onClick={() => onOpenRoom(r.raceId)}>Open Room</button>
+        )}
+      </div>
+    ))}
+    </div>
   );
 }

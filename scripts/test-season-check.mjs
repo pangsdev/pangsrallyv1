@@ -207,6 +207,18 @@ ok('login with a real wallet signature');
   ok('a room nobody watches resolves when the player comes back');
 }
 
+// --- profile ----------------------------------------------------------------
+{
+  const pr = (await call('profile', {}, aliceToken)).body;
+  const hist = (await call('history', {}, aliceToken)).body.races.filter(r => r.status === 'finished');
+  assert.equal(pr.stats.races, hist.length);
+  assert.equal(pr.stats.bot.points + pr.stats.online.points, pr.points);
+  assert.equal(pr.stats.finishes.reduce((a, b) => a + b, 0), hist.length);
+  assert.equal(pr.stats.best, Math.min(...hist.map(r => r.position)));
+  assert.equal((await call('profile', {}, null)).status, 401);
+  ok('profile stats add up to the race history and the season points');
+}
+
 // --- leaderboard ----------------------------------------------------------
 {
   const board = (await call('leaderboard')).body.players;

@@ -77,6 +77,21 @@ export interface LeaderboardPlayer {
   podiums: number;
 }
 
+export interface ProfileStatus extends PlayerStatus {
+  stats: {
+    races: number;
+    winRate: number;
+    avgPosition: number | null;
+    best: number | null;
+    /** how often the player finished 1st … 10th */
+    finishes: number[];
+    bot: { races: number; points: number; wins: number };
+    online: { races: number; points: number; wins: number };
+    firstRace: string | null;
+    lastRace: string | null;
+  };
+}
+
 export interface HistoryRow {
   raceId: string;
   kind: 'bot' | 'online';
@@ -240,5 +255,6 @@ export const testSeason = {
   onlineStatus: (raceId: string) => call<{ race: PublicRace; serverTime: string }>('online-status', { raceId }),
   race: (raceId: string) => call<{ race: PublicRace }>('race', { raceId }),
   history: () => call<{ races: HistoryRow[] }>('history'),
+  profile: () => call<ProfileStatus>('profile'),
   leaderboard: () => call<{ players: LeaderboardPlayer[] }>('leaderboard'),
 };
