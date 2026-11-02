@@ -1,20 +1,70 @@
-/* Race lobby (mode picker). Imported by RaceLobby so it is styled before any race page loads. */
-.lobby-root { min-height: 100vh; background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 100%); padding-top: 100px; padding-bottom: 3rem; font-family: Inter, sans-serif; color: #fff; }
-.lobby-inner { max-width: 900px; margin: 0 auto; padding: 0 1.25rem; }
-.lobby-back { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
-.lobby-pill { display: inline-block; margin-top: 0.9rem; padding: 6px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9rem; }
-.lobby-pill.ok { background: rgba(0,255,100,0.08); border: 1px solid rgba(0,255,100,0.2); color: #00ff64; }
-.lobby-pill.out { background: rgba(255,50,50,0.08); border: 1px solid rgba(255,50,50,0.2); color: #ff6680; }
-.lobby-me { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; margin-bottom: 1rem; background: rgba(255,215,0,0.06); border: 1px solid rgba(255,215,0,0.25); border-radius: 16px; }
-.lobby-me img { width: 64px; height: 64px; object-fit: contain; border-radius: 12px; background: rgba(255,255,255,0.05); flex-shrink: 0; }
-.lobby-me-title { font-size: 0.75rem; letter-spacing: 0.5px; text-transform: uppercase; color: rgba(255,215,0,0.8); }
-.lobby-me-wallet { font-family: monospace; font-size: 1rem; margin: 2px 0 6px; }
-.lobby-me-stats { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.85rem; color: rgba(255,255,255,0.7); }
+/* Race lobby (mode picker). Imported by RaceLobby so it is styled before any race page loads.
+   Laid out to fit a laptop screen (≈ 1440×800) without scrolling. */
+.lobby-root { min-height: 100vh; padding: 104px 0 2.5rem; color: #fff; background: radial-gradient(60% 70% at 85% 30%, rgba(84, 50, 211, 0.22), transparent 70%), var(--bg-dark); }
+.lobby-inner { max-width: 1180px; margin: 0 auto; padding: 0 clamp(1rem, 3vw, 2rem); }
+
+.lobby-top { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.lobby-back { background: rgba(255,255,255,0.06); border: 1px solid var(--border-color); color: #fff; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-size: 0.9rem; }
+.lobby-back:hover { background: rgba(255,255,255,0.12); }
+.lobby-title { display: flex; align-items: center; gap: 0.8rem; }
+.lobby-title h2 { margin: 0; font-size: 1.6rem; line-height: 1.1; }
+.lobby-title span { color: var(--text-muted); font-size: 0.9rem; }
+.lobby-pill { margin-left: auto; display: inline-flex; align-items: center; gap: 0.45rem; padding: 7px 14px; border-radius: 999px; font-weight: 700; font-size: 0.88rem; }
+.lobby-pill.ok { background: rgba(0,255,100,0.08); border: 1px solid rgba(0,255,100,0.25); color: #3dff8f; }
+.lobby-pill.out { background: rgba(255,50,50,0.08); border: 1px solid rgba(255,50,50,0.25); color: #ff6680; }
+
+.lobby-grid { display: grid; grid-template-columns: minmax(260px, 330px) 1fr; gap: 1.5rem; align-items: stretch; }
+.lobby-side { display: flex; flex-direction: column; gap: 1rem; }
+.lobby-me { display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(255,215,0,0.06); border: 1px solid rgba(255,215,0,0.25); border-radius: 16px; }
+.lobby-me img { width: 72px; height: 72px; object-fit: cover; border-radius: 12px; flex-shrink: 0; }
+.lobby-me-title { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,215,0,0.85); }
+.lobby-me-wallet { font-family: ui-monospace, Menlo, monospace; font-size: 1rem; margin: 2px 0 6px; }
+.lobby-me-stats { display: flex; gap: 0.9rem; flex-wrap: wrap; font-size: 0.85rem; color: rgba(255,255,255,0.7); }
 .lobby-me-stats strong { color: #ffd700; }
-.lobby-rules { color: rgba(255,255,255,0.6); font-size: 0.88rem; line-height: 1.6; margin: 0 0 1.5rem; }
+.lobby-rules { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; margin: 0; }
 .lobby-rules strong { color: #fff; }
+.lobby-points { list-style: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; margin: 0; padding: 0; }
+.lobby-points li { display: flex; flex-direction: column; align-items: center; padding: 0.35rem 0; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); font-weight: 800; font-size: 1rem; }
+.lobby-points li span { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); }
+.lobby-points li.top { background: rgba(255,209,102,0.1); border-color: rgba(255,209,102,0.4); color: #ffd166; }
+
 .lobby-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-.lobby-cta { padding: 12px 24px; border-radius: 10px; font-weight: 700; font-size: 1rem; display: inline-block; }
+.lobby-mode {
+  --accent: #ffd166;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 1.6rem 1.4rem 1.5rem; border-radius: 22px; cursor: pointer; color: #fff; font: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+  border: 1px solid var(--border-color);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.lobby-mode.online { --accent: #4cc9ff; }
+.lobby-mode:not(:disabled):hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--accent) 60%, transparent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.lobby-mode:disabled { opacity: 0.45; cursor: not-allowed; }
+.lobby-mode h3 { margin: 0.9rem 0 0.4rem; font-size: 1.4rem; color: var(--accent); }
+.lobby-mode p { margin: 0 0 1rem; color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; max-width: 300px; }
+
+/* Our own art instead of emoji: three race balls (bots) or three Beta racers (players). */
+.lobby-mode-art { position: relative; height: 92px; width: 190px; }
+.lobby-mode-art img { position: absolute; bottom: 0; filter: drop-shadow(0 8px 10px rgba(0,0,0,0.4)); }
+.lobby-mode.bot .lobby-mode-art img { width: 64px; left: calc(var(--i) * 58px + 6px); bottom: calc(var(--i) * 6px); animation: lobby-roll 3.2s linear infinite; animation-delay: calc(var(--i) * -0.4s); }
+.lobby-mode.bot .lobby-mode-art img:nth-child(2) { width: 76px; z-index: 1; bottom: 8px; }
+.lobby-mode-art.crowd img { width: 92px; height: 92px; object-fit: cover; border-radius: 50%; border: 2px solid rgba(76,201,255,0.55); left: calc(var(--i) * 50px); background: #e4dcff; }
+.lobby-mode-art.crowd img:nth-child(2) { z-index: 1; transform: scale(1.08); }
+@keyframes lobby-roll { to { rotate: 360deg; } }
+
+.lobby-chips { display: flex; justify-content: center; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
+.lobby-chips span { padding: 4px 11px; border-radius: 999px; font-size: 0.78rem; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.lobby-cta { margin-top: auto; padding: 11px 26px; border-radius: 12px; font-weight: 800; font-size: 1rem; background: var(--accent); color: #140a2e; }
+.lobby-mode.online .lobby-cta { background: linear-gradient(135deg, #4cc9ff, #2d7dff); color: #fff; }
+
+@media (max-width: 900px) {
+  .lobby-root { padding-top: 96px; }
+  .lobby-grid { grid-template-columns: 1fr; }
+  .lobby-modes { order: -1; } /* on phones the race buttons come first */
+  .lobby-pill { margin-left: 0; }
+}
 @media (max-width: 640px) {
   .lobby-modes { grid-template-columns: 1fr; }
+  .lobby-title h2 { font-size: 1.35rem; }
 }
+@media (prefers-reduced-motion: reduce) { .lobby-mode-art img { animation: none !important; } }

@@ -3,6 +3,7 @@ import RaceRoom from './RaceRoom';
 import { testSeason, type PublicRace } from '../testSeason/api';
 import { FIELD_SIZE } from '../race/testSeason';
 import '../race/race.css';
+import { TrackBadge } from './Icons';
 
 interface Props {
   categoryInfo: any;
@@ -82,7 +83,7 @@ export default function OnlineRoom({ categoryInfo, playerWallet, raceId, onBack,
       <div className="rr-header">
         <button className="rr-btn" onClick={onBack}>← Back to Lobby</button>
         <div style={{ textAlign: 'center' }}>
-          <h2 className="rr-title" style={{ color: '#00c8ff' }}>{categoryInfo?.icon} {terrain} Track · Online Race</h2>
+          <h2 className="rr-title" style={{ color: '#00c8ff' }}><TrackBadge terrain={terrain} size={26} style={{ marginRight: 8, verticalAlign: '-5px' }} />{terrain} Track · Online Race</h2>
           <p className="rr-sub">Test Season · Equal stats for everyone · luck decides</p>
         </div>
         <div className="rr-header-spacer" />

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { POINTS_BY_POSITION, DAILY_RACE_LIMIT, FIELD_SIZE } from '../race/testSeason';
 import HeroRunner from './HeroRunner';
 import './landing.css';
+import { FlagIcon } from './Icons';
 
 interface Props {
   signedIn: boolean;
@@ -39,10 +40,10 @@ const FAQ = [
 ];
 
 const TRACKS = [
-  { name: 'Forest', icon: '🌲', img: '/forest_track.webp', live: true, text: 'Soft grass and a fast, straight run.' },
-  { name: 'Desert', icon: '🏜️', img: '/desert_track.webp', live: false, text: 'Heat haze and shifting sand.' },
-  { name: 'Volcanic', icon: '🌋', img: '/volcanic_track.webp', live: false, text: 'Ash, embers and hard black rock.' },
-  { name: 'Midnight', icon: '🌙', img: '/midnight_track.webp', live: false, text: 'Racing by moonlight on frozen ground.' },
+  { name: 'Forest', img: '/forest_track.webp', live: true, text: 'Soft grass and a fast, straight run.' },
+  { name: 'Desert', img: '/desert_track.webp', live: false, text: 'Heat haze and shifting sand.' },
+  { name: 'Volcanic', img: '/volcanic_track.webp', live: false, text: 'Ash, embers and hard black rock.' },
+  { name: 'Midnight', img: '/midnight_track.webp', live: false, text: 'Racing by moonlight on frozen ground.' },
 ];
 
 const ROADMAP = [
@@ -61,8 +62,8 @@ export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision
   const side = (offset: number) => ((hero - 1 + offset + TEASERS.length) % TEASERS.length) + 1;
 
   const primary = signedIn
-    ? <button className="btn btn-primary ld-cta" onClick={onRally}>Go to the Rally 🏁</button>
-    : <button className="btn btn-primary ld-cta" onClick={onJoin} disabled={signingIn}>{signingIn ? 'Check your wallet…' : 'Join the Test Season 🏁'}</button>;
+    ? <button className="btn btn-primary ld-cta" onClick={onRally}>Go to the Rally <FlagIcon size={17} /></button>
+    : <button className="btn btn-primary ld-cta" onClick={onJoin} disabled={signingIn}>{signingIn ? 'Check your wallet…' : <>Join the Beta Season <FlagIcon size={17} /></>}</button>;
 
   return (
     <div className="landing">
@@ -192,7 +193,7 @@ export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision
               <article key={t.name} className={`ld-track ${t.live ? 'live' : ''}`} style={{ backgroundImage: `url(${t.img})` }}>
                 <div className="ld-track-body">
                   <span className={`ld-track-tag ${t.live ? 'live' : ''}`}>{t.live ? '● Live' : 'Coming soon'}</span>
-                  <h3>{t.icon} {t.name}</h3>
+                  <h3>{t.name}</h3>
                   <p>{t.text}</p>
                 </div>
               </article>

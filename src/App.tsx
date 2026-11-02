@@ -28,6 +28,7 @@ const ViewLoader = () => (
 );
 
 import PangsRallyBetaPassContract from './PangsRallyBetaPass.json';
+import { LockIcon, TrackBadge } from './components/Icons';
 
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "0xf5DaFf515ECfc3928b24367b8A70B5505d89296f";
 const BETA_PASS_CONTRACT_ADDRESS = import.meta.env.VITE_BETA_PASS_CONTRACT_ADDRESS || "0x55C18bfaC6A791C88800375C61Aa3B67766Ab288";
@@ -797,6 +798,62 @@ function App() {
     { id: 'cat4', name: 'Class 2', terrain: 'Midnight', icon: '🌙', entry: 'Locked', prize: 'Coming soon', color: '#9b59b6', bgClass: 'bg-midnight' },
   ];
 
+  /* ---------------------------------------------------------------- */
+  /* Page URLs. The app is one page; the address bar mirrors the view  */
+  /* so back/forward, refresh and shared links work.                   */
+  /* ---------------------------------------------------------------- */
+  const SIMPLE_PATHS: Partial<Record<typeof currentView, string>> = {
+    landing: '/', 'how-to-play': '/vision', rally: '/rally', leaderboard: '/leaderboard', 'my-races': '/races',
+    inventory: '/inventory', marketplace: '/marketplace', laboratory: '/lab',
+  };
+  const pathForView = (): string | null => {
+    const track = `/rally/${String(activeCategoryInfo?.terrain ?? 'forest').toLowerCase()}`;
+    switch (currentView) {
+      case 'race-lobby': return track;
+      // A refresh must never start (and spend) a race, so live race views have their own path that loads the lobby.
+      case 'bot-race': return `${track}/bot`;
+      case 'online-race': return onlineRaceId ? `/room/${onlineRaceId}` : `${track}/online`;
+      case 'replay': return replayRaceId ? `/race/${replayRaceId}` : null;
+      default: return SIMPLE_PATHS[currentView] ?? null;
+    }
+  };
+  // Set while a view change comes from the address itself: replace the entry instead of pushing a new one.
+  const routeFromAddress = useRef(true);
+  const applyPath = (path: string) => {
+    routeFromAddress.current = true;
+    const parts = path.replace(/\/+$/, '').split('/').filter(Boolean);
+    const byPath = Object.entries(SIMPLE_PATHS).find(([, p]) => p === (parts.length ? `/${parts[0]}` : '/'));
+    if (parts[0] === 'rally' && parts[1]) {
+      const cat = mockCategories.find(c => c.terrain.toLowerCase() === parts[1] && c.entry !== 'Locked');
+      if (cat) { setActiveCategoryInfo(cat); setOnlineRaceId(null); setCurrentView('race-lobby'); return; }
+      setCurrentView('rally'); return;
+    }
+    if (parts[0] === 'race' && parts[1]) { setReplayRaceId(parts[1]); setCurrentView('replay'); return; }
+    if (parts[0] === 'room' && parts[1]) { setActiveCategoryInfo(mockCategories[0]); setOnlineRaceId(parts[1]); setCurrentView('online-race'); return; }
+    if (!byPath) window.history.replaceState(null, '', '/' + window.location.search); // unknown address → home
+    setCurrentView((byPath?.[0] as typeof currentView) ?? 'landing');
+  };
+  // Load the view from the address once, then follow back/forward.
+  useEffect(() => {
+    applyPath(window.location.pathname);
+    const onPop = () => applyPath(window.location.pathname);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const path = pathForView();
+    const fromAddress = routeFromAddress.current;
+    // First render still shows the default view while the address is being applied.
+    if (fromAddress && currentView === 'landing' && window.location.pathname !== '/') return;
+    routeFromAddress.current = false;
+    if (path && path !== window.location.pathname) {
+      window.history[fromAddress ? 'replaceState' : 'pushState'](null, '', path + window.location.search);
+    }
+    if (currentView !== 'landing') window.scrollTo(0, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView, activeCategoryInfo, onlineRaceId, replayRaceId]);
+
   const viewRooms = (category: any) => {
     setActiveCategoryInfo(category);
     setCurrentView('race-lobby'); // Go to new lobby with mode selection
@@ -1412,7 +1469,7 @@ function App() {
                       <div className="race-class">{cat.name}</div>
                       <div className="race-terrain" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '5px' }}>
                         <div>
-                          <span className="terrain-icon">{cat.icon}</span>
+                          <TrackBadge terrain={cat.terrain} size={30} style={{ marginRight: 10 }} />
                           {cat.terrain} Track
                         </div>
                       </div>
@@ -1429,7 +1486,7 @@ function App() {
                     </div>
                     {cat.entry === 'Locked' ? (
                       <button className="btn join-btn" disabled style={{ opacity: 0.5, cursor: 'not-allowed', background: '#333' }}>
-                        🔒 Locked
+                        <LockIcon size={15} /> Locked
                       </button>
                     ) : (
                       <button className="btn btn-primary join-btn" onClick={() => viewRooms(cat)}>View Rooms</button>

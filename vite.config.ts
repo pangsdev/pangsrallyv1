@@ -113,8 +113,9 @@ function testSeasonDevPlugin(env: Record<string, string>) {
     now: () => new Date(),
     unlimitedWallets: new Set((env.TEST_UNLIMITED_WALLETS || '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean)),
     inviteRequired: env.TEST_OPEN_SIGNUP !== '1',
-    // Off in dev unless BETA_CONTRACT and BETA_SIGNER_KEY are in .env.
-    beta: createBetaGate((name) => env[name]),
+    // .env carries the live BETA_* values for the scripts; dev only enforces the Beta pass with DEV_BETA_GATE=1
+    // (point BETA_RPC_URL / BETA_CHAIN_ID / BETA_CONTRACT at a local chain to rehearse a mint).
+    beta: env.DEV_BETA_GATE === '1' ? createBetaGate((name) => env[name]) : null,
   }
 
   const handler = async (req: IncomingMessage, res: ServerResponse, next: () => void) => {

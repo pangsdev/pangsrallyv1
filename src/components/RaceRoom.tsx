@@ -8,6 +8,7 @@ import { isAnnouncerMuted, setAnnouncerMuted, speakCall, stopAnnounce, warmCall 
 import { LINES } from '../race/announceClips';
 import type { PublicRace } from '../testSeason/api';
 import '../race/race.css';
+import { TrackBadge } from './Icons';
 
 /** A race whose result the server has already fixed; the room only replays it. */
 export interface LoadedRace {
@@ -202,7 +203,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
       <div className="rr-header">
         <button className="rr-btn" onClick={onBack}>{backLabel}</button>
         <div style={{ textAlign: 'center' }}>
-          <h2 className="rr-title" style={{ color: theme.hudAccent }}>{categoryInfo?.icon} {terrain} Track · {title}</h2>
+          <h2 className="rr-title" style={{ color: theme.hudAccent }}><TrackBadge terrain={terrain} size={26} style={{ marginRight: 8, verticalAlign: '-5px' }} />{terrain} Track · {title}</h2>
           <p className="rr-sub">Test Season · Season points for every finish · {DEFAULT_RACE_DISTANCE}m</p>
         </div>
         <div className="rr-header-spacer" />

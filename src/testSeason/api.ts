@@ -135,9 +135,12 @@ export function metamaskDeepLink(): string {
   return `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
 }
 
-/** Invite code from a shared link (?invite=CODE), if any. */
-export function inviteFromUrl(): string | null {
+/** Invite code from a shared link (?invite=CODE), read when the page loads so moving between pages keeps it. */
+const INVITE_AT_LOAD = (() => {
   try { return new URLSearchParams(window.location.search).get('invite'); } catch { return null; }
+})();
+export function inviteFromUrl(): string | null {
+  return INVITE_AT_LOAD;
 }
 
 /**
