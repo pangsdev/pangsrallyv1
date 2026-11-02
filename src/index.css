@@ -76,6 +76,12 @@ ul {
   list-style: none;
 }
 
+/* Every page pads its top for the 80px desktop header. On phones the fixed header wraps onto
+   extra rows; App.tsx measures it into --header-h and this pushes all pages down by the extra. */
+main {
+  padding-top: max(0px, calc(var(--header-h, 80px) - 80px));
+}
+
 /* Utilities */
 .container {
   width: 100%;
@@ -141,7 +147,7 @@ ul {
 
 /* Litepaper Styles */
 .litepaper-container {
-  padding: 40px 20px;
+  padding: 130px 20px 60px;
   max-width: 900px;
   margin: 0 auto;
   color: var(--text-main);
@@ -427,8 +433,10 @@ ul {
 }
 
 @media (max-width: 768px) {
+  /* Horizontal only: the top padding keeps page titles clear of the fixed header. */
   .inventory-page, .leaderboard-page, .laboratory-page, .marketplace-page, .litepaper-container {
-    padding: 20px 10px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
   }
   
   .container {

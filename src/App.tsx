@@ -3,11 +3,12 @@ import { ethers } from 'ethers';
 import PangsRallyContract from './PangsRally.json';
 import rarityData from './rarity-data.json';
 import seedrandom from 'seedrandom';
-import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI, RACING_ADDRESS, RACING_ABI, PANGS_TOKEN_ADDRESS } from './contracts';
+import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI, RACING_ADDRESS, RACING_ABI } from './contracts';
 import { supabase as _supabase, createRace, joinRaceDB, finishRace, markPrizeClaimed } from './supabaseClient';
 import { unlockAnnounce } from './race/announce';
 import './App.css'
 import RaceLobby from './components/RaceLobby';
+import Landing from './components/Landing';
 import { SeasonLeaderboard, MyRaces, SignInGate, NoWalletModal } from './components/SeasonPages';
 import { clearSession, getSession, hasWallet, signInWithWallet, testSeason, type PlayerStatus } from './testSeason/api';
 import { shortWallet } from './race/testSeason';
@@ -145,16 +146,6 @@ function App() {
   
   const [newOffspring, setNewOffspring] = useState<any>(null);
   const [isSelectingParent, setIsSelectingParent] = useState<'A' | 'B' | null>(null);
-
-  // Hero Image Cycler
-  const [heroImageIndex, setHeroImageIndex] = useState(1);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setHeroImageIndex(prev => (prev % 10) + 1);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Live Race State
   const [activeCategoryInfo, setActiveCategoryInfo] = useState<any>(null); // Selected from Rally Lobby
@@ -663,60 +654,22 @@ function App() {
     }
   };
 
+  // The fixed header grows on phones (wallet + nav wrap onto extra rows); publish its real
+  // height as --header-h so page tops can clear it instead of guessing a padding.
+  const headerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const publish = () => document.documentElement.style.setProperty('--header-h', `${Math.ceil(el.getBoundingClientRect().height)}px`);
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   /** Header button: test-season sign-in (MetaMask connect + a free signature). */
   const connectWallet = async () => {
     await signIn();
-  };
-
-  const mintNFT = async () => {
-    if (!walletConnected) {
-      showToast('Please connect your wallet first!', 'error');
-      return;
-    }
-    try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
-      const signer = await provider.getSigner();
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, PangsRallyContract.abi, signer);
-      
-      const referrerCodeOrAddr = localStorage.getItem('pangsrally_referrer') || '';
-      let referrerAddress = ethers.ZeroAddress;
-      
-      if (referrerCodeOrAddr) {
-        if (referrerCodeOrAddr.startsWith('0x') && referrerCodeOrAddr.length === 42) {
-            referrerAddress = referrerCodeOrAddr;
-        } else {
-            const resolved = await contract.codeToAddress(referrerCodeOrAddr);
-            if (resolved !== ethers.ZeroAddress) {
-                referrerAddress = resolved;
-            }
-        }
-      }
-      
-      const price = await contract.mintPrice();
-      const pangsContract = new ethers.Contract(PANGS_TOKEN_ADDRESS, [
-        "function allowance(address owner, address spender) view returns (uint256)",
-        "function approve(address spender, uint256 amount) returns (bool)"
-      ], signer);
-      
-      const allowance = await pangsContract.allowance(signer.address, CONTRACT_ADDRESS);
-      if (allowance < price) {
-        showToast('Approving $PANG for mint...', 'info');
-        const txApprove = await pangsContract.approve(CONTRACT_ADDRESS, price);
-        await txApprove.wait();
-      }
-      
-      const tx = await contract.mint(1, referrerAddress);
-      showToast('Mint transaction submitted! Waiting for confirmation...', 'info');
-      
-      await tx.wait();
-      showToast('Mint successful! Your new Pangolin has joined the rally! 🎉', 'success');
-      
-      // Refresh NFTs
-      fetchMyNFTs(signer.address);
-    } catch (err: any) {
-      console.error(err);
-      showToast(err.reason || 'Minting failed.', 'error');
-    }
   };
 
   const handleCreateReferralCode = async () => {
@@ -1336,7 +1289,7 @@ function App() {
         </div>
       )}
 
-      <header className="app-header">
+      <header className="app-header" ref={headerRef}>
         <div className="container header-container">
           <div className="logo" onClick={() => setCurrentView('landing')} style={{cursor: 'pointer', display: 'flex', alignItems: 'center'}}>
             <img src={theme === 'light' ? "/light-logo.webp" : "/dark-logo.webp"} alt="Pangs Rally Logo" className="logo-img" width={640} height={213} fetchPriority="high" />
@@ -1425,62 +1378,14 @@ function App() {
       <main>
        <Suspense fallback={<ViewLoader />}>
         {currentView === 'landing' && (
-          <>
-            <section className="hero-section">
-              <div className="container">
-                <div className="hero-content">
-                  <h1 className="hero-title">
-                    Race. Breed. <br />
-                    <span className="text-gradient">Dominate the Track.</span>
-                  </h1>
-                  <p className="hero-subtitle">
-                    The test season is live: connect MetaMask, race free up to 3 times a day, and climb the leaderboard with season points. Genesis Pangolin NFTs are coming soon.
-                  </p>
-                  <div className="hero-actions">
-                    <button className="btn btn-primary" onClick={mintNFT} disabled style={{ opacity: 0.5, cursor: 'not-allowed', background: '#333' }}>Mint Locked 🔒</button>
-                    <button className="btn btn-primary" onClick={joinTestSeason}>Join the Test Season 🏁</button>
-                  </div>
-                  <p style={{ marginTop: '1rem', color: 'var(--pangs-orange)', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                    * Genesis mint details coming soon. Stay tuned!
-                  </p>
-                </div>
-                <div className="hero-image-container">
-                  <div className="placeholder-pangolin">
-                    <img src={`/nft-images/${heroImageIndex}.webp`} alt="Pangolin NFT" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className="features-section" id="features">
-              <div className="container">
-                <h2 className="section-title">Core Mechanics</h2>
-                <div className="features-grid">
-                  <div className="feature-card glass-panel">
-                    <div className="feature-icon">🏁</div>
-                    <h3 className="feature-title">The Rally</h3>
-                    <p className="feature-desc">
-                      Enter daily missions or competitive races. Match your Pangolin's terrain traits to the track for a massive advantage.
-                    </p>
-                  </div>
-                  <div className="feature-card glass-panel">
-                    <div className="feature-icon">🧬</div>
-                    <h3 className="feature-title">The Laboratory</h3>
-                    <p className="feature-desc">
-                      Breed your Pangolins to create powerful offspring. Pass down rare traits and aim for the elusive Mythic rarity.
-                    </p>
-                  </div>
-                  <div className="feature-card glass-panel">
-                    <div className="feature-icon">⚡</div>
-                    <h3 className="feature-title">Level & Progress</h3>
-                    <p className="feature-desc">
-                      Gain experience by dominating the tracks, Level Up your Pangolin and unlock permanent racing advantages.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </>
+          <Landing
+            signedIn={!!player}
+            signingIn={signingIn}
+            onJoin={joinTestSeason}
+            onRally={() => setCurrentView('rally')}
+            onVision={() => setCurrentView('how-to-play')}
+            onLeaderboard={() => setCurrentView('leaderboard')}
+          />
         )}
 
         {currentView === 'rally' && (
