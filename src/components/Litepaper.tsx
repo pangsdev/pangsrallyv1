@@ -37,9 +37,10 @@ const Litepaper: React.FC = () => {
           <div className="lp-card">
             <h3>Test Season (Live Now)</h3>
             <p>
-              Before the mint, anyone can race: connect MetaMask, sign a free message, and run up to <strong>3 races per day</strong> against
-              bots or other players. Every pangolin races on equal stats, so luck decides, and every finish earns
-              <strong> season points</strong> on the Test Season leaderboard. Top racers may be rewarded when the test season ends.
+              Before the mint, invited players can race: connect MetaMask, sign a free message, claim the free <strong>Beta pass</strong> NFT
+              (you only pay network gas on Robinhood Chain), and run up to <strong>3 races per day</strong> against bots or other players.
+              Every pangolin races on equal stats, so luck decides, and every finish earns
+              <strong> season points</strong> on the Test Season leaderboard. The Beta pass is a test pass: we make no promises about future rewards or value.
             </p>
           </div>
 

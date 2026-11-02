@@ -22,6 +22,22 @@ const STEPS = [
   { n: '03', title: 'Score points', text: `Every finish scores season points, ${POINTS_BY_POSITION[0]} for a win down to ${POINTS_BY_POSITION[POINTS_BY_POSITION.length - 1]} for ${ordinal(FIELD_SIZE)}. Climb the leaderboard one race at a time.` },
 ];
 
+const BETA_STEPS = [
+  { n: '1', title: 'Get an invite code', text: 'The Beta season is invite-only while we test. The team and community share codes on X.' },
+  { n: '2', title: 'Connect MetaMask', text: 'Sign a free message to prove the wallet is yours. No gas, and no funds move.' },
+  { n: '3', title: 'Claim your Beta pass', text: 'Mint the free Beta NFT on Robinhood Chain. You pay only the network gas. One per wallet.' },
+  { n: '4', title: 'Race', text: `Run up to ${DAILY_RACE_LIMIT} races a day against bots or other players and climb the leaderboard.` },
+];
+
+const FAQ = [
+  { q: 'Is the Beta pass really free?', a: 'Yes. There is no mint price. The only cost is the small network fee (gas) that every transaction on Robinhood Chain needs, paid in ETH.' },
+  { q: 'Why do I need ETH on Robinhood Chain?', a: 'Minting is a blockchain transaction, and gas is paid in ETH on that chain. Keep a small amount in your wallet before you mint. MetaMask will offer to add the network for you.' },
+  { q: 'What does the Beta pass do?', a: 'It unlocks racing in the test season, and your racer wears it on the track. It is a test pass: we make no promises about future rewards or value.' },
+  { q: 'Can I sell or transfer it?', a: 'It is a normal NFT, so you can. The game checks that your own wallet minted a pass, so buying one does not let someone else in, and invited players still mint their own.' },
+  { q: 'Is there a $PANG token?', a: 'Not yet. $PANG launches only after the NFT mints. Until we announce it on our official channels, anything presented as $PANG is not ours.' },
+  { q: 'Where do I find an invite code?', a: 'Follow Pangs Rally on X. We share codes there as places open up. Each code has a limited number of places.' },
+];
+
 const TRACKS = [
   { name: 'Forest', icon: '🌲', img: '/forest_track.webp', live: true, text: 'Soft grass and a fast, straight run.' },
   { name: 'Desert', icon: '🏜️', img: '/desert_track.webp', live: false, text: 'Heat haze and shifting sand.' },
@@ -30,7 +46,7 @@ const TRACKS = [
 ];
 
 const ROADMAP = [
-  { tag: 'Now', title: 'Test Season', text: 'Free races with MetaMask, season points and a public leaderboard.' },
+  { tag: 'Now', title: 'Test Season', text: 'Invite-only races with a free Beta pass, season points and a public leaderboard.' },
   { tag: 'Next', title: 'Genesis Mint', text: '2,222 Racing Pangolins, each with its own body, weather and racing stats.' },
   { tag: 'After the mint', title: '$PANG', text: 'The game token launches only after the NFT mints. There is no token today.' },
   { tag: 'Later', title: 'The Laboratory', text: 'Breeding opens, and a new generation of pangolins joins the track.' },
@@ -62,7 +78,7 @@ export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision
             </h1>
             <p className="ld-lead">
               Pangs Rally is a racing game for Pangolin NFTs. Ten racers sprint, curl into armoured balls and roll for the line.
-              The test season is open to everyone: connect MetaMask, race for free and earn your place on the leaderboard before the Genesis mint.
+              The Beta season is invite-only for now: connect MetaMask, claim your free Beta pass and earn your place on the leaderboard before the Genesis mint.
             </p>
             <div className="ld-actions">
               {primary}
@@ -71,7 +87,7 @@ export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision
             <dl className="ld-stats">
               <div><dt>{FIELD_SIZE}</dt><dd>racers per race</dd></div>
               <div><dt>{DAILY_RACE_LIMIT}</dt><dd>free races a day</dd></div>
-              <div><dt>0</dt><dd>gas to play</dd></div>
+              <div><dt>Free</dt><dd>Beta pass, gas only</dd></div>
               <div><dt>400 m</dt><dd>of pure sprint</dd></div>
             </dl>
           </div>
@@ -126,6 +142,43 @@ export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision
         </div>
       </section>
 
+      {/* ---------- Beta season ---------- */}
+      <section className="ld-section ld-alt" id="beta">
+        <div className="ld-wrap">
+          <div className="ld-head">
+            <span className="ld-eyebrow">Beta season</span>
+            <h2>How to join the Beta.</h2>
+            <p>Four short steps from invite code to the starting line.</p>
+          </div>
+          <ol className="ld-beta-steps">
+            {BETA_STEPS.map(b => (
+              <li key={b.n}>
+                <span className="ld-beta-n">{b.n}</span>
+                <h3>{b.title}</h3>
+                <p>{b.text}</p>
+              </li>
+            ))}
+          </ol>
+          <div className="ld-beta-note">
+            <img src="/beta/beta-pass.webp" alt="The Pangs Rally Beta pass" loading="lazy" />
+            <div>
+              <h3>Before you mint</h3>
+              <p>Have a little ETH on <strong>Robinhood Chain</strong> for gas. The Beta pass itself costs nothing, but every blockchain transaction needs a small network fee.</p>
+              <p>It is a test pass for the test season. We make no promises about rewards or value, and only invited wallets can mint.</p>
+            </div>
+          </div>
+          <div className="ld-faq">
+            <h3>Questions</h3>
+            {FAQ.map(f => (
+              <details key={f.q}>
+                <summary>{f.q}</summary>
+                <p>{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ---------- Tracks ---------- */}
       <section className="ld-section">
         <div className="ld-wrap">
@@ -171,7 +224,7 @@ export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision
       <section className="ld-final">
         <div className="ld-wrap ld-final-body">
           <h2>Your lane is waiting.</h2>
-          <p>Connect MetaMask, sign a free message, and run your first race in under a minute.</p>
+          <p>Get an invite code, claim your free Beta pass, and run your first race in a few minutes.</p>
           {primary}
         </div>
       </section>

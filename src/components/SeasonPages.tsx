@@ -88,6 +88,7 @@ export function BetaMintModal({ onMint, onClose }: { onMint: (onStep: (s: 'vouch
         <img className="beta-modal-art" src="/beta/beta-pass.webp" alt="Pangs Rally Beta pass" />
         <h3>Claim your Beta pass</h3>
         <p>Every test season racer holds the <strong>Pangs Rally Beta</strong> NFT. It is free: you only pay the network gas on Robinhood Chain. One per wallet.</p>
+        <p className="beta-modal-hint">Make sure your wallet has a little ETH on Robinhood Chain for gas. MetaMask will offer to add the network.</p>
         <div className="season-modal-actions">
           <button className="btn btn-primary" disabled={busy || step === 'done'} onClick={async () => {
             const okMint = await onMint(s => setStep(s));
