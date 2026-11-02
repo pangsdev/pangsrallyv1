@@ -2,7 +2,7 @@
  * Browser client for the test-season server (supabase/functions/test-season).
  * Dev talks to the Vite stand-in at /api/test-season; production to the Edge Function.
  */
-import { BrowserProvider } from 'ethers';
+import { BrowserProvider, Contract } from 'ethers';
 import { signInMessage, type TestRacer, type TestRaceResult } from '../race/testSeason';
 
 /** The Supabase project's public URL (not a secret). Used when the host sets no VITE_SUPABASE_URL. */
@@ -24,7 +24,16 @@ export interface PlayerStatus {
   podiums: number;
   rank: number | null;
   resetsAt: string;
+  /** Test season Beta pass (free NFT, gas only). When required and not minted, racing is locked. */
+  beta: { required: boolean; minted: boolean; contract: string | null; chainId: number | null };
 }
+
+/** Robinhood Chain, where the Beta pass lives. */
+const BETA_CHAIN = {
+  chainName: 'Robinhood Chain',
+  rpcUrls: ['https://rpc.mainnet.chain.robinhood.com'],
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+};
 
 export interface RacePlayer {
   wallet: string;
@@ -165,6 +174,48 @@ export async function signInWithWallet(askInvite: (reason: string) => Promise<st
       if (!inviteCode) throw new ApiError(0, 'invite_cancelled', 'The test season is invite-only. Ask the Pangs Rally team for a code.');
     }
   }
+}
+
+/** Switch MetaMask to the Beta pass chain, adding it first if the wallet does not know it. */
+async function useChain(eth: { request(a: { method: string; params?: unknown[] }): Promise<unknown> }, chainId: number) {
+  const hex = `0x${chainId.toString(16)}`;
+  try {
+    await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hex }] });
+  } catch (e) {
+    if ((e as { code?: number })?.code !== 4902) throw e;
+    await eth.request({ method: 'wallet_addEthereumChain', params: [{ chainId: hex, ...BETA_CHAIN }] });
+  }
+}
+
+/** Mints the free Beta pass (the player pays only gas) and returns the refreshed status. */
+export async function mintBetaPass(onStep: (step: 'voucher' | 'chain' | 'confirm' | 'pending') => void): Promise<PlayerStatus> {
+  const eth = (window as unknown as { ethereum?: { request(a: { method: string; params?: unknown[] }): Promise<unknown> } }).ethereum;
+  if (!eth) throw new ApiError(0, 'no_wallet', 'No wallet found. Install MetaMask to mint your Beta pass.');
+  onStep('voucher');
+  const { contract, chainId, voucher } = await call<{ contract: string; chainId: number; voucher: string }>('beta-voucher');
+  onStep('chain');
+  try {
+    await useChain(eth, chainId);
+  } catch {
+    throw new ApiError(0, 'wrong_chain', 'Switch your wallet to Robinhood Chain to mint the Beta pass.');
+  }
+  const signer = await new BrowserProvider(eth as never).getSigner();
+  const beta = new Contract(contract, ['function mint(bytes voucher)', 'function hasMinted(address) view returns (bool)'], signer);
+  if (!(await beta.hasMinted(await signer.getAddress()))) {
+    onStep('confirm');
+    let tx: { wait(): Promise<unknown> };
+    try {
+      tx = await beta.mint(voucher);
+    } catch (e) {
+      const err = e as { code?: string; shortMessage?: string };
+      if (err.code === 'ACTION_REJECTED') throw new ApiError(0, 'mint_rejected', 'Mint cancelled. Your Beta pass is free; you only pay gas.');
+      if (err.code === 'INSUFFICIENT_FUNDS') throw new ApiError(0, 'no_gas', 'You need a little ETH on Robinhood Chain to pay the gas.');
+      throw new ApiError(0, 'mint_failed', err.shortMessage || 'The mint did not go through. Please try again.');
+    }
+    onStep('pending');
+    await tx.wait();
+  }
+  return call<PlayerStatus>('me');
 }
 
 export const testSeason = {

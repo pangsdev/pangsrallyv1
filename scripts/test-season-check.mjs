@@ -11,6 +11,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { Wallet, verifyMessage } from 'ethers';
 import { handle, signInMessage } from '../supabase/functions/test-season/core.ts';
 import { createMemoryStore } from '../supabase/functions/test-season/memoryStore.ts';
+import { createBetaGate } from '../supabase/functions/test-season/beta.ts';
 import { runTestRace, DAILY_RACE_LIMIT, FIELD_SIZE, ONLINE_WAIT_SECONDS, POINTS_BY_POSITION } from '../supabase/functions/test-season/race/testSeason.ts';
 
 let clock = Date.parse('2026-11-02T12:00:00Z');
@@ -24,6 +25,7 @@ const deps = {
   now: () => new Date(clock),
   unlimitedWallets: new Set([owner.address.toLowerCase()]),
   inviteRequired: true,
+  beta: null,
 };
 const call = (action, body = {}, token = null) => handle(deps, action, { action, ...body }, token);
 
@@ -216,6 +218,38 @@ ok('login with a real wallet signature');
   const playerWin = wins[4] / N;
   assert.ok(playerWin > 0.07 && playerWin < 0.13, `player win rate ${playerWin}`);
   ok(`fair field: player wins ${(playerWin * 100).toFixed(1)}% of ${N} races (expected ~10%)`);
+}
+
+
+// --- Beta pass gate ----------------------------------------------------------
+{
+  const signerKey = Wallet.createRandom();
+  const real = createBetaGate((n) => ({ BETA_CONTRACT: '0x00000000000000000000000000000000000000b7', BETA_SIGNER_KEY: signerKey.privateKey, BETA_CHAIN_ID: '4663' })[n]);
+  const onChain = new Set();
+  deps.beta = { ...real, hasMinted: async (w) => onChain.has(w.toLowerCase()) };   // chain stubbed, signing real
+
+  const eve = Wallet.createRandom();
+  const t = await signIn(eve);
+  const me = (await call('me', {}, t)).body;
+  assert.deepEqual([me.beta.required, me.beta.minted, me.beta.chainId], [true, false, 4663]);
+  assert.equal((await call('bot-race', { terrain: 'Forest' }, t)).body.error, 'beta_required');
+  assert.equal((await call('online-join', { terrain: 'Forest' }, t)).body.error, 'beta_required');
+  ok('with the gate on, racing needs the Beta pass');
+
+  const v = (await call('beta-voucher', {}, t)).body;
+  const { solidityPackedKeccak256, getBytes } = await import('ethers');
+  const hash = solidityPackedKeccak256(['string', 'uint256', 'address', 'address'], ['PangsRallyBeta', 4663, v.contract, eve.address.toLowerCase()]);
+  assert.equal(verifyMessage(getBytes(hash), v.voucher), signerKey.address);
+  assert.equal((await call('beta-voucher', {}, null)).status, 401);
+  ok('voucher is signed by the server key for this wallet only (same hash as the contract)');
+
+  onChain.add(eve.address.toLowerCase());
+  assert.equal((await call('me', {}, t)).body.beta.minted, true);
+  assert.equal((await call('bot-race', { terrain: 'Forest' }, t)).status, 200);
+  onChain.clear();
+  assert.equal((await call('me', {}, t)).body.beta.minted, true, 'remembered after the first sighting');
+  ok('after the mint the player races, and the server remembers it');
+  deps.beta = null;
 }
 
 console.log(`\n${checks} checks passed.`);

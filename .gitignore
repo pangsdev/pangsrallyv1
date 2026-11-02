@@ -15,3 +15,6 @@ smart-contracts/check_priv_key.mjs
 smart-contracts/scripts/setup_beta.cjs
 smart-contracts/.env
 backend/*.db
+
+# Local DB backups (wallet data)
+backups/

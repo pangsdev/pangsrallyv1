@@ -8,6 +8,7 @@ import type { EntryRow, LeaderRow, RaceRow, Store } from './core.ts';
 /** `invites`: code → places, e.g. { 'DEV-RALLY': 1000 } so dev sign-in works. */
 export function createMemoryStore(invites: Record<string, number> = {}): Store {
   const codes = new Map(Object.entries(invites).map(([code, max]) => [code, { max, uses: 0 }]));
+  const betaMinted = new Set<string>();
   const sessions = new Map<string, { wallet: string; expiresAt: number }>();
   const players = new Map<string, { created: string; lastSeen: string }>();
   const races = new Map<string, RaceRow>();
@@ -38,6 +39,12 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
       const now = new Date().toISOString();
       players.set(wallet, { created: now, lastSeen: now });
       return 'joined';
+    },
+    async getBetaMinted(wallet) {
+      return betaMinted.has(wallet);
+    },
+    async setBetaMinted(wallet) {
+      betaMinted.add(wallet);
     },
     async countEntriesOnDay(wallet, day) {
       return entries.filter(e => e.wallet === wallet && e.day === day).length;

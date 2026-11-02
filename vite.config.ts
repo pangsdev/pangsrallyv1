@@ -5,6 +5,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { verifyMessage } from 'ethers'
 import { handle, type Deps } from './supabase/functions/test-season/core.ts'
 import { createMemoryStore } from './supabase/functions/test-season/memoryStore.ts'
+import { createBetaGate } from './supabase/functions/test-season/beta.ts'
 
 const MAX_CHARS = 160
 
@@ -112,6 +113,8 @@ function testSeasonDevPlugin(env: Record<string, string>) {
     now: () => new Date(),
     unlimitedWallets: new Set((env.TEST_UNLIMITED_WALLETS || '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean)),
     inviteRequired: env.TEST_OPEN_SIGNUP !== '1',
+    // Off in dev unless BETA_CONTRACT and BETA_SIGNER_KEY are in .env.
+    beta: createBetaGate((name) => env[name]),
   }
 
   const handler = async (req: IncomingMessage, res: ServerResponse, next: () => void) => {

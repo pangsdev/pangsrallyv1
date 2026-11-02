@@ -9,8 +9,8 @@ import { unlockAnnounce } from './race/announce';
 import './App.css'
 import RaceLobby from './components/RaceLobby';
 import Landing from './components/Landing';
-import { SeasonLeaderboard, MyRaces, SignInGate, NoWalletModal, InviteCodeModal } from './components/SeasonPages';
-import { clearSession, getSession, hasWallet, signInWithWallet, testSeason, type PlayerStatus } from './testSeason/api';
+import { SeasonLeaderboard, MyRaces, SignInGate, NoWalletModal, InviteCodeModal, BetaMintModal } from './components/SeasonPages';
+import { clearSession, getSession, hasWallet, mintBetaPass, signInWithWallet, testSeason, type PlayerStatus } from './testSeason/api';
 import { shortWallet } from './race/testSeason';
 
 // Heavy, rarely-visited views are split out of the initial bundle (the race rooms pull in PixiJS).
@@ -160,8 +160,8 @@ function App() {
   const [replayRaceId, setReplayRaceId] = useState<string | null>(null);
 
   const applyPlayer = (status: PlayerStatus) => {
-    const { wallet, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt } = status;
-    setPlayer({ wallet, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt });
+    const { wallet, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta } = status;
+    setPlayer({ wallet, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta });
     setWalletConnected(true);
     setFullWalletAddress(wallet);
     setWalletAddress(shortWallet(wallet));
@@ -187,6 +187,21 @@ function App() {
   const [inviteAsk, setInviteAsk] = useState<{ error: string; resolve: (code: string | null) => void } | null>(null);
   const askInvite = (error: string) => new Promise<string | null>(resolve => setInviteAsk({ error, resolve }));
 
+  const [betaOpen, setBetaOpen] = useState(false);
+  const needsBeta = (p: PlayerStatus | null) => !!p && p.beta?.required && !p.beta.minted;
+  const mintBeta = async (onStep: Parameters<typeof mintBetaPass>[0]) => {
+    try {
+      const status = await mintBetaPass(onStep);
+      applyPlayer(status);
+      showToast('Beta pass minted. Welcome to the starting line!', 'success');
+      setTimeout(() => setBetaOpen(false), 900);
+      return true;
+    } catch (e: any) {
+      showToast(e?.message || 'The mint did not go through. Please try again.', 'error');
+      return false;
+    }
+  };
+
   const signIn = async (): Promise<PlayerStatus | null> => {
     if (player) return player;
     if (!hasWallet()) {
@@ -198,6 +213,7 @@ function App() {
       const status = await signInWithWallet(askInvite);
       applyPlayer(status);
       showToast('Wallet connected. Welcome to the test season!', 'success');
+      if (needsBeta(status)) setBetaOpen(true);
       return status;
     } catch (e: any) {
       showToast(e?.message || 'Wallet connection failed. Please try again.', 'error');
@@ -1170,6 +1186,7 @@ function App() {
       </div>
 
       {noWalletHelp && <NoWalletModal onClose={() => setNoWalletHelp(false)} />}
+      {betaOpen && <BetaMintModal onMint={mintBeta} onClose={() => setBetaOpen(false)} />}
       {inviteAsk && (
         <InviteCodeModal
           error={inviteAsk.error}
@@ -1431,6 +1448,7 @@ function App() {
               categoryInfo={activeCategoryInfo}
               player={player}
               onSelectMode={(mode) => {
+                if (needsBeta(player)) { setBetaOpen(true); return; }
                 unlockAnnounce();
                 setOnlineRaceId(null);
                 setRaceKey(k => k + 1);

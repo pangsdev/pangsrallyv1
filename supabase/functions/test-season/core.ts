@@ -54,6 +54,9 @@ export interface Store {
   playerExists(wallet: string): Promise<boolean>;
   /** Registers a new wallet and takes one place on the code, atomically. */
   joinWithInvite(wallet: string, code: string): Promise<'exists' | 'joined' | 'invalid'>;
+  /** Cached "this wallet minted its Beta pass" flag, so the chain is asked only until it is true. */
+  getBetaMinted(wallet: string): Promise<boolean>;
+  setBetaMinted(wallet: string, now: Date): Promise<void>;
   countEntriesOnDay(wallet: string, day: string): Promise<number>;
   insertRace(race: RaceRow): Promise<void>;
   deleteRace(id: string): Promise<void>;
@@ -85,6 +88,17 @@ export interface Deps {
   unlimitedWallets: Set<string>;
   /** New wallets need an invite code to join (existing players never do). */
   inviteRequired: boolean;
+  /** Beta pass gate: when set, racing needs the free Beta NFT (contracts/PangsRallyBeta.sol). */
+  beta: BetaGate | null;
+}
+
+export interface BetaGate {
+  contract: string;
+  chainId: number;
+  /** Server signature that lets `wallet` mint (see PangsRallyBeta.voucherHash). */
+  signVoucher(wallet: string): Promise<string>;
+  /** Reads hasMinted(wallet) on chain. */
+  hasMinted(wallet: string): Promise<boolean>;
 }
 
 export interface Reply {
@@ -119,6 +133,7 @@ export async function handle(deps: Deps, action: string, body: Record<string, un
       case 'race': return ok(await replay(deps, str(body.raceId)));
       case 'history': return ok(await history(deps, await requireWallet(deps, token)));
       case 'leaderboard': return ok(await leaderboard(deps));
+      case 'beta-voucher': return ok(await betaVoucher(deps, await requireWallet(deps, token)));
       default: throw new HttpError(404, 'unknown_action', 'Unknown action.');
     }
   } catch (err) {
@@ -202,7 +217,34 @@ async function me(deps: Deps, wallet: string) {
     podiums: row?.podiums ?? 0,
     rank: index >= 0 ? index + 1 : null,
     resetsAt: nextUtcMidnight(now),
+    beta: deps.beta
+      ? { required: true, minted: await betaMinted(deps, wallet), contract: deps.beta.contract, chainId: deps.beta.chainId }
+      : { required: false, minted: false, contract: null, chainId: null },
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* Beta pass (free NFT, gas only)                                      */
+/* ------------------------------------------------------------------ */
+
+async function betaMinted(deps: Deps, wallet: string): Promise<boolean> {
+  if (!deps.beta) return true;
+  if (await deps.store.getBetaMinted(wallet)) return true;
+  let minted = false;
+  try { minted = await deps.beta.hasMinted(wallet); } catch (err) { console.error('beta hasMinted', err); }
+  if (minted) await deps.store.setBetaMinted(wallet, deps.now());
+  return minted;
+}
+
+async function requireBeta(deps: Deps, wallet: string) {
+  if (!(await betaMinted(deps, wallet))) {
+    throw new HttpError(403, 'beta_required', 'Mint your free Beta pass to start racing. It costs only gas.');
+  }
+}
+
+async function betaVoucher(deps: Deps, wallet: string) {
+  if (!deps.beta) throw new HttpError(404, 'beta_off', 'The Beta pass is not needed right now.');
+  return { contract: deps.beta.contract, chainId: deps.beta.chainId, voucher: await deps.beta.signVoucher(wallet) };
 }
 
 /* ------------------------------------------------------------------ */
@@ -211,6 +253,7 @@ async function me(deps: Deps, wallet: string) {
 
 async function botRace(deps: Deps, wallet: string, terrain: string) {
   checkTerrain(terrain);
+  await requireBeta(deps, wallet);
   const now = deps.now();
   const id = deps.uuid();
   const seed = `bot-${id}`;
@@ -242,6 +285,7 @@ async function botRace(deps: Deps, wallet: string, terrain: string) {
 
 async function onlineJoin(deps: Deps, wallet: string, terrain: string) {
   checkTerrain(terrain);
+  await requireBeta(deps, wallet);
   // Already waiting in a room → go back to it instead of spending another race.
   for (const room of await deps.store.openRoomsFor(wallet)) {
     const settled = await settleIfDue(deps, room);

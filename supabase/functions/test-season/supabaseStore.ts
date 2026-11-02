@@ -1,4 +1,4 @@
-/** Postgres-backed Store (tables from supabase/migrations/003_test_season.sql and 004_test_invites.sql). */
+/** Postgres-backed Store (tables from supabase/migrations/003_test_season.sql, 004_test_invites.sql, 005_test_beta.sql). */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { EntryRow, LeaderRow, RaceRow, Store } from './core.ts';
 import { sortLeaderboard } from './memoryStore.ts';
@@ -31,6 +31,13 @@ export function createSupabaseStore(db: SupabaseClient): Store {
       if (res.error?.code === UNIQUE_VIOLATION) return 'exists';
       if (res.error) throw new Error(res.error.message);
       return res.data as 'exists' | 'joined' | 'invalid';
+    },
+    async getBetaMinted(wallet) {
+      const row = must(await db.from('test_players').select('beta_minted_at').eq('wallet', wallet).maybeSingle()) as { beta_minted_at: string | null } | null;
+      return !!row?.beta_minted_at;
+    },
+    async setBetaMinted(wallet, now) {
+      must(await db.from('test_players').update({ beta_minted_at: now.toISOString() }).eq('wallet', wallet));
     },
     async countEntriesOnDay(wallet, day) {
       const res = await db.from('test_race_entries').select('race_id', { count: 'exact', head: true }).eq('wallet', wallet).eq('day', day);

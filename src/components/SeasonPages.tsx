@@ -77,6 +77,29 @@ export function InviteCodeModal({ error, onSubmit, onCancel }: { error: string; 
   );
 }
 
+/** Mint step after the invite: the free Beta pass (gas only) unlocks racing. */
+export function BetaMintModal({ onMint, onClose }: { onMint: (onStep: (s: 'voucher' | 'chain' | 'confirm' | 'pending') => void) => Promise<boolean>; onClose: () => void }) {
+  const [step, setStep] = useState<'idle' | 'voucher' | 'chain' | 'confirm' | 'pending' | 'done'>('idle');
+  const busy = step !== 'idle' && step !== 'done';
+  const label = { idle: 'Mint my Beta pass', voucher: 'Preparing…', chain: 'Switch to Robinhood Chain…', confirm: 'Confirm in your wallet…', pending: 'Minting…', done: 'Minted!' }[step];
+  return (
+    <div className="season-modal-backdrop" onClick={busy ? undefined : onClose}>
+      <div className="season-modal glass-panel beta-modal" onClick={e => e.stopPropagation()}>
+        <img className="beta-modal-art" src="/beta/beta-pass.webp" alt="Pangs Rally Beta pass" />
+        <h3>Claim your Beta pass</h3>
+        <p>Every test season racer holds the <strong>Pangs Rally Beta</strong> NFT. It is free: you only pay the network gas on Robinhood Chain. One per wallet.</p>
+        <div className="season-modal-actions">
+          <button className="btn btn-primary" disabled={busy || step === 'done'} onClick={async () => {
+            const okMint = await onMint(s => setStep(s));
+            setStep(okMint ? 'done' : 'idle');
+          }}>{label}</button>
+          {!busy && <button className="btn btn-outline" onClick={onClose}>Later</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const medal = (pos: number | null) => pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : pos ? `#${pos}` : '⏳';
 
 /** Test-season leaderboard (points from every finish). */

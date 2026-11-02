@@ -25,6 +25,7 @@ Main app is a view-state monolith: `src/App.tsx`. Race engine lives in `src/race
 | No CA | Do not add a contract-address ticker/copy box on landing or Vision |
 | Voice | No `window.speechSynthesis`. Owner called browser TTS “robotic / disgusting” |
 | Voice language | English race-caller only. No Turkish voice, ever |
+| Beta pass | Test season racers must mint the free **Pangs Rally Beta** NFT (gas only, 1 per wallet) after the invite. `smart-contracts/contracts/PangsRallyBeta.sol`: mint needs a server-signed voucher (`beta-voucher` action, key `BETA_SIGNER_KEY`), so only invited wallets can mint; the game checks `hasMinted`. Gate is **off** until `BETA_CONTRACT` + `BETA_SIGNER_KEY` are set as function secrets. Art: `scripts/make-beta-nft.mjs` → `design/beta-nft/`. Contract tests: copy to a non-iCloud folder (Desktop `smart-contracts/node_modules` is iCloud-evicted and Hardhat hangs). |
 | Theme | **Dark only.** The light theme and its toggle were removed (Nov 2026); `index.html` pins `data-theme="dark"`. |
 | Invites | Test season is invite-only for **new** wallets (registered wallets never need a code). Codes have N places: `npm run invite:create -- --uses 30 --note "…"`. Share link `https://pangsrally.com/?invite=CODE` pre-fills it. `TEST_OPEN_SIGNUP=1` (function secret) turns invites off. Dev code: `DEV-RALLY`. |
 | Sign-in | **Test season: MetaMask only.** Connect + sign a free message (no gas). Guest Mode / Mint Rookie were removed. No wallet → modal (desktop: install MetaMask; phone: open in the MetaMask app browser). |
