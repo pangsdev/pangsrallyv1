@@ -153,59 +153,71 @@
 @keyframes ld-float { 50% { transform: translate(-50%, calc(-50% - 14px)); } }
 .ld-card-main img { position: absolute; inset: 0; opacity: 0; transition: opacity 0.6s ease; }
 .ld-card-main img.on { opacity: 1; }
-.ld-ball {
+/* Runner lane under the card fan. One 7 s loop, all on the compositor:
+   0-42% the racer jogs in on its feet, 42-50% it curls (cross-fade to the ball),
+   50-88% the ball rolls off to the right, then it fades and starts again. */
+.ld-lane {
   position: absolute;
   z-index: 3;
-  width: clamp(70px, 7vw, 104px);
-  right: 6%;
-  bottom: 4%;
-  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.35));
-  animation: ld-spin 5s linear infinite;
+  left: 0; right: 0;
+  bottom: -2%;
+  height: var(--runner-h);
+  --runner-h: clamp(64px, 6.4vw, 96px);
+  --lane: clamp(300px, 36vw, 560px);
+  pointer-events: none;
 }
-@keyframes ld-spin { to { transform: rotate(360deg); } }
-
-/* ---------- Racer strip ---------- */
-.ld-strip {
-  overflow: hidden;
-  padding: 1.4rem 0;
-  border-block: 1px solid var(--border-color);
-  background: var(--ld-section-bg);
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+.ld-lane::after { /* soft ground shadow line */
+  content: '';
+  position: absolute;
+  left: 8%; right: 8%; bottom: -6px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.28), transparent);
 }
-.ld-strip-track {
-  display: flex;
-  gap: 1rem;
-  width: max-content;
-  animation: ld-marquee 40s linear infinite;
+.ld-mover {
+  position: absolute;
+  left: 0; bottom: 0;
+  height: 100%;
+  width: calc(var(--runner-h) * 1.71);
+  animation: ld-move 7s linear infinite;
 }
-.ld-strip { display: flex; flex-direction: column; gap: 1rem; }
-.ld-strip-track.reverse { animation-direction: reverse; animation-duration: 48s; }
-.ld-strip-track > img, .ld-tile-ball {
-  flex: none;
-  width: 132px; height: 132px;
-  object-fit: cover;
-  border-radius: 18px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-dark);
+.ld-runner, .ld-ball {
+  position: absolute;
+  bottom: 0;
+  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.35));
 }
-.ld-strip-track > img.ld-tile-card { width: 96px; object-position: center top; }
-.ld-tile-ball {
-  display: grid;
-  place-items: center;
-  background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.16), transparent 65%), var(--tile, #2a1a55);
+.ld-runner {
+  left: 0;
+  width: 100%;
+  animation: ld-runner 7s linear infinite, ld-jog 0.36s ease-in-out infinite;
 }
-.ld-tile-ball img { width: 68%; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.35)); }
-.ld-tile-ball.b-aurora { --tile: linear-gradient(135deg, #1f8fa0, #5b3fc4); }
-.ld-tile-ball.b-gold { --tile: linear-gradient(135deg, #8a6418, #3a2a0a); }
-.ld-tile-ball.b-red { --tile: linear-gradient(135deg, #8a1f2a, #3a0c12); }
-.ld-tile-ball.b-blue { --tile: linear-gradient(135deg, #1d6f8a, #0c2f3d); }
-.ld-tile-ball.b-rainbow { --tile: linear-gradient(135deg, #c04a8a, #4a5bd0, #2fb58a); }
-.ld-tile-ball.b-silver { --tile: linear-gradient(135deg, #6f7682, #2b2f36); }
-.ld-tile-ball.b-black { --tile: linear-gradient(135deg, #3a3550, #111018); }
-.ld-tile-ball.b-brown { --tile: linear-gradient(135deg, #8a5a2a, #3a240f); }
-.ld-tile-ball.b-albino { --tile: linear-gradient(135deg, #d9cfc6, #8f857e); }
-@keyframes ld-marquee { to { transform: translateX(calc(-50% - 0.5rem)); } }
+.ld-ball {
+  left: 50%;
+  width: var(--runner-h);
+  margin-left: calc(var(--runner-h) / -2);
+  animation: ld-roll 7s linear infinite;
+}
+@keyframes ld-move {
+  0%   { transform: translateX(-10%); opacity: 0; }
+  6%   { opacity: 1; }
+  42%  { transform: translateX(calc(var(--lane) * 0.34)); }
+  50%  { transform: translateX(calc(var(--lane) * 0.38)); }
+  88%  { transform: translateX(calc(var(--lane) * 0.92)); opacity: 1; }
+  96%, 100% { transform: translateX(calc(var(--lane) * 0.98)); opacity: 0; }
+}
+/* NFT art faces left; the race runs left to right. */
+@keyframes ld-runner {
+  0%, 42% { opacity: 1; transform: scaleX(-1); }
+  50%, 100% { opacity: 0; transform: scaleX(-0.55) scaleY(0.55) translateY(40%); }
+}
+@keyframes ld-jog {
+  50% { translate: 0 -6%; rotate: 1.5deg; }
+}
+@keyframes ld-roll {
+  0%, 42% { opacity: 0; transform: scale(0.5) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(90deg); }
+  88%, 100% { opacity: 1; transform: scale(1) rotate(560deg); }
+}
 
 /* ---------- Generic section ---------- */
 .ld-section { padding: clamp(70px, 9vw, 120px) 0; }
@@ -386,22 +398,24 @@
   .ld-lead { margin-inline: auto; }
   .ld-actions { justify-content: center; }
   .ld-stats { grid-template-columns: repeat(2, auto); justify-content: center; text-align: center; }
-  .ld-hero-art { height: 320px; }
+  .ld-hero-art { height: 360px; }
+  .ld-lane { --runner-h: 60px; --lane: calc(100vw - 2rem - 103px); }
   .ld-card { width: 210px; }
   .ld-steps { grid-template-columns: 1fr; }
   .ld-banner-shade { background: rgba(11, 6, 20, 0.8); }
 }
 @media (max-width: 560px) {
   .ld-actions .btn { width: 100%; }
-  .ld-hero-art { height: 260px; }
+  .ld-hero-art { height: 310px; }
   .ld-card { width: 170px; }
   .ld-tracks, .ld-road { grid-template-columns: 1fr; }
   .ld-track { min-height: 200px; }
-  .ld-strip-track > img, .ld-tile-ball { width: 96px; height: 96px; }
-  .ld-strip-track > img.ld-tile-card { width: 70px; }
   .ld-points { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .ld-footer nav { margin-left: 0; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ld-strip-track, .ld-ball, .ld-card-main, .ld-dot { animation: none; }
+  .ld-card-main, .ld-dot, .ld-mover, .ld-runner, .ld-ball { animation: none; }
+  .ld-ball { display: none; }
+  .ld-mover { transform: translateX(calc(var(--lane) * 0.3)); }
+  .ld-runner { transform: scaleX(-1); }
 }
