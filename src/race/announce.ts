@@ -60,6 +60,40 @@ export function unlockAnnounce() {
   void loadManifest();
 }
 
+/**
+ * Start-light beep for the 3-2-1 countdown ("dit, dit, dit, diiit"), synthesised with Web Audio so it
+ * needs no file. Kept quiet under the caller and silent when the announcer is muted.
+ */
+export function playStartBeep(kind: 'tick' | 'go') {
+  if (isAnnouncerMuted()) return;
+  const ac = audioContext();
+  if (!ac || ac.state !== 'running') return;
+  const t = ac.currentTime + 0.01;
+  const len = kind === 'go' ? 0.62 : 0.16;
+  const peak = kind === 'go' ? 0.085 : 0.07;
+  const out = ac.createGain();
+  out.gain.setValueAtTime(0, t);
+  out.gain.linearRampToValueAtTime(peak, t + 0.012);            // fast attack, no click
+  out.gain.setValueAtTime(peak, t + len - 0.06);
+  out.gain.exponentialRampToValueAtTime(0.0001, t + len);        // soft release
+  // A mellow tone: a triangle wave with a quiet octave on top, through a low-pass.
+  const tone = ac.createBiquadFilter();
+  tone.type = 'lowpass';
+  tone.frequency.value = 2600;
+  tone.connect(out).connect(ac.destination);
+  const freq = kind === 'go' ? 1046.5 : 523.25;                   // C6 for GO, C5 for the ticks
+  for (const [mult, level, type] of [[1, 1, 'triangle'], [2, 0.18, 'sine']] as const) {
+    const osc = ac.createOscillator();
+    const g = ac.createGain();
+    osc.type = type;
+    osc.frequency.value = freq * mult;
+    g.gain.value = level;
+    osc.connect(g).connect(tone);
+    osc.start(t);
+    osc.stop(t + len + 0.02);
+  }
+}
+
 export function stopAnnounce() {
   for (const src of current) {
     try { src.stop(); } catch { /* already stopped */ }

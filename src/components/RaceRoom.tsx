@@ -4,7 +4,7 @@ import { RaceSimulation, DEFAULT_RACE_DISTANCE, type RacerSim } from '../race/si
 import { BALL_SPRITES, type BodyColor } from '../race/sprites';
 import { getTheme } from '../race/themes';
 import { considerCall, createCommentaryState, type CommentaryCall } from '../race/commentary';
-import { isAnnouncerMuted, setAnnouncerMuted, speakCall, stopAnnounce, warmCall } from '../race/announce';
+import { isAnnouncerMuted, playStartBeep, setAnnouncerMuted, speakCall, stopAnnounce, warmCall } from '../race/announce';
 import { LINES } from '../race/announceClips';
 import type { PublicRace } from '../testSeason/api';
 import '../race/race.css';
@@ -132,11 +132,13 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
     warmCall(LINES.lineUp(terrain));
     warmCall(LINES.off());
     tryCall(sim, 'countdown', 3);
+    playStartBeep('tick');
     let c = 3;
     const id = setInterval(() => {
       c -= 1;
       setCountdown(c);
       if (c > 0) tryCall(sim, 'countdown', c);
+      playStartBeep(c > 0 ? 'tick' : 'go');   // start lights: dit (3), dit (2), dit (1), diiit (GO)
       if (c <= 0) {
         clearInterval(id);
         sim.start();
