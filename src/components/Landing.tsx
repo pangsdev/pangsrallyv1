@@ -13,6 +13,28 @@ interface Props {
 
 // Only the ten public teasers ship before the mint.
 const TEASERS = Array.from({ length: 10 }, (_, i) => i + 1);
+const BALLS = ['aurora', 'gold', 'red', 'blue', 'rainbow', 'silver', 'black', 'brown', 'albino'];
+
+type Tile = { kind: 'teaser'; id: number } | { kind: 'ball'; body: string } | { kind: 'card'; src: string };
+// Two strip rows built from everything public before the mint: the ten teasers, every ball
+// colour, and the mystery / Beta Pass cards, mixed so no two neighbours look alike.
+const stripRow = (teasers: number[], balls: string[], cards: string[]): Tile[] => {
+  const row: Tile[] = [];
+  teasers.forEach((id, i) => {
+    row.push({ kind: 'teaser', id });
+    if (i % 2 === 1 && balls.length) row.push({ kind: 'ball', body: balls.shift()! });
+    if (i % 3 === 2 && cards.length) row.push({ kind: 'card', src: cards.shift()! });
+  });
+  return row;
+};
+const STRIP_TOP = stripRow([1, 6, 3, 9, 2, 8, 5, 10, 4, 7], BALLS.slice(0, 5), ['/strip/mystery.webp', '/strip/beta-pass.webp', '/strip/mystery.webp']);
+const STRIP_BOTTOM = stripRow([7, 4, 10, 2, 5, 1, 8, 3, 6, 9], BALLS.slice(4).concat(BALLS.slice(0, 1)), ['/strip/beta-pass.webp', '/strip/mystery.webp', '/strip/mystery.webp']);
+
+const tileView = (t: Tile, i: number) =>
+  t.kind === 'teaser' ? <img key={i} src={`/nft-images/${t.id}.webp`} alt="" loading="lazy" />
+  : t.kind === 'ball' ? <span key={i} className={`ld-tile-ball b-${t.body}`}><img src={`/sprites/ball_${t.body}.png`} alt="" loading="lazy" /></span>
+  : <img key={i} className="ld-tile-card" src={t.src} alt="" loading="lazy" />;
+
 const ordinal = (n: number) => `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`;
 
 const STEPS = [
@@ -81,7 +103,6 @@ export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision
             <div className="ld-card ld-card-main">
               {/* All ten stay mounted so the swap is a cross-fade, never an empty frame. */}
               {TEASERS.map(id => <img key={id} src={`/nft-images/${id}.webp`} alt="" className={id === hero ? 'on' : ''} />)}
-              <div className="ld-card-label">Racer #{hero}</div>
             </div>
             <img className="ld-ball" src="/sprites/ball_aurora.png" alt="" />
           </div>
@@ -90,11 +111,9 @@ export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision
 
       {/* ---------- Racer strip ---------- */}
       <section className="ld-strip" aria-label="Racers">
-        <div className="ld-strip-track">
-          {[...TEASERS, ...TEASERS].map((id, i) => (
-            <img key={i} src={`/nft-images/${id}.webp`} alt="" loading="lazy" />
-          ))}
-        </div>
+        {/* Each row is rendered twice so the -50% marquee loops seamlessly. */}
+        <div className="ld-strip-track">{[...STRIP_TOP, ...STRIP_TOP].map(tileView)}</div>
+        <div className="ld-strip-track reverse">{[...STRIP_BOTTOM, ...STRIP_BOTTOM].map(tileView)}</div>
       </section>
 
       {/* ---------- How it works ---------- */}
