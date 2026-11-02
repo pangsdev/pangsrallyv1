@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "bake:announcer": "node scripts/bake-announcer.mjs",
     "sync:server": "node scripts/sync-race-shared.mjs",
-    "test:season": "node scripts/test-season-check.mjs"
+    "test:season": "node scripts/test-season-check.mjs",
+    "invite:create": "node scripts/create-invite.mjs"
   },
   "dependencies": {
     "@pinata/sdk": "^2.1.0",

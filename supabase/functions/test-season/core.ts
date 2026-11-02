@@ -51,6 +51,9 @@ export interface Store {
   getSessionWallet(tokenHash: string, now: Date): Promise<string | null>;
   createSession(tokenHash: string, wallet: string, expiresAt: Date): Promise<void>;
   upsertPlayer(wallet: string, now: Date): Promise<void>;
+  playerExists(wallet: string): Promise<boolean>;
+  /** Registers a new wallet and takes one place on the code, atomically. */
+  joinWithInvite(wallet: string, code: string): Promise<'exists' | 'joined' | 'invalid'>;
   countEntriesOnDay(wallet: string, day: string): Promise<number>;
   insertRace(race: RaceRow): Promise<void>;
   deleteRace(id: string): Promise<void>;
@@ -80,6 +83,8 @@ export interface Deps {
   now(): Date;
   /** Wallets (lower-case) exempt from the daily limit, e.g. the owner while testing. */
   unlimitedWallets: Set<string>;
+  /** New wallets need an invite code to join (existing players never do). */
+  inviteRequired: boolean;
 }
 
 export interface Reply {
@@ -145,10 +150,23 @@ async function login(deps: Deps, body: Record<string, unknown>) {
   if (signer.toLowerCase() !== address.toLowerCase()) throw new HttpError(401, 'bad_signature', 'Signature does not match this wallet.');
 
   const wallet = address.toLowerCase();
+  if (deps.inviteRequired && !deps.unlimitedWallets.has(wallet) && !(await deps.store.playerExists(wallet))) {
+    const code = normalizeInvite(body.inviteCode);
+    if (!code) throw new HttpError(403, 'invite_required', 'The test season is invite-only. Enter your invite code to join.');
+    if (await deps.store.joinWithInvite(wallet, code) === 'invalid') {
+      throw new HttpError(403, 'invite_invalid', 'This invite code is not valid or has no places left.');
+    }
+  }
   await deps.store.upsertPlayer(wallet, now);
   const token = deps.randomHex(32);
   await deps.store.createSession(await deps.sha256Hex(token), wallet, new Date(now.getTime() + SESSION_DAYS * 86_400_000));
   return { token, ...(await me(deps, wallet)) };
+}
+
+/** Codes are shared by hand: ignore case, spaces and stray punctuation around the dashes. */
+export function normalizeInvite(v: unknown): string {
+  const code = String(v ?? '').toUpperCase().replace(/[^A-Z0-9-]/g, '').replace(/^-+|-+$/g, '');
+  return /^[A-Z0-9-]{4,32}$/.test(code) ? code : '';
 }
 
 async function requireWallet(deps: Deps, token: string | null): Promise<string> {

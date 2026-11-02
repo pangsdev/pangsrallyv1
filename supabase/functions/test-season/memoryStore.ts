@@ -1,11 +1,13 @@
 /**
  * In-memory Store for `npm run dev` and tests. Mirrors the uniqueness rules of
- * supabase/migrations/003_test_season.sql so limits behave like production.
+ * supabase/migrations/003_test_season.sql and 004_test_invites.sql so limits behave like production.
  * Data is lost when the dev server restarts.
  */
 import type { EntryRow, LeaderRow, RaceRow, Store } from './core.ts';
 
-export function createMemoryStore(): Store {
+/** `invites`: code → places, e.g. { 'DEV-RALLY': 1000 } so dev sign-in works. */
+export function createMemoryStore(invites: Record<string, number> = {}): Store {
+  const codes = new Map(Object.entries(invites).map(([code, max]) => [code, { max, uses: 0 }]));
   const sessions = new Map<string, { wallet: string; expiresAt: number }>();
   const players = new Map<string, { created: string; lastSeen: string }>();
   const races = new Map<string, RaceRow>();
@@ -24,6 +26,18 @@ export function createMemoryStore(): Store {
     async upsertPlayer(wallet, now) {
       const p = players.get(wallet);
       players.set(wallet, { created: p?.created ?? now.toISOString(), lastSeen: now.toISOString() });
+    },
+    async playerExists(wallet) {
+      return players.has(wallet);
+    },
+    async joinWithInvite(wallet, code) {
+      if (players.has(wallet)) return 'exists';
+      const c = codes.get(code);
+      if (!c || c.uses >= c.max) return 'invalid';
+      c.uses++;
+      const now = new Date().toISOString();
+      players.set(wallet, { created: now, lastSeen: now });
+      return 'joined';
     },
     async countEntriesOnDay(wallet, day) {
       return entries.filter(e => e.wallet === wallet && e.day === day).length;

@@ -9,7 +9,7 @@ import { unlockAnnounce } from './race/announce';
 import './App.css'
 import RaceLobby from './components/RaceLobby';
 import Landing from './components/Landing';
-import { SeasonLeaderboard, MyRaces, SignInGate, NoWalletModal } from './components/SeasonPages';
+import { SeasonLeaderboard, MyRaces, SignInGate, NoWalletModal, InviteCodeModal } from './components/SeasonPages';
 import { clearSession, getSession, hasWallet, signInWithWallet, testSeason, type PlayerStatus } from './testSeason/api';
 import { shortWallet } from './race/testSeason';
 
@@ -125,12 +125,6 @@ function App() {
   const [renameInput, setRenameInput] = useState('');
   const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'race-lobby' | 'bot-race' | 'online-race' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral' | 'replay'>('landing');
 
-  // Initialize theme from localStorage or default to 'light'
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    const savedTheme = localStorage.getItem('pangsRallyTheme');
-    return (savedTheme as 'dark' | 'light') || 'light';
-  });
-
   const [parentA, setParentA] = useState<any>(null);
   const [parentB, setParentB] = useState<any>(null);
   const [isIncubating, setIsIncubating] = useState(false);
@@ -189,6 +183,10 @@ function App() {
   };
 
   /** Connect + sign the free sign-in message. Resolves to the signed-in player, or null. */
+  // Open while the sign-in waits for an invite code; resolve(null) cancels.
+  const [inviteAsk, setInviteAsk] = useState<{ error: string; resolve: (code: string | null) => void } | null>(null);
+  const askInvite = (error: string) => new Promise<string | null>(resolve => setInviteAsk({ error, resolve }));
+
   const signIn = async (): Promise<PlayerStatus | null> => {
     if (player) return player;
     if (!hasWallet()) {
@@ -197,7 +195,7 @@ function App() {
     }
     setSigningIn(true);
     try {
-      const status = await signInWithWallet();
+      const status = await signInWithWallet(askInvite);
       applyPlayer(status);
       showToast('Wallet connected. Welcome to the test season!', 'success');
       return status;
@@ -418,12 +416,6 @@ function App() {
     setIsProcessingBuy(false);
   };
 
-  // Apply Theme
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('pangsRallyTheme', theme);
-  }, [theme]);
-
   // Keep points / races left fresh when moving between the season pages.
   useEffect(() => {
     if (['rally', 'race-lobby', 'leaderboard', 'my-races'].includes(currentView)) refreshPlayer();
@@ -452,10 +444,6 @@ function App() {
 
   const removeToast = (id: number) => {
     setToasts(prev => prev.filter(t => t.id !== id));
-  };
-
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
   const fetchMyNFTs = async (address: string) => {
@@ -1182,6 +1170,13 @@ function App() {
       </div>
 
       {noWalletHelp && <NoWalletModal onClose={() => setNoWalletHelp(false)} />}
+      {inviteAsk && (
+        <InviteCodeModal
+          error={inviteAsk.error}
+          onSubmit={(code) => { inviteAsk.resolve(code); setInviteAsk(null); }}
+          onCancel={() => { inviteAsk.resolve(null); setInviteAsk(null); }}
+        />
+      )}
 
       {/* Rename Modal */}
       {renameModal && (
@@ -1292,7 +1287,7 @@ function App() {
       <header className="app-header" ref={headerRef}>
         <div className="container header-container">
           <div className="logo" onClick={() => setCurrentView('landing')} style={{cursor: 'pointer', display: 'flex', alignItems: 'center'}}>
-            <img src={theme === 'light' ? "/light-logo.webp" : "/dark-logo.webp"} alt="Pangs Rally Logo" className="logo-img" width={640} height={213} fetchPriority="high" />
+            <img src="/dark-logo.webp" alt="Pangs Rally Logo" className="logo-img" width={640} height={213} fetchPriority="high" />
           </div>
           <nav className="nav-links">
             <a 
@@ -1346,9 +1341,6 @@ function App() {
             </a>
           </nav>
           <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle Theme">
-              {theme === 'dark' ? '☀️' : '🌙'}
-            </button>
             {walletConnected ? (
               <div 
                 className="wallet-connected-badge glass-panel" 

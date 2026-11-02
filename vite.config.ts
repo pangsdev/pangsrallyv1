@@ -100,16 +100,18 @@ function announcePlugin(env: Record<string, string>) {
  * (supabase/functions/test-season/core.ts) on an in-memory store, so sign-in,
  * races and the leaderboard work under `npm run dev` without Supabase.
  * Restarting the dev server wipes it. Set VITE_TEST_SEASON_API to hit the real function instead.
+ * Invite code in dev: DEV-RALLY (or TEST_DEV_INVITE from .env).
  */
 function testSeasonDevPlugin(env: Record<string, string>) {
   const deps: Deps = {
-    store: createMemoryStore(),
+    store: createMemoryStore({ [env.TEST_DEV_INVITE || 'DEV-RALLY']: 1000 }),
     verifyMessage,
     sha256Hex: async (t) => createHash('sha256').update(t).digest('hex'),
     randomHex: (n) => randomBytes(n).toString('hex'),
     uuid: () => randomUUID(),
     now: () => new Date(),
     unlimitedWallets: new Set((env.TEST_UNLIMITED_WALLETS || '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean)),
+    inviteRequired: env.TEST_OPEN_SIGNUP !== '1',
   }
 
   const handler = async (req: IncomingMessage, res: ServerResponse, next: () => void) => {

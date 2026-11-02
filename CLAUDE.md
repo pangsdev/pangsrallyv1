@@ -25,6 +25,8 @@ Main app is a view-state monolith: `src/App.tsx`. Race engine lives in `src/race
 | No CA | Do not add a contract-address ticker/copy box on landing or Vision |
 | Voice | No `window.speechSynthesis`. Owner called browser TTS “robotic / disgusting” |
 | Voice language | English race-caller only. No Turkish voice, ever |
+| Theme | **Dark only.** The light theme and its toggle were removed (Nov 2026); `index.html` pins `data-theme="dark"`. |
+| Invites | Test season is invite-only for **new** wallets (registered wallets never need a code). Codes have N places: `npm run invite:create -- --uses 30 --note "…"`. Share link `https://pangsrally.com/?invite=CODE` pre-fills it. `TEST_OPEN_SIGNUP=1` (function secret) turns invites off. Dev code: `DEV-RALLY`. |
 | Sign-in | **Test season: MetaMask only.** Connect + sign a free message (no gas). Guest Mode / Mint Rookie were removed. No wallet → modal (desktop: install MetaMask; phone: open in the MetaMask app browser). |
 | Daily cap | 3 races/day per wallet (bot + online combined), **enforced server-side**, resets UTC midnight. Owner/testers exempt via `TEST_UNLIMITED_WALLETS`. |
 | Points | No token yet. Every finish scores season points `25/18/15/12/10/8/6/4/2/1`. Test-season leaderboard. |
@@ -39,6 +41,7 @@ Server-authoritative: the browser never decides results or points.
 
 - `src/race/testSeason.ts` — shared pure rules: field builder (players + bots, equal stats), points table, daily limit, sign-in message, `runTestRace`.
 - `supabase/functions/test-season/` — game server. `core.ts` (platform-neutral logic: login, me, bot-race, online-join, online-status, race, history, leaderboard), `supabaseStore.ts` (Postgres), `memoryStore.ts` (dev/tests), `index.ts` (Edge Function entry). `race/` is **generated** by `npm run sync:server` from `src/race` — edit the originals.
+- `supabase/migrations/004_test_invites.sql` — `test_invite_codes` + `test_players.invite_code`; `test_join_with_invite(wallet, code)` registers and takes a place atomically (no over-fill). Applied live 2 Nov 2026 via `supabase db query --linked -f …`.
 - `supabase/migrations/003_test_season.sql` — `test_players`, `test_sessions`, `test_races`, `test_race_entries` (unique `(wallet, day, slot)` enforces the daily limit), view `test_leaderboard`. RLS on, no policies: only the function's service role touches them.
 - Dev: `vite.config.ts` serves `/api/test-season` with the same core on an in-memory store (wiped on restart). Prod: `${VITE_SUPABASE_URL}/functions/v1/test-season`. Override with `VITE_TEST_SEASON_API`.
 - Client: `src/testSeason/api.ts` (session in `localStorage pangsrally_test_session`, header `x-session`), `RaceRoom.tsx` (replays a server race: bot / online / replay), `OnlineRoom.tsx` (waiting room, 60 s or 10 players, bots fill), `RaceLobby.tsx`, `SeasonPages.tsx` (leaderboard, My Races with replays, sign-in gate, no-wallet modal).

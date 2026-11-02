@@ -16,19 +16,20 @@ import { runTestRace, DAILY_RACE_LIMIT, FIELD_SIZE, ONLINE_WAIT_SECONDS, POINTS_
 let clock = Date.parse('2026-11-02T12:00:00Z');
 const owner = Wallet.createRandom();
 const deps = {
-  store: createMemoryStore(),
+  store: createMemoryStore({ 'TEST-RALLY': 1000, 'TWO-SEATS': 2 }),
   verifyMessage,
   sha256Hex: async (t) => createHash('sha256').update(t).digest('hex'),
   randomHex: (n) => randomBytes(n).toString('hex'),
   uuid: () => randomUUID(),
   now: () => new Date(clock),
   unlimitedWallets: new Set([owner.address.toLowerCase()]),
+  inviteRequired: true,
 };
 const call = (action, body = {}, token = null) => handle(deps, action, { action, ...body }, token);
 
-async function signIn(wallet) {
+async function signIn(wallet, inviteCode = 'TEST-RALLY') {
   const message = signInMessage(wallet.address, new Date(clock).toISOString());
-  const res = await call('login', { address: wallet.address, message, signature: await wallet.signMessage(message) });
+  const res = await call('login', { address: wallet.address, message, signature: await wallet.signMessage(message), inviteCode });
   assert.equal(res.status, 200, JSON.stringify(res.body));
   return res.body.token;
 }
@@ -55,6 +56,33 @@ ok('login with a real wallet signature');
 
   assert.equal((await call('bot-race', { terrain: 'Forest' }, 'not-a-token')).status, 401);
   ok('races need a valid session');
+}
+
+// --- invites ---------------------------------------------------------------
+{
+  const login = async (wallet, inviteCode) => {
+    const message = signInMessage(wallet.address, new Date(clock).toISOString());
+    return call('login', { address: wallet.address, message, signature: await wallet.signMessage(message), inviteCode });
+  };
+  const newcomer = Wallet.createRandom();
+  assert.equal((await login(newcomer)).body.error, 'invite_required');
+  assert.equal((await login(newcomer, 'NOPE-1234')).body.error, 'invite_invalid');
+  ok('a new wallet needs a valid invite code');
+
+  assert.equal((await login(alice)).status, 200);
+  ok('a registered player signs in again without a code');
+
+  assert.equal((await login(newcomer, '  two-seats ')).status, 200);
+  ok('codes ignore case and spaces');
+
+  const rush = await Promise.all([Wallet.createRandom(), Wallet.createRandom(), Wallet.createRandom()].map(w => login(w, 'TWO-SEATS')));
+  assert.equal(rush.filter(r => r.status === 200).length, 1, 'one place was left');
+  assert.equal(rush.filter(r => r.body.error === 'invite_invalid').length, 2);
+  ok('a 2-place code admits exactly 2 wallets, even in parallel');
+
+  assert.equal((await login(Wallet.createRandom())).status === 200, false);
+  assert.equal((await login(owner)).status, 200);
+  ok('the owner wallet needs no code');
 }
 
 // --- bot races + daily limit ----------------------------------------------

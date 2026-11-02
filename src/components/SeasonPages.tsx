@@ -46,6 +46,37 @@ export function NoWalletModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** Asked once, for a wallet that has not joined the test season yet. */
+export function InviteCodeModal({ error, onSubmit, onCancel }: { error: string; onSubmit: (code: string) => void; onCancel: () => void }) {
+  const [code, setCode] = useState('');
+  return (
+    <div className="season-modal-backdrop" onClick={onCancel}>
+      <form className="season-modal glass-panel" onClick={e => e.stopPropagation()} onSubmit={e => { e.preventDefault(); if (code.trim()) onSubmit(code.trim()); }}>
+        <div style={{ fontSize: '2.5rem' }}>🎟️</div>
+        <h3>Enter your invite code</h3>
+        <p>The test season is invite-only for now. Type the code you were given to claim your place. You only need it once.</p>
+        <input
+          className="season-invite-input"
+          value={code}
+          onChange={e => setCode(e.target.value.toUpperCase())}
+          placeholder="RALLY-XXXX"
+          autoFocus
+          autoCapitalize="characters"
+          autoComplete="off"
+          spellCheck={false}
+          maxLength={32}
+          aria-label="Invite code"
+        />
+        {error && <div className="season-invite-error">{error}</div>}
+        <div className="season-modal-actions">
+          <button type="submit" className="btn btn-primary" disabled={!code.trim()}>Join the Test Season</button>
+          <button type="button" className="btn btn-outline" onClick={onCancel}>Cancel</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 const medal = (pos: number | null) => pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : pos ? `#${pos}` : '⏳';
 
 /** Test-season leaderboard (points from every finish). */

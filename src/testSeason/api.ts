@@ -126,8 +126,17 @@ export function metamaskDeepLink(): string {
   return `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
 }
 
-/** Connect the wallet and sign the (free) sign-in message. */
-export async function signInWithWallet(): Promise<PlayerStatus> {
+/** Invite code from a shared link (?invite=CODE), if any. */
+export function inviteFromUrl(): string | null {
+  try { return new URLSearchParams(window.location.search).get('invite'); } catch { return null; }
+}
+
+/**
+ * Connect the wallet and sign the (free) sign-in message. A wallet that has not joined yet
+ * needs an invite code: `askInvite` is called with the reason and returns the code typed in
+ * (or null to give up). The same signature is reused for the retry, so nobody signs twice.
+ */
+export async function signInWithWallet(askInvite: (reason: string) => Promise<string | null>): Promise<PlayerStatus> {
   const eth = (window as unknown as { ethereum?: unknown }).ethereum;
   if (!eth) throw new ApiError(0, 'no_wallet', 'No wallet found. Install MetaMask to join the test season.');
   // Check the server first so nobody is asked to sign a message that cannot be used.
@@ -143,10 +152,19 @@ export async function signInWithWallet(): Promise<PlayerStatus> {
   } catch {
     throw new ApiError(0, 'sign_rejected', 'Signature cancelled. Sign the message to join the test season.');
   }
-  const res = await call<PlayerStatus & { token: string }>('login', { address, message, signature });
-  try { localStorage.setItem(SESSION_KEY, JSON.stringify({ token: res.token, wallet: res.wallet })); } catch { /* private mode */ }
-  const { token: _token, ...status } = res;
-  return status;
+  let inviteCode: string | null = inviteFromUrl();
+  for (;;) {
+    try {
+      const res = await call<PlayerStatus & { token: string }>('login', { address, message, signature, ...(inviteCode ? { inviteCode } : {}) });
+      try { localStorage.setItem(SESSION_KEY, JSON.stringify({ token: res.token, wallet: res.wallet })); } catch { /* private mode */ }
+      const { token: _token, ...status } = res;
+      return status;
+    } catch (e) {
+      if (!(e instanceof ApiError) || (e.code !== 'invite_required' && e.code !== 'invite_invalid')) throw e;
+      inviteCode = await askInvite(e.code === 'invite_invalid' && inviteCode ? e.message : '');
+      if (!inviteCode) throw new ApiError(0, 'invite_cancelled', 'The test season is invite-only. Ask the Pangs Rally team for a code.');
+    }
+  }
 }
 
 export const testSeason = {

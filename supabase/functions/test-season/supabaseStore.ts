@@ -1,4 +1,4 @@
-/** Postgres-backed Store (tables from supabase/migrations/003_test_season.sql). */
+/** Postgres-backed Store (tables from supabase/migrations/003_test_season.sql and 004_test_invites.sql). */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { EntryRow, LeaderRow, RaceRow, Store } from './core.ts';
 import { sortLeaderboard } from './memoryStore.ts';
@@ -21,6 +21,16 @@ export function createSupabaseStore(db: SupabaseClient): Store {
     },
     async upsertPlayer(wallet, now) {
       must(await db.from('test_players').upsert({ wallet, last_seen: now.toISOString() }, { onConflict: 'wallet' }));
+    },
+    async playerExists(wallet) {
+      return !!must(await db.from('test_players').select('wallet').eq('wallet', wallet).maybeSingle());
+    },
+    async joinWithInvite(wallet, code) {
+      const res = await db.rpc('test_join_with_invite', { p_wallet: wallet, p_code: code });
+      // Same wallet signing in twice at once: the other request registered it (and kept the place).
+      if (res.error?.code === UNIQUE_VIOLATION) return 'exists';
+      if (res.error) throw new Error(res.error.message);
+      return res.data as 'exists' | 'joined' | 'invalid';
     },
     async countEntriesOnDay(wallet, day) {
       const res = await db.from('test_race_entries').select('race_id', { count: 'exact', head: true }).eq('wallet', wallet).eq('day', day);

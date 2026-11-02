@@ -7,7 +7,8 @@
  * Deploy (after `npm run sync:server`):
  *   npx supabase functions deploy test-season --no-verify-jwt
  * Secrets: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase;
- *   optional TEST_UNLIMITED_WALLETS = comma-separated wallets exempt from the daily limit.
+ *   optional TEST_UNLIMITED_WALLETS = comma-separated wallets exempt from the daily limit (and invites);
+ *   optional TEST_OPEN_SIGNUP = 1 lets new wallets join without an invite code.
  */
 import { createClient } from '@supabase/supabase-js';
 import { verifyMessage } from 'ethers';
@@ -35,6 +36,7 @@ const deps: Deps = {
   uuid: () => crypto.randomUUID(),
   now: () => new Date(),
   unlimitedWallets: new Set((Deno.env.get('TEST_UNLIMITED_WALLETS') ?? '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean)),
+  inviteRequired: Deno.env.get('TEST_OPEN_SIGNUP') !== '1',
 };
 
 Deno.serve(async (req) => {
