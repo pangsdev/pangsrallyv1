@@ -12,7 +12,7 @@ import { Wallet, verifyMessage } from 'ethers';
 import { handle, signInMessage } from '../supabase/functions/test-season/core.ts';
 import { createMemoryStore } from '../supabase/functions/test-season/memoryStore.ts';
 import { createBetaGate } from '../supabase/functions/test-season/beta.ts';
-import { runTestRace, DAILY_RACE_LIMIT, FIELD_SIZE, ONLINE_WAIT_SECONDS, POINTS_BY_POSITION } from '../supabase/functions/test-season/race/testSeason.ts';
+import { runTestRace, DAILY_RACE_LIMIT, FIELD_SIZE, OPEN_ROOMS, ROOM_SLOT_MINUTES, POINTS_BY_POSITION } from '../supabase/functions/test-season/race/testSeason.ts';
 
 let clock = Date.parse('2026-11-02T12:00:00Z');
 const owner = Wallet.createRandom();
@@ -143,14 +143,14 @@ ok('login with a real wallet signature');
   assert.equal((await call('me', {}, tokens[1])).body.racesToday, 1, 'rejoining does not spend a race');
   ok('re-joining returns to the same room without spending a race');
 
-  clock += (ONLINE_WAIT_SECONDS + 1) * 1000;
+  clock = Date.parse(joins[0].body.race.closesAt) + 1000;
   const status = await call('online-status', { raceId: roomId });
   const race = status.body.race;
   assert.equal(race.status, 'finished');
   assert.equal(race.field.filter(f => f.wallet).length, 3);
   assert.deepEqual(runTestRace(race.seed, race.field, race.terrain), race.results);
   for (const p of race.players) assert.equal(p.points, POINTS_BY_POSITION[p.position - 1]);
-  ok('room starts after the wait, fills with bots, scores every player');
+  ok('room starts at its scheduled time, fills with bots, scores every player');
 
   const hist = (await call('history', {}, tokens[2])).body.races;
   assert.equal(hist[0].raceId, roomId);
@@ -158,12 +158,49 @@ ok('login with a real wallet signature');
   ok('the race shows up in My Races with its result');
 }
 
+// --- scheduled rooms ---------------------------------------------------------
+{
+  const slotMs = ROOM_SLOT_MINUTES * 60_000;
+  const [r1, r2] = await Promise.all([call('rooms', { terrain: 'Forest' }), call('rooms', { terrain: 'Forest' })]);
+  const list = r1.body.rooms;
+  assert.equal(list.length, OPEN_ROOMS);
+  assert.deepEqual(r2.body.rooms.map(r => r.id).sort(), list.map(r => r.id).sort(), 'parallel calls make no duplicate rooms');
+  const starts = list.map(r => Date.parse(r.startsAt));
+  for (const t of starts) assert.equal(t % slotMs, 0, 'rooms start on the clock');
+  assert.ok(starts[0] - clock >= 120_000, 'never a room that is about to go');
+  for (let i = 1; i < starts.length; i++) assert.equal(starts[i] - starts[i - 1], slotMs);
+  ok(`${OPEN_ROOMS} rooms are always open, ${ROOM_SLOT_MINUTES} min apart, made by the game`);
+
+  // Ten players fill the last room: it starts at once and a new room takes its start time.
+  const last = list[list.length - 1];
+  const crowd = Array.from({ length: FIELD_SIZE }, () => Wallet.createRandom());
+  const tokens = [];
+  for (const w of crowd) tokens.push(await signIn(w));
+  let fin;
+  for (const t of tokens) fin = await call('online-join', { terrain: 'Forest', roomId: last.id }, t);
+  assert.equal(fin.body.race.status, 'finished', 'full room starts immediately');
+  assert.equal(fin.body.race.field.filter(f => f.wallet).length, FIELD_SIZE);
+  const after = (await call('rooms', { terrain: 'Forest' }, tokens[0])).body.rooms;
+  assert.equal(after.length, OPEN_ROOMS);
+  const same = after.find(r => r.startsAt === last.startsAt || Date.parse(r.startsAt) === Date.parse(last.startsAt));
+  assert.ok(same && same.id !== last.id && same.players === 0, 'a new room took the full one\'s start time');
+  ok('a full room starts at once and a fresh room replaces it');
+
+  const late = Wallet.createRandom();
+  const lt = await signIn(late);
+  assert.equal((await call('online-join', { terrain: 'Forest', roomId: last.id }, lt)).body.error, 'room_started');
+  const pick = await call('online-join', { terrain: 'Forest', roomId: after[1].id }, lt);
+  assert.equal(pick.body.race.id, after[1].id);
+  assert.equal((await call('rooms', { terrain: 'Forest' }, lt)).body.rooms.find(r => r.id === after[1].id).joined, true);
+  ok('players pick a room; a started room is refused; the list marks rooms you are in');
+}
+
 // --- a player who leaves still gets scored --------------------------------
 {
   const dave = Wallet.createRandom();
   const t = await signIn(dave);
   const join = await call('online-join', { terrain: 'Forest' }, t);
-  clock += (ONLINE_WAIT_SECONDS + 5) * 1000;
+  clock = Date.parse(join.body.race.closesAt) + 5000;
   const hist = (await call('history', {}, t)).body.races;
   assert.equal(hist[0].raceId, join.body.race.id);
   assert.equal(hist[0].status, 'finished');

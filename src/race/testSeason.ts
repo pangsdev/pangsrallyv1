@@ -17,8 +17,13 @@ export const FIELD_SIZE = 10;
 export const DAILY_RACE_LIMIT = 3;
 /** Season points by finishing position (1st … 10th). */
 export const POINTS_BY_POSITION = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
-/** An online room starts this long after it opens, or as soon as it is full. */
-export const ONLINE_WAIT_SECONDS = 60;
+/** Online rooms are made by the game, not by players: OPEN_ROOMS rooms per track are always open,
+ *  starting on the clock every ROOM_SLOT_MINUTES (e.g. :00 and :30), so the furthest starts in at most
+ *  OPEN_ROOMS × ROOM_SLOT_MINUTES. A room that fills up starts at once and a new one takes its start time. */
+export const ROOM_SLOT_MINUTES = 30;
+export const OPEN_ROOMS = 3;
+/** A room is not created for a start time closer than this, so nobody joins a room that is about to go. */
+export const ROOM_MIN_LEAD_SECONDS = 120;
 /** Tracks open during the test season. */
 export const TEST_TERRAINS = ['Forest'];
 /** The lone player of a bot race always runs in lane 5 (the caller's player lines are baked for number 5). */

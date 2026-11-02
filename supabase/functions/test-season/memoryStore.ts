@@ -73,11 +73,17 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
     async listEntries(raceId) {
       return clone(entries.filter(e => e.race_id === raceId));
     },
-    async findOpenRoom(terrain, now) {
-      const open = [...races.values()]
-        .filter(r => r.kind === 'online' && r.status === 'open' && r.terrain === terrain && r.closes_at && Date.parse(r.closes_at) > now.getTime())
-        .sort((a, b) => a.created_at.localeCompare(b.created_at));
-      return clone(open[0] ?? null);
+    async listOpenRooms(terrain) {
+      return clone([...races.values()]
+        .filter(r => r.kind === 'online' && r.status === 'open' && r.terrain === terrain)
+        .sort((a, b) => (a.closes_at ?? '').localeCompare(b.closes_at ?? '')));
+    },
+    async insertOpenRoom(room) {
+      // Mirrors the partial unique index of 006: one open room per track and start time.
+      const clash = [...races.values()].some(r => r.kind === 'online' && r.status === 'open' && r.terrain === room.terrain && r.closes_at === room.closes_at);
+      if (clash) return 'conflict';
+      races.set(room.id, clone(room));
+      return 'ok';
     },
     async openRoomsFor(wallet) {
       const ids = new Set(entries.filter(e => e.wallet === wallet).map(e => e.race_id));

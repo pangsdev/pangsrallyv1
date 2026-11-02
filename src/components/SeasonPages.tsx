@@ -7,10 +7,11 @@ export function SignInGate({ signingIn, onSignIn }: { signingIn: boolean; onSign
   return (
     <section className="inventory-page animated-enter season-page">
       <div className="season-empty big">
-        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏁</div>
-        <h3>Join the Test Season</h3>
-        <p style={{ maxWidth: 440, margin: '0.75rem auto 0', lineHeight: 1.6 }}>
-          Connect MetaMask and sign a free message (no gas, no transaction). You get {DAILY_RACE_LIMIT} races a day and season points for every finish.
+        <img src="/beta/beta-pass.webp" alt="" style={{ width: 96, height: 96, borderRadius: 18, marginBottom: '1rem' }} />
+        <h3>Join the Beta Season</h3>
+        <p style={{ maxWidth: 460, margin: '0.75rem auto 0', lineHeight: 1.6 }}>
+          Connect MetaMask and sign a free message. New players enter an invite code once, then claim the free Beta pass
+          (gas only). You get {DAILY_RACE_LIMIT} races a day and season points for every finish.
         </p>
         <button className="btn btn-primary" style={{ marginTop: '1.5rem' }} disabled={signingIn} onClick={onSignIn}>
           {signingIn ? 'Check your wallet…' : 'Connect Wallet'}

@@ -1,4 +1,4 @@
-/** Postgres-backed Store (tables from supabase/migrations/003_test_season.sql, 004_test_invites.sql, 005_test_beta.sql). */
+/** Postgres-backed Store (tables from supabase/migrations/003_test_season.sql … 006_test_scheduled_rooms.sql). */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { EntryRow, LeaderRow, RaceRow, Store } from './core.ts';
 import { sortLeaderboard } from './memoryStore.ts';
@@ -65,11 +65,16 @@ export function createSupabaseStore(db: SupabaseClient): Store {
     async listEntries(raceId) {
       return must(await db.from('test_race_entries').select('*').eq('race_id', raceId)) as EntryRow[];
     },
-    async findOpenRoom(terrain, now) {
-      const rows = must(await db.from('test_races').select('*')
-        .eq('kind', 'online').eq('status', 'open').eq('terrain', terrain).gt('closes_at', now.toISOString())
-        .order('created_at', { ascending: true }).limit(1)) as RaceRow[];
-      return rows[0] ?? null;
+    async listOpenRooms(terrain) {
+      return must(await db.from('test_races').select('*')
+        .eq('kind', 'online').eq('status', 'open').eq('terrain', terrain)
+        .order('closes_at', { ascending: true })) as RaceRow[];
+    },
+    async insertOpenRoom(room) {
+      const res = await db.from('test_races').insert(room);
+      if (res.error?.code === UNIQUE_VIOLATION) return 'conflict';
+      if (res.error) throw new Error(res.error.message);
+      return 'ok';
     },
     async openRoomsFor(wallet) {
       const rows = must(await db.from('test_race_entries').select('race:test_races!inner(*)')

@@ -4,6 +4,7 @@ import { testSeason, type PublicRace } from '../testSeason/api';
 import { FIELD_SIZE } from '../race/testSeason';
 import '../race/race.css';
 import { TrackBadge } from './Icons';
+import { startsIn } from './OnlineRooms';
 
 interface Props {
   categoryInfo: any;
@@ -15,7 +16,13 @@ interface Props {
   onFinished?: () => void;
 }
 
-const POLL_MS = 2000;
+/** Poll fast near the start, slowly while the room waits (rooms can be an hour or more away). */
+const pollMs = (msLeft: number) => (msLeft < 90_000 ? 2000 : msLeft < 10 * 60_000 ? 5000 : 15_000);
+const clock = (ms: number) => {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return h ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`;
+};
 
 /**
  * Online test race: join (or resume) a room, wait while it fills, then replay
@@ -42,18 +49,19 @@ export default function OnlineRoom({ categoryInfo, playerWallet, raceId, onBack,
       setRoom(res.race);
       return res.race;
     };
+    const left = (race: PublicRace) => (race.closesAt ? Date.parse(race.closesAt) - (Date.now() + skew.current) : 0);
     const poll = async (id: string) => {
       try {
         const race = apply(await testSeason.onlineStatus(id));
-        if (!stopped && race.status === 'open') timer = setTimeout(() => poll(id), POLL_MS);
+        if (!stopped && race.status === 'open') timer = setTimeout(() => poll(id), pollMs(left(race)));
       } catch {
-        if (!stopped) timer = setTimeout(() => poll(id), POLL_MS * 2); // keep trying through network blips
+        if (!stopped) timer = setTimeout(() => poll(id), 10_000); // keep trying through network blips
       }
     };
     joined.current.then(res => {
       if (stopped) return;
       const race = apply(res);
-      if (race.status === 'open') timer = setTimeout(() => poll(race.id), POLL_MS);
+      if (race.status === 'open') timer = setTimeout(() => poll(race.id), pollMs(left(race)));
     }).catch(err => {
       if (!stopped) setError(err instanceof Error ? err.message : 'Could not join a room.');
     });
@@ -75,13 +83,13 @@ export default function OnlineRoom({ categoryInfo, playerWallet, raceId, onBack,
     );
   }
 
-  const secondsLeft = room?.closesAt ? Math.max(0, Math.ceil((Date.parse(room.closesAt) - (now + skew.current)) / 1000)) : null;
+  const msLeft = room?.closesAt ? Math.max(0, Date.parse(room.closesAt) - (now + skew.current)) : null;
   const players = room?.players ?? [];
 
   return (
     <div className="rr-root">
       <div className="rr-header">
-        <button className="rr-btn" onClick={onBack}>← Back to Lobby</button>
+        <button className="rr-btn" onClick={onBack}>← Rooms</button>
         <div style={{ textAlign: 'center' }}>
           <h2 className="rr-title" style={{ color: '#00c8ff' }}><TrackBadge terrain={terrain} size={26} style={{ marginRight: 8, verticalAlign: '-5px' }} />{terrain} Track · Online Race</h2>
           <p className="rr-sub">Test Season · Equal stats for everyone · luck decides</p>
@@ -94,21 +102,24 @@ export default function OnlineRoom({ categoryInfo, playerWallet, raceId, onBack,
           <div className="rr-error">
             <div style={{ fontSize: '2.5rem' }}>🌐</div>
             <p>{error}</p>
-            <button className="rr-btn primary" onClick={onBack}>Back to Lobby</button>
+            <button className="rr-btn primary" onClick={onBack}>Back to Rooms</button>
           </div>
         ) : !room ? (
           <div className="rr-error">
             <div className="rr-spinner" style={{ margin: '0 auto' }} />
-            <p>Finding a room…</p>
+            <p>Opening the room…</p>
           </div>
         ) : (
           <div className="or-card">
             <div className="or-count">
-              <div className="or-count-num">{secondsLeft ?? '–'}<span>s</span></div>
-              <div className="or-count-label">{players.length >= FIELD_SIZE ? 'Room full — starting' : secondsLeft === 0 ? 'Starting…' : 'until the race starts'}</div>
+              <div className="or-count-num">{msLeft === null ? '–' : clock(msLeft)}</div>
+              <div className="or-count-label">
+                {players.length >= FIELD_SIZE ? 'Room full — starting' : msLeft === 0 ? 'Starting…'
+                  : `starts at ${new Date(Date.parse(room.closesAt!)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} · ${startsIn(msLeft ?? 0)}`}
+              </div>
             </div>
             <p className="or-note">
-              <strong>{players.length}</strong> of {FIELD_SIZE} players joined. Empty lanes are filled with bots when the timer runs out.
+              <strong>{players.length}</strong> of {FIELD_SIZE} players joined. The race starts at its time, or as soon as all {FIELD_SIZE} seats are taken. Empty lanes are filled with bots.
             </p>
             <div className="or-seats">
               {Array.from({ length: FIELD_SIZE }, (_, i) => {

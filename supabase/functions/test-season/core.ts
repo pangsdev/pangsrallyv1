@@ -8,7 +8,7 @@
  * in-memory store so the whole flow works locally.
  */
 import {
-  DAILY_RACE_LIMIT, FIELD_SIZE, ONLINE_WAIT_SECONDS, TEST_TERRAINS,
+  DAILY_RACE_LIMIT, FIELD_SIZE, OPEN_ROOMS, ROOM_MIN_LEAD_SECONDS, ROOM_SLOT_MINUTES, TEST_TERRAINS,
   buildTestField, pointsFor, runTestRace, shortWallet, signInMessage,
   type TestRacer, type TestRaceResult,
 } from './race/testSeason.ts';
@@ -65,8 +65,10 @@ export interface Store {
   deleteEntry(raceId: string, wallet: string): Promise<void>;
   getRace(id: string): Promise<RaceRow | null>;
   listEntries(raceId: string): Promise<EntryRow[]>;
-  /** Oldest open online room on this track that has not started yet. */
-  findOpenRoom(terrain: string, now: Date): Promise<RaceRow | null>;
+  /** Open online rooms on this track, soonest start first. */
+  listOpenRooms(terrain: string): Promise<RaceRow[]>;
+  /** 'conflict' when an open room on this track already has this start time (migration 006). */
+  insertOpenRoom(room: RaceRow): Promise<'ok' | 'conflict'>;
   /** Open online rooms this wallet is waiting in. */
   openRoomsFor(wallet: string): Promise<RaceRow[]>;
   /** Marks an open race finished; false when another request already did. */
@@ -128,7 +130,8 @@ export async function handle(deps: Deps, action: string, body: Record<string, un
       case 'login': return ok(await login(deps, body));
       case 'me': return ok(await me(deps, await requireWallet(deps, token)));
       case 'bot-race': return ok(await botRace(deps, await requireWallet(deps, token), str(body.terrain)));
-      case 'online-join': return ok(await onlineJoin(deps, await requireWallet(deps, token), str(body.terrain)));
+      case 'rooms': return ok(await rooms(deps, str(body.terrain), token));
+      case 'online-join': return ok(await onlineJoin(deps, await requireWallet(deps, token), str(body.terrain), str(body.roomId)));
       case 'online-status': return ok(await onlineStatus(deps, str(body.raceId)));
       case 'race': return ok(await replay(deps, str(body.raceId)));
       case 'history': return ok(await history(deps, await requireWallet(deps, token)));
@@ -283,37 +286,96 @@ async function botRace(deps: Deps, wallet: string, terrain: string) {
 /* Online rooms                                                        */
 /* ------------------------------------------------------------------ */
 
-async function onlineJoin(deps: Deps, wallet: string, terrain: string) {
+/* ------------------------------------------------------------------ */
+/* Online rooms: made by the game on a schedule                        */
+/* ------------------------------------------------------------------ */
+
+/** Resolves rooms that are due, then makes sure the next OPEN_ROOMS start times each have an open room. */
+async function ensureRooms(deps: Deps, terrain: string): Promise<RaceRow[]> {
+  const now = deps.now();
+  const open: RaceRow[] = [];
+  for (const room of await deps.store.listOpenRooms(terrain)) {
+    const settled = await settleIfDue(deps, room);
+    if (settled.status === 'open') open.push(settled);
+  }
+  const slotMs = ROOM_SLOT_MINUTES * 60_000;
+  const first = Math.ceil((now.getTime() + ROOM_MIN_LEAD_SECONDS * 1000) / slotMs) * slotMs;
+  for (let k = 0; k < OPEN_ROOMS; k++) {
+    const start = first + k * slotMs;
+    if (open.some(r => r.closes_at && Date.parse(r.closes_at) === start)) continue;
+    const id = deps.uuid();
+    const room: RaceRow = {
+      id, kind: 'online', terrain, seed: `online-${id}`, status: 'open',
+      created_at: now.toISOString(), closes_at: new Date(start).toISOString(),
+      finished_at: null, field: null, results: null,
+    };
+    // A parallel request may have made it a moment ago; the index keeps one room per start time.
+    if (await deps.store.insertOpenRoom(room) === 'ok') open.push(room);
+  }
+  if (open.length < OPEN_ROOMS) return ensureRoomsOnce(deps, terrain);
+  return open.sort((a, b) => (a.closes_at ?? '').localeCompare(b.closes_at ?? '')).slice(0, OPEN_ROOMS);
+}
+
+/** Re-read after a lost insert race, without making more rooms. */
+async function ensureRoomsOnce(deps: Deps, terrain: string): Promise<RaceRow[]> {
+  const rows = await deps.store.listOpenRooms(terrain);
+  return rows.sort((a, b) => (a.closes_at ?? '').localeCompare(b.closes_at ?? '')).slice(0, OPEN_ROOMS);
+}
+
+/** Public room list for the lobby: start time, seats taken, and whether the caller is in. */
+async function rooms(deps: Deps, terrain: string, token: string | null) {
+  checkTerrain(terrain);
+  const wallet = token ? await deps.store.getSessionWallet(await deps.sha256Hex(token), deps.now()) : null;
+  const list = await ensureRooms(deps, terrain);
+  const out = [];
+  for (const room of list) {
+    const entries = await deps.store.listEntries(room.id);
+    out.push({ id: room.id, startsAt: room.closes_at, players: entries.length, maxPlayers: FIELD_SIZE, joined: !!wallet && entries.some(e => e.wallet === wallet) });
+  }
+  return { rooms: out, serverTime: deps.now().toISOString() };
+}
+
+/**
+ * Joins a room (costs one of the day's races). With no roomId it picks the soonest room with a free
+ * seat, or returns the room the player is already waiting in on this track.
+ */
+async function onlineJoin(deps: Deps, wallet: string, terrain: string, roomId: string) {
   checkTerrain(terrain);
   await requireBeta(deps, wallet);
-  // Already waiting in a room → go back to it instead of spending another race.
-  for (const room of await deps.store.openRoomsFor(wallet)) {
-    const settled = await settleIfDue(deps, room);
-    if (settled.status === 'open' && settled.terrain === terrain) return onlineStatus(deps, settled.id);
-  }
-
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const now = deps.now();
-    let room = await deps.store.findOpenRoom(terrain, now);
-    if (!room) {
-      const id = deps.uuid();
-      room = {
-        id, kind: 'online', terrain, seed: `online-${id}`, status: 'open',
-        created_at: now.toISOString(), closes_at: new Date(now.getTime() + ONLINE_WAIT_SECONDS * 1000).toISOString(),
-        finished_at: null, field: null, results: null,
-      };
-      await deps.store.insertRace(room);
+  if (!roomId) {
+    for (const room of await deps.store.openRoomsFor(wallet)) {
+      const settled = await settleIfDue(deps, room);
+      if (settled.status === 'open' && settled.terrain === terrain) return onlineStatus(deps, settled.id);
     }
-    if (!(await claimSlot(deps, wallet, room.id, now, null))) throw limitError(now);
-    // Two players can take the last seat at once; the later one moves on to another room.
-    const entries = await deps.store.listEntries(room.id);
-    if (entries.length > FIELD_SIZE) {
-      await deps.store.deleteEntry(room.id, wallet);
+  }
+  const candidates = roomId ? [await mustGetRace(deps, roomId)] : await ensureRooms(deps, terrain);
+  for (const candidate of candidates) {
+    if (candidate.kind !== 'online' || candidate.terrain !== terrain) throw new HttpError(400, 'bad_request', 'Unknown room.');
+    const room = await settleIfDue(deps, candidate);
+    if (room.status !== 'open') {
+      if (roomId) throw new HttpError(409, 'room_started', 'This room has already started. Pick another one.');
       continue;
     }
-    return onlineStatus(deps, room.id);
+    const entries = await deps.store.listEntries(room.id);
+    if (entries.some(e => e.wallet === wallet)) return onlineStatus(deps, room.id);
+    if (entries.length >= FIELD_SIZE) {
+      if (roomId) throw new HttpError(409, 'room_full', 'This room is full. Pick another one.');
+      continue;
+    }
+    const now = deps.now();
+    if (!(await claimSlot(deps, wallet, room.id, now, null))) throw limitError(now);
+    // Two players can take the last seat at once; the later one gets their race back.
+    if ((await deps.store.listEntries(room.id)).length > FIELD_SIZE) {
+      await deps.store.deleteEntry(room.id, wallet);
+      if (roomId) throw new HttpError(409, 'room_full', 'This room is full. Pick another one.');
+      continue;
+    }
+    // A full room starts now; the schedule then opens a new room for the same start time.
+    const status = await onlineStatus(deps, room.id);
+    if (status.race.status === 'finished') await ensureRooms(deps, terrain);
+    return status;
   }
-  throw new HttpError(503, 'busy', 'Rooms are busy right now. Please try again.');
+  throw new HttpError(503, 'busy', 'Every room is full right now. Please try again in a moment.');
 }
 
 async function onlineStatus(deps: Deps, raceId: string) {

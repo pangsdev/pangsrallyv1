@@ -68,3 +68,30 @@
   .lobby-title h2 { font-size: 1.35rem; }
 }
 @media (prefers-reduced-motion: reduce) { .lobby-mode-art img { animation: none !important; } }
+
+/* Online rooms list */
+.rooms-intro { color: var(--text-muted); font-size: 0.92rem; line-height: 1.6; max-width: 760px; margin: 0 0 1.25rem; }
+.rooms-intro strong { color: #fff; }
+.rooms-error { margin: 0 0 1rem; padding: 0.7rem 1rem; border-radius: 12px; background: rgba(255, 80, 100, 0.1); border: 1px solid rgba(255, 80, 100, 0.35); color: #ff8a9a; font-size: 0.9rem; }
+.rooms-list { display: grid; gap: 0.9rem; }
+.rooms-loading { display: grid; place-items: center; padding: 3rem; }
+.rooms-card {
+  display: grid; grid-template-columns: 180px 1fr auto; align-items: center; gap: 1.5rem;
+  padding: 1.1rem 1.4rem; border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+  border: 1px solid var(--border-color);
+}
+.rooms-card.in { border-color: rgba(76, 201, 255, 0.55); box-shadow: 0 0 0 3px rgba(76, 201, 255, 0.08); }
+.rooms-time strong { display: block; font-family: var(--font-heading); font-size: 1.6rem; line-height: 1.1; }
+.rooms-time span { color: #4cc9ff; font-size: 0.88rem; font-weight: 600; }
+.rooms-seats { display: flex; flex-direction: column; gap: 0.4rem; color: var(--text-muted); font-size: 0.88rem; }
+.rooms-bar { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.rooms-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4cc9ff, #2d7dff); }
+.rooms-join { min-width: 150px; padding: 11px 22px; border: 0; border-radius: 12px; font: 800 0.98rem var(--font-body); cursor: pointer; color: #fff; background: linear-gradient(135deg, #4cc9ff, #2d7dff); }
+.rooms-join.in { background: rgba(76, 201, 255, 0.14); color: #4cc9ff; border: 1px solid rgba(76, 201, 255, 0.5); }
+.rooms-join:disabled { opacity: 0.45; cursor: not-allowed; }
+@media (max-width: 640px) {
+  .rooms-card { grid-template-columns: 1fr auto; gap: 0.8rem 1rem; }
+  .rooms-seats { grid-column: 1 / -1; grid-row: 2; }
+  .rooms-join { min-width: 0; }
+}

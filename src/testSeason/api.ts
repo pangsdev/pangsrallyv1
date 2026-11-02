@@ -57,6 +57,16 @@ export interface PublicRace {
   maxPlayers: number;
 }
 
+/** An online room in the schedule (the game makes them; see ROOM_SLOT_MINUTES). */
+export interface RoomSummary {
+  id: string;
+  startsAt: string;
+  players: number;
+  maxPlayers: number;
+  /** the signed-in player already has a seat */
+  joined: boolean;
+}
+
 export interface LeaderboardPlayer {
   rank: number;
   wallet: string;
@@ -224,7 +234,9 @@ export async function mintBetaPass(onStep: (step: 'voucher' | 'chain' | 'confirm
 export const testSeason = {
   me: () => call<PlayerStatus>('me'),
   botRace: (terrain: string) => call<PlayerStatus & { race: PublicRace; you: { position: number; points: number } }>('bot-race', { terrain }),
-  onlineJoin: (terrain: string) => call<{ race: PublicRace; serverTime: string }>('online-join', { terrain }),
+  rooms: (terrain: string) => call<{ rooms: RoomSummary[]; serverTime: string }>('rooms', { terrain }),
+  /** Takes a seat (one of the day's races). No roomId → the soonest room with a free seat. */
+  onlineJoin: (terrain: string, roomId?: string) => call<{ race: PublicRace; serverTime: string }>('online-join', { terrain, ...(roomId ? { roomId } : {}) }),
   onlineStatus: (raceId: string) => call<{ race: PublicRace; serverTime: string }>('online-status', { raceId }),
   race: (raceId: string) => call<{ race: PublicRace }>('race', { raceId }),
   history: () => call<{ races: HistoryRow[] }>('history'),

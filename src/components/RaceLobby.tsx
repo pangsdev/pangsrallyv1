@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { PlayerStatus } from '../testSeason/api';
 import './lobby.css';
-import { BETA_RACER_ART, POINTS_BY_POSITION, shortWallet } from '../race/testSeason';
+import { BETA_RACER_ART, POINTS_BY_POSITION, ROOM_SLOT_MINUTES, shortWallet } from '../race/testSeason';
 import { BALL_SPRITES } from '../race/sprites';
 import { ClockIcon, FlagIcon, TrackBadge } from './Icons';
 
@@ -78,9 +78,9 @@ export default function RaceLobby({ categoryInfo, player, onSelectMode, onBack }
                 {[1, 0, 2].map((k, i) => <img key={k} src={BETA_RACER_ART} alt="" style={{ '--i': i } as CSSProperties} />)}
               </div>
               <h3>Online Race</h3>
-              <p>Race other players. The room starts within a minute; empty lanes get bots.</p>
+              <p>Pick a room and race other players. A new room starts every {ROOM_SLOT_MINUTES} minutes; empty lanes get bots.</p>
               <div className="lobby-chips"><span>Real players</span><span>Up to 10</span><span>Up to {POINTS_BY_POSITION[0]} pts</span></div>
-              <span className="lobby-cta">{canRace ? 'Find Match' : 'Limit Reached'}</span>
+              <span className="lobby-cta">{canRace ? 'See Rooms' : 'Limit Reached'}</span>
             </button>
           </div>
         </div>

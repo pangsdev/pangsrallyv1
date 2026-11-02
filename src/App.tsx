@@ -8,6 +8,7 @@ import { supabase as _supabase, createRace, joinRaceDB, finishRace, markPrizeCla
 import { unlockAnnounce } from './race/announce';
 import './App.css'
 import RaceLobby from './components/RaceLobby';
+import OnlineRooms from './components/OnlineRooms';
 import Landing from './components/Landing';
 import { SeasonLeaderboard, MyRaces, SignInGate, NoWalletModal, InviteCodeModal, BetaMintModal } from './components/SeasonPages';
 import { clearSession, getSession, hasWallet, mintBetaPass, signInWithWallet, testSeason, type PlayerStatus } from './testSeason/api';
@@ -124,7 +125,7 @@ function App() {
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [selectedNFTDetails, setSelectedNFTDetails] = useState<any | null>(null);
   const [renameInput, setRenameInput] = useState('');
-  const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'race-lobby' | 'bot-race' | 'online-race' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral' | 'replay'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'race-lobby' | 'bot-race' | 'online-rooms' | 'online-race' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral' | 'replay'>('landing');
 
   const [parentA, setParentA] = useState<any>(null);
   const [parentB, setParentB] = useState<any>(null);
@@ -812,6 +813,7 @@ function App() {
       case 'race-lobby': return track;
       // A refresh must never start (and spend) a race, so live race views have their own path that loads the lobby.
       case 'bot-race': return `${track}/bot`;
+      case 'online-rooms': return `${track}/rooms`;
       case 'online-race': return onlineRaceId ? `/room/${onlineRaceId}` : `${track}/online`;
       case 'replay': return replayRaceId ? `/race/${replayRaceId}` : null;
       default: return SIMPLE_PATHS[currentView] ?? null;
@@ -825,7 +827,7 @@ function App() {
     const byPath = Object.entries(SIMPLE_PATHS).find(([, p]) => p === (parts.length ? `/${parts[0]}` : '/'));
     if (parts[0] === 'rally' && parts[1]) {
       const cat = mockCategories.find(c => c.terrain.toLowerCase() === parts[1] && c.entry !== 'Locked');
-      if (cat) { setActiveCategoryInfo(cat); setOnlineRaceId(null); setCurrentView('race-lobby'); return; }
+      if (cat) { setActiveCategoryInfo(cat); setOnlineRaceId(null); setCurrentView(parts[2] === 'rooms' ? 'online-rooms' : 'race-lobby'); return; }
       setCurrentView('rally'); return;
     }
     if (parts[0] === 'race' && parts[1]) { setReplayRaceId(parts[1]); setCurrentView('replay'); return; }
@@ -1509,7 +1511,7 @@ function App() {
                 unlockAnnounce();
                 setOnlineRaceId(null);
                 setRaceKey(k => k + 1);
-                setCurrentView(mode === 'bot' ? 'bot-race' : 'online-race');
+                setCurrentView(mode === 'bot' ? 'bot-race' : 'online-rooms');
               }}
               onBack={() => setCurrentView('rally')}
             />
@@ -1539,13 +1541,27 @@ function App() {
           />
         )}
 
+        {currentView === 'online-rooms' && activeCategoryInfo && (
+          player ? (
+            <OnlineRooms
+              categoryInfo={activeCategoryInfo}
+              player={player}
+              onOpenRoom={(id) => { unlockAnnounce(); setOnlineRaceId(id); setRaceKey(k => k + 1); setCurrentView('online-race'); }}
+              onJoined={refreshPlayer}
+              onBack={() => setCurrentView('race-lobby')}
+            />
+          ) : (
+            <SignInGate signingIn={signingIn} onSignIn={signIn} />
+          )
+        )}
+
         {currentView === 'online-race' && activeCategoryInfo && player && (
           <OnlineRoom
             key={`online-${raceKey}-${onlineRaceId ?? 'new'}`}
             categoryInfo={activeCategoryInfo}
             playerWallet={player.wallet}
             raceId={onlineRaceId}
-            onBack={() => { refreshPlayer(); setCurrentView(onlineRaceId ? 'my-races' : 'race-lobby'); }}
+            onBack={() => { refreshPlayer(); setOnlineRaceId(null); setCurrentView('online-rooms'); }}
             onFinished={refreshPlayer}
           />
         )}
