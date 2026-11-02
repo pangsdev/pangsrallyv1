@@ -45,8 +45,8 @@ Server-authoritative: the browser never decides results or points.
 - `supabase/migrations/004_test_invites.sql` — `test_invite_codes` + `test_players.invite_code`; `test_join_with_invite(wallet, code)` registers and takes a place atomically (no over-fill). Applied live 2 Nov 2026 via `supabase db query --linked -f …`.
 - `supabase/migrations/003_test_season.sql` — `test_players`, `test_sessions`, `test_races`, `test_race_entries` (unique `(wallet, day, slot)` enforces the daily limit), view `test_leaderboard`. RLS on, no policies: only the function's service role touches them.
 - Dev: `vite.config.ts` serves `/api/test-season` with the same core on an in-memory store (wiped on restart). Prod: `${VITE_SUPABASE_URL}/functions/v1/test-season`. Override with `VITE_TEST_SEASON_API`.
-- Client: `src/testSeason/api.ts` (session in `localStorage pangsrally_test_session`, header `x-session`), `RaceRoom.tsx` (replays a server race: bot / online / replay), `OnlineRoom.tsx` (waiting room, 60 s or 10 players, bots fill), `RaceLobby.tsx`, `SeasonPages.tsx` (leaderboard, My Races with replays, sign-in gate, no-wallet modal).
-- Online rooms resolve lazily (any status/history/me call after the wait). A player who leaves is still scored.
+- Client: `src/testSeason/api.ts` (session in `localStorage pangsrally_test_session`, header `x-session`), `RaceRoom.tsx` (replays a server race: bot / online / replay), `OnlineRooms.tsx` (room list) + `OnlineRoom.tsx` (waiting room). Rooms are made by the game: `OPEN_ROOMS` (3) per track, start every `ROOM_SLOT_MINUTES` (30) on the clock; a full room starts at once and a new room takes its start time; bots fill empty lanes (migration 006 keeps one open room per start time), `RaceLobby.tsx`, `SeasonPages.tsx` (leaderboard, My Races with replays, sign-in gate, no-wallet modal).
+- Online rooms resolve lazily (any rooms/status/history/me call after the start time). A player who leaves is still scored.
 - `npm run test:season` — 16 end-to-end checks (signatures, parallel daily-limit abuse, online rooms, replay determinism, fairness).
 
 ### Racer art and ball colours (must match)
