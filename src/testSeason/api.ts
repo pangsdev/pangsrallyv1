@@ -96,7 +96,8 @@ export interface HistoryRow {
   raceId: string;
   kind: 'bot' | 'online';
   terrain: string;
-  status: 'open' | 'finished';
+  /** 'live': resolved but still running on screen; its points count once it ends. */
+  status: 'open' | 'live' | 'finished';
   joinedAt: string;
   position: number | null;
   points: number;
@@ -175,7 +176,7 @@ export function inviteFromUrl(): string | null {
  */
 export async function signInWithWallet(askInvite: (reason: string) => Promise<string | null>): Promise<PlayerStatus> {
   const eth = (window as unknown as { ethereum?: unknown }).ethereum;
-  if (!eth) throw new ApiError(0, 'no_wallet', 'No wallet found. Install MetaMask to join the test season.');
+  if (!eth) throw new ApiError(0, 'no_wallet', 'No wallet found. Install MetaMask to join the Beta season.');
   // Check the server first so nobody is asked to sign a message that cannot be used.
   await call('leaderboard');
   const provider = new BrowserProvider(eth as never);
@@ -187,7 +188,7 @@ export async function signInWithWallet(askInvite: (reason: string) => Promise<st
   try {
     signature = await signer.signMessage(message);
   } catch {
-    throw new ApiError(0, 'sign_rejected', 'Signature cancelled. Sign the message to join the test season.');
+    throw new ApiError(0, 'sign_rejected', 'Signature cancelled. Sign the message to join the Beta season.');
   }
   let inviteCode: string | null = inviteFromUrl();
   for (;;) {
@@ -199,7 +200,7 @@ export async function signInWithWallet(askInvite: (reason: string) => Promise<st
     } catch (e) {
       if (!(e instanceof ApiError) || (e.code !== 'invite_required' && e.code !== 'invite_invalid')) throw e;
       inviteCode = await askInvite(e.code === 'invite_invalid' && inviteCode ? e.message : '');
-      if (!inviteCode) throw new ApiError(0, 'invite_cancelled', 'The test season is invite-only. Ask the Pangs Rally team for a code.');
+      if (!inviteCode) throw new ApiError(0, 'invite_cancelled', 'The Beta season is invite-only. Ask the Pangs Rally team for a code.');
     }
   }
 }

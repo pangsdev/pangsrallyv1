@@ -206,7 +206,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
         <button className="rr-btn" onClick={onBack}>{backLabel}</button>
         <div style={{ textAlign: 'center' }}>
           <h2 className="rr-title" style={{ color: theme.hudAccent }}><TrackBadge terrain={terrain} size={26} style={{ marginRight: 8, verticalAlign: '-5px' }} />{terrain} Track · {title}</h2>
-          <p className="rr-sub">Test Season · Season points for every finish · {DEFAULT_RACE_DISTANCE}m</p>
+          <p className="rr-sub">Beta Season · Season points for every finish · {DEFAULT_RACE_DISTANCE}m</p>
         </div>
         <div className="rr-header-spacer" />
       </div>
@@ -350,7 +350,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
                 </p>
                 <div className="rr-prize">
                   <div className="amt">+{myResult.points} pts</div>
-                  <div className="note">Season points · they count on the Test Season leaderboard</div>
+                  <div className="note">Season points · they count on the Beta Season leaderboard</div>
                 </div>
               </>
             ) : (

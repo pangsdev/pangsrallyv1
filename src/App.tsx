@@ -215,7 +215,7 @@ function App() {
     try {
       const status = await signInWithWallet(askInvite);
       applyPlayer(status);
-      showToast('Wallet connected. Welcome to the test season!', 'success');
+      showToast('Wallet connected. Welcome to the Beta season!', 'success');
       if (needsBeta(status)) setBetaOpen(true);
       return status;
     } catch (e: any) {
@@ -1534,6 +1534,7 @@ function App() {
               return { race: res.race, you: res.you };
             }}
             onBack={() => { refreshPlayer(); setCurrentView('race-lobby'); }}
+            onFinished={refreshPlayer}
             raceAgain={{
               label: 'Race Again!',
               enabled: player.unlimited || player.racesLeft > 0,

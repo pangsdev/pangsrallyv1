@@ -24,7 +24,7 @@ export const ROOM_SLOT_MINUTES = 30;
 export const OPEN_ROOMS = 3;
 /** A room is not created for a start time closer than this, so nobody joins a room that is about to go. */
 export const ROOM_MIN_LEAD_SECONDS = 120;
-/** Tracks open during the test season. */
+/** Tracks open during the Beta season. */
 export const TEST_TERRAINS = ['Forest'];
 /** The lone player of a bot race always runs in lane 5 (the caller's player lines are baked for number 5). */
 export const BOT_RACE_PLAYER_LANE = 5;
@@ -59,9 +59,9 @@ export interface TestRaceResult {
 }
 
 /** The exact message a wallet signs to sign in; the server rebuilds it to verify. */
-export function signInMessage(address: string, issuedAt: string): string {
+export function signInMessage(address: string, issuedAt: string, title = 'Pangs Rally Beta Season sign-in'): string {
   return [
-    'Pangs Rally Test Season sign-in',
+    title,
     '',
     `Wallet: ${address}`,
     `Issued: ${issuedAt}`,

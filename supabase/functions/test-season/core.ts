@@ -1,5 +1,5 @@
 /**
- * Test-season game server: wallet sign-in, the daily race limit, bot races,
+ * Beta-season game server (the code and tables keep their test-season names): wallet sign-in, the daily race limit, bot races,
  * online rooms, points and the leaderboard. Every result is computed here, so
  * a browser cannot award itself points.
  *
@@ -21,6 +21,7 @@ export interface RaceRow {
   status: 'open' | 'finished';
   created_at: string;
   closes_at: string | null;
+  /** When the race crosses the line on screen (see raceEndsAt). Its points count from then on. */
   finished_at: string | null;
   field: TestRacer[] | null;
   results: TestRaceResult[] | null;
@@ -74,7 +75,8 @@ export interface Store {
   /** Marks an open race finished; false when another request already did. */
   finishRace(id: string, patch: { field: TestRacer[]; results: TestRaceResult[]; finished_at: string }): Promise<boolean>;
   setEntryResult(raceId: string, wallet: string, position: number, points: number): Promise<void>;
-  leaderboard(limit: number): Promise<LeaderRow[]>;
+  /** Only races whose finished_at has passed `now` (Postgres: the view compares with now()). */
+  leaderboard(limit: number, now: Date): Promise<LeaderRow[]>;
   history(wallet: string, limit: number): Promise<(EntryRow & { race: RaceRow })[]>;
 }
 
@@ -160,7 +162,9 @@ async function login(deps: Deps, body: Record<string, unknown>) {
   const issued = /^Issued: (.+)$/m.exec(message)?.[1] ?? '';
   const issuedAt = Date.parse(issued);
   const now = deps.now();
-  if (message !== signInMessage(address, issued) || !Number.isFinite(issuedAt) || Math.abs(now.getTime() - issuedAt) > SIGN_IN_MAX_AGE_MS) {
+  // Browsers still on the build before the Beta season rename sign the old title for a while.
+  const known = message === signInMessage(address, issued) || message === signInMessage(address, issued, 'Pangs Rally Test Season sign-in');
+  if (!known || !Number.isFinite(issuedAt) || Math.abs(now.getTime() - issuedAt) > SIGN_IN_MAX_AGE_MS) {
     throw new HttpError(400, 'bad_message', 'The sign-in message expired. Please sign again.');
   }
 
@@ -171,7 +175,7 @@ async function login(deps: Deps, body: Record<string, unknown>) {
   const wallet = address.toLowerCase();
   if (deps.inviteRequired && !deps.unlimitedWallets.has(wallet) && !(await deps.store.playerExists(wallet))) {
     const code = normalizeInvite(body.inviteCode);
-    if (!code) throw new HttpError(403, 'invite_required', 'The test season is invite-only. Enter your invite code to join.');
+    if (!code) throw new HttpError(403, 'invite_required', 'The Beta season is invite-only. Enter your invite code to join.');
     if (await deps.store.joinWithInvite(wallet, code) === 'invalid') {
       throw new HttpError(403, 'invite_invalid', 'This invite code is not valid or has no places left.');
     }
@@ -206,7 +210,7 @@ async function me(deps: Deps, wallet: string) {
   for (const room of await deps.store.openRoomsFor(wallet)) await settleIfDue(deps, room);
   const unlimited = deps.unlimitedWallets.has(wallet);
   const racesToday = await deps.store.countEntriesOnDay(wallet, utcDay(now));
-  const board = await deps.store.leaderboard(10_000);
+  const board = await deps.store.leaderboard(10_000, now);
   const index = board.findIndex(r => r.wallet === wallet);
   const row = board[index];
   return {
@@ -268,7 +272,7 @@ async function botRace(deps: Deps, wallet: string, terrain: string) {
 
   await deps.store.insertRace({
     id, kind: 'bot', terrain, seed, status: 'finished',
-    created_at: now.toISOString(), closes_at: null, finished_at: now.toISOString(), field, results,
+    created_at: now.toISOString(), closes_at: null, finished_at: raceEndsAt(now, results), field, results,
   });
   const points = pointsFor(mine.position);
   const claimed = await claimSlot(deps, wallet, id, now, { position: mine.position, points });
@@ -399,7 +403,7 @@ async function settleIfDue(deps: Deps, race: RaceRow): Promise<RaceRow> {
 
   const field = buildTestField(race.seed, entries.map(e => e.wallet));
   const results = runTestRace(race.seed, field, race.terrain);
-  const won = await deps.store.finishRace(race.id, { field, results, finished_at: now.toISOString() });
+  const won = await deps.store.finishRace(race.id, { field, results, finished_at: raceEndsAt(now, results) });
   if (won) {
     for (const racer of field) {
       if (!racer.wallet) continue;
@@ -422,23 +426,29 @@ async function replay(deps: Deps, raceId: string) {
 async function history(deps: Deps, wallet: string) {
   for (const room of await deps.store.openRoomsFor(wallet)) await settleIfDue(deps, room);
   const rows = await deps.store.history(wallet, 50);
+  const now = deps.now();
   return {
-    races: rows.map(r => ({
-      raceId: r.race_id,
-      kind: r.race.kind,
-      terrain: r.race.terrain,
-      status: r.race.status,
-      joinedAt: r.joined_at,
-      position: r.position,
-      points: r.points,
-    })),
+    races: rows.map(r => {
+      // Still running on screen: keep the result (and its points) back until it crosses the line.
+      const live = r.race.status === 'finished' && !raceOver(r.race, now);
+      return {
+        raceId: r.race_id,
+        kind: r.race.kind,
+        terrain: r.race.terrain,
+        status: live ? 'live' : r.race.status,
+        joinedAt: r.joined_at,
+        position: live ? null : r.position,
+        points: live ? 0 : r.points,
+      };
+    }),
   };
 }
 
 /** Everything the Profile page shows: the player status plus season stats over all finished races. */
 async function profile(deps: Deps, wallet: string) {
   const status = await me(deps, wallet);
-  const rows = (await deps.store.history(wallet, 2000)).filter(r => r.race.status === 'finished' && r.position !== null);
+  const now = deps.now();
+  const rows = (await deps.store.history(wallet, 2000)).filter(r => raceOver(r.race, now) && r.position !== null);
   const by = (kind: 'bot' | 'online') => {
     const list = rows.filter(r => r.race.kind === kind);
     return { races: list.length, points: list.reduce((n, r) => n + r.points, 0), wins: list.filter(r => r.position === 1).length };
@@ -462,7 +472,7 @@ async function profile(deps: Deps, wallet: string) {
 }
 
 async function leaderboard(deps: Deps) {
-  const rows = await deps.store.leaderboard(100);
+  const rows = await deps.store.leaderboard(100, deps.now());
   return {
     players: rows.map((r, i) => ({ rank: i + 1, wallet: r.wallet, name: shortWallet(r.wallet), points: r.points, races: r.races, wins: r.wins, podiums: r.podiums })),
   };
@@ -471,6 +481,23 @@ async function leaderboard(deps: Deps) {
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Seconds from the server fixing a result to the racers leaving the line on screen:
+ * a little under the 900 ms jog-in + 3-2-1 countdown in RaceRoom (loading only adds to it),
+ * so the points are in by the time the finishing browser asks for them.
+ */
+const RACE_LEAD_IN_SECONDS = 3.5;
+
+/** When a race just resolved at `now` crosses the line on screen; points count from then on. */
+function raceEndsAt(now: Date, results: TestRaceResult[]): string {
+  const raceSeconds = Math.max(0, ...results.map(r => r.finishTime ?? 0));
+  return new Date(now.getTime() + (RACE_LEAD_IN_SECONDS + raceSeconds) * 1000).toISOString();
+}
+
+export function raceOver(race: RaceRow, now: Date): boolean {
+  return race.status === 'finished' && race.finished_at !== null && Date.parse(race.finished_at) <= now.getTime();
+}
 
 /** Takes the next free race slot of the day; false when the daily limit is used up. */
 async function claimSlot(deps: Deps, wallet: string, raceId: string, now: Date, result: { position: number; points: number } | null): Promise<boolean> {
@@ -517,7 +544,7 @@ async function mustGetRace(deps: Deps, id: string): Promise<RaceRow> {
 }
 
 function checkTerrain(terrain: string) {
-  if (!TEST_TERRAINS.includes(terrain)) throw new HttpError(400, 'track_locked', 'This track is not open during the test season.');
+  if (!TEST_TERRAINS.includes(terrain)) throw new HttpError(400, 'track_locked', 'This track is not open during the Beta season.');
 }
 
 function limitError(now: Date): HttpError {

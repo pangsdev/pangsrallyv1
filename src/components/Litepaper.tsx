@@ -18,7 +18,7 @@ const Litepaper: React.FC = () => {
           <h2>1. Introduction</h2>
           <p>
             Pangs Rally is an immersive racing ecosystem built on the Robinhood chain.
-            Our exclusive <strong>Genesis Collection</strong>—2,222 unique Racing Pangolins—will be
+            Our exclusive <strong>Genesis Collection</strong> of 2,222 unique Racing Pangolins will be
             available to mint directly on our website. These Genesis NFTs are your ultimate ticket to the Pangs Rally universe,
             granting you access to races, rewards, and future breeding events. The <strong>$PANG token</strong> launches
             after the NFT mints are complete.
@@ -35,12 +35,12 @@ const Litepaper: React.FC = () => {
           <h2>2. Racing & Rooms</h2>
 
           <div className="lp-card">
-            <h3>Test Season (Live Now)</h3>
+            <h3>Beta Season (Live Now)</h3>
             <p>
               Before the mint, invited players can race: connect MetaMask, sign a free message, claim the free <strong>Beta pass</strong> NFT
               (you only pay network gas on Robinhood Chain), and run up to <strong>3 races per day</strong> against bots or other players.
               Every pangolin races on equal stats, so luck decides, and every finish earns
-              <strong> season points</strong> on the Test Season leaderboard. The Beta pass is a test pass: we make no promises about future rewards or value.
+              <strong> season points</strong> on the Beta Season leaderboard. The Beta pass is a test pass: we make no promises about future rewards or value.
             </p>
           </div>
 
@@ -56,9 +56,9 @@ const Litepaper: React.FC = () => {
           <div className="lp-card">
             <h3>Premium Racing (Locked)</h3>
             <p>
-              As the ecosystem matures, higher-stakes racing rooms will unlock. These rooms will require a <strong>$PANG entry fee</strong>. 
+              As the ecosystem matures, higher stakes racing rooms will unlock. These rooms will require a <strong>$PANG entry fee</strong>. 
               The competitive edge: <strong>90% of the total collected entry fees</strong> are distributed amongst the winners. 
-              The remaining 10% is routed to the ecosystem treasury to sustain long-term rewards, operations, and development.
+              The remaining 10% is routed to the ecosystem treasury to sustain long term rewards, operations, and development.
             </p>
           </div>
         </section>
@@ -111,7 +111,7 @@ const Litepaper: React.FC = () => {
             <p>
               Your Pangolins aren't static. By participating in races and achieving podium finishes, your NFT will 
               gain experience. You can then pay a $PANG fee to <strong>Level Up</strong> your Pangolin, permanently 
-              enhancing its racing capabilities and unlocking higher-tier tracks.
+              enhancing its racing capabilities and unlocking higher tier tracks.
             </p>
           </div>
 
@@ -128,9 +128,9 @@ const Litepaper: React.FC = () => {
         <div className="divider"></div>
 
         <section className="lp-section">
-          <h2>6. Multi-Tier Referral System</h2>
+          <h2>6. Multi Tier Referral System</h2>
           <p>
-            Growth is rewarded in the Pangs Rally ecosystem. Our on-chain multi-tier referral system allows players to 
+            Growth is rewarded in the Pangs Rally ecosystem. Our onchain multi tier referral system allows players to 
             earn passive income by expanding the racing community.
           </p>
           <ul className="lp-list">

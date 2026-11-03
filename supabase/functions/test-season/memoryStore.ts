@@ -3,7 +3,7 @@
  * supabase/migrations/003_test_season.sql and 004_test_invites.sql so limits behave like production.
  * Data is lost when the dev server restarts.
  */
-import type { EntryRow, LeaderRow, RaceRow, Store } from './core.ts';
+import { raceOver, type EntryRow, type LeaderRow, type RaceRow, type Store } from './core.ts';
 
 /** `invites`: code → places, e.g. { 'DEV-RALLY': 1000 } so dev sign-in works. */
 export function createMemoryStore(invites: Record<string, number> = {}): Store {
@@ -99,9 +99,11 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
       const e = entries.find(x => x.race_id === raceId && x.wallet === wallet);
       if (e) { e.position = position; e.points = points; }
     },
-    async leaderboard(limit) {
+    async leaderboard(limit, now) {
       const by = new Map<string, LeaderRow>();
       for (const e of entries) {
+        const race = races.get(e.race_id);
+        if (!race || !raceOver(race, now)) continue;
         const row = by.get(e.wallet) ?? { wallet: e.wallet, races: 0, points: 0, wins: 0, podiums: 0, last_race: null };
         if (e.position !== null) {
           row.races++;

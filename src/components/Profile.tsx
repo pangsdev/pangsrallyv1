@@ -168,7 +168,7 @@ export function BetaInventory({ wallet, contract, onMintBeta }: { wallet: string
               <small>{info.minted === id ? 'Minted by this wallet' : 'Received'}</small>
               <dl>
                 <div><dt>Edition</dt><dd>Beta</dd></div>
-                <div><dt>Season</dt><dd>Test Season 2026</dd></div>
+                <div><dt>Season</dt><dd>Beta Season 2026</dd></div>
                 <div><dt>Body</dt><dd>Beta</dd></div>
                 <div><dt>Chain</dt><dd>Robinhood</dd></div>
               </dl>

@@ -19,7 +19,7 @@ const ordinal = (n: number) => `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 
 
 const STEPS = [
   { n: '01', title: 'Line up', text: `${FIELD_SIZE} pangolins take their lanes. Real players first, bots fill every empty spot, so a race never waits for long.` },
-  { n: '02', title: 'Curl and roll', text: 'They sprint off the line, curl into armoured balls and roll for the finish. In the test season every racer runs on equal stats.' },
+  { n: '02', title: 'Curl and roll', text: 'They sprint off the line, curl into armoured balls and roll for the finish. In the Beta season every racer runs on equal stats.' },
   { n: '03', title: 'Score points', text: `Every finish scores season points, ${POINTS_BY_POSITION[0]} for a win down to ${POINTS_BY_POSITION[POINTS_BY_POSITION.length - 1]} for ${ordinal(FIELD_SIZE)}. Climb the leaderboard one race at a time.` },
 ];
 
@@ -33,7 +33,7 @@ const BETA_STEPS = [
 const FAQ = [
   { q: 'Is the Beta pass really free?', a: 'Yes. There is no mint price. The only cost is the small network fee (gas) that every transaction on Robinhood Chain needs, paid in ETH.' },
   { q: 'Why do I need ETH on Robinhood Chain?', a: 'Minting is a blockchain transaction, and gas is paid in ETH on that chain. Keep a small amount in your wallet before you mint. MetaMask will offer to add the network for you.' },
-  { q: 'What does the Beta pass do?', a: 'It unlocks racing in the test season, and your racer wears it on the track. It is a test pass: we make no promises about future rewards or value.' },
+  { q: 'What does the Beta pass do?', a: 'It unlocks racing in the Beta season, and your racer wears it on the track. It is a test pass: we make no promises about future rewards or value.' },
   { q: 'Can I sell or transfer it?', a: 'It is a normal NFT, so you can. The game checks that your own wallet minted a pass, so buying one does not let someone else in, and invited players still mint their own.' },
   { q: 'Is there a $PANG token?', a: 'Not yet. $PANG launches only after the NFT mints. Until we announce it on our official channels, anything presented as $PANG is not ours.' },
   { q: 'Where do I find an invite code?', a: 'Follow Pangs Rally on X. We share codes there as places open up. Each code has a limited number of places.' },
@@ -47,7 +47,7 @@ const TRACKS = [
 ];
 
 const ROADMAP = [
-  { tag: 'Now', title: 'Test Season', text: 'Invite-only races with a free Beta pass, season points and a public leaderboard.' },
+  { tag: 'Now', title: 'Beta Season', text: 'Invite-only races with a free Beta pass, season points and a public leaderboard.' },
   { tag: 'Next', title: 'Genesis Mint', text: '2,222 Racing Pangolins, each with its own body, weather and racing stats.' },
   { tag: 'After the mint', title: '$PANG', text: 'The game token launches only after the NFT mints. There is no token today.' },
   { tag: 'Later', title: 'The Laboratory', text: 'Breeding opens, and a new generation of pangolins joins the track.' },
@@ -72,7 +72,7 @@ export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision
         <div className="ld-hero-glow" aria-hidden="true" />
         <div className="ld-wrap ld-hero-grid">
           <div className="ld-hero-copy">
-            <span className="ld-badge"><span className="ld-dot" /> Test Season is live</span>
+            <span className="ld-badge"><span className="ld-dot" /> Beta Season is live</span>
             <h1 className="ld-title">
               Curl up. Roll fast.<br />
               <span className="text-gradient">Win the Rally.</span>
@@ -133,7 +133,7 @@ export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision
         <div className="ld-wrap ld-banner-body">
           <span className="ld-eyebrow">Season points</span>
           <h2>Every finish counts.</h2>
-          <p>Win or come tenth, you score. Points add up across the whole test season.</p>
+          <p>Win or come tenth, you score. Points add up across the whole Beta season.</p>
           <ol className="ld-points">
             {POINTS_BY_POSITION.map((p, i) => (
               <li key={i} className={i < 3 ? 'top' : ''}><span>{ordinal(i + 1)}</span><strong>{p}</strong></li>
@@ -165,7 +165,7 @@ export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision
             <div>
               <h3>Before you mint</h3>
               <p>Have a little ETH on <strong>Robinhood Chain</strong> for gas. The Beta pass itself costs nothing, but every blockchain transaction needs a small network fee.</p>
-              <p>It is a test pass for the test season. We make no promises about rewards or value, and only invited wallets can mint.</p>
+              <p>It is a test pass for the Beta season. We make no promises about rewards or value, and only invited wallets can mint.</p>
             </div>
           </div>
           <div className="ld-faq">
@@ -186,7 +186,7 @@ export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision
           <div className="ld-head">
             <span className="ld-eyebrow">Tracks</span>
             <h2>Four worlds to race through.</h2>
-            <p>Each track favours a different Weather Adaptation. The Forest is open for the test season; the rest unlock later.</p>
+            <p>Each track favours a different Weather Adaptation. The Forest is open for the Beta season; the rest unlock later.</p>
           </div>
           <div className="ld-tracks">
             {TRACKS.map(t => (

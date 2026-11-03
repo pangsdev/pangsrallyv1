@@ -47,7 +47,7 @@ export function NoWalletModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Asked once, for a wallet that has not joined the test season yet. */
+/** Asked once, for a wallet that has not joined the Beta season yet. */
 export function InviteCodeModal({ error, onSubmit, onCancel }: { error: string; onSubmit: (code: string) => void; onCancel: () => void }) {
   const [code, setCode] = useState('');
   return (
@@ -55,7 +55,7 @@ export function InviteCodeModal({ error, onSubmit, onCancel }: { error: string; 
       <form className="season-modal glass-panel" onClick={e => e.stopPropagation()} onSubmit={e => { e.preventDefault(); if (code.trim()) onSubmit(code.trim()); }}>
         <div style={{ fontSize: '2.5rem' }}>🎟️</div>
         <h3>Enter your invite code</h3>
-        <p>The test season is invite-only for now. Type the code you were given to claim your place. You only need it once.</p>
+        <p>The Beta season is invite-only for now. Type the code you were given to claim your place. You only need it once.</p>
         <input
           className="season-invite-input"
           value={code}
@@ -70,7 +70,7 @@ export function InviteCodeModal({ error, onSubmit, onCancel }: { error: string; 
         />
         {error && <div className="season-invite-error">{error}</div>}
         <div className="season-modal-actions">
-          <button type="submit" className="btn btn-primary" disabled={!code.trim()}>Join the Test Season</button>
+          <button type="submit" className="btn btn-primary" disabled={!code.trim()}>Join the Beta Season</button>
           <button type="button" className="btn btn-outline" onClick={onCancel}>Cancel</button>
         </div>
       </form>
@@ -88,7 +88,7 @@ export function BetaMintModal({ onMint, onClose }: { onMint: (onStep: (s: 'vouch
       <div className="season-modal glass-panel beta-modal" onClick={e => e.stopPropagation()}>
         <img className="beta-modal-art" src="/beta/beta-pass.webp" alt="Pangs Rally Beta pass" />
         <h3>Claim your Beta pass</h3>
-        <p>Every test season racer holds the <strong>Pangs Rally Beta</strong> NFT. It is free: you only pay the network gas on Robinhood Chain. One per wallet.</p>
+        <p>Every Beta season racer holds the <strong>Pangs Rally Beta</strong> NFT. It is free: you only pay the network gas on Robinhood Chain. One per wallet.</p>
         <p className="beta-modal-hint">Make sure your wallet has a little ETH on Robinhood Chain for gas. MetaMask will offer to add the network.</p>
         <div className="season-modal-actions">
           <button className="btn btn-primary" disabled={busy || step === 'done'} onClick={async () => {
@@ -103,6 +103,7 @@ export function BetaMintModal({ onMint, onClose }: { onMint: (onStep: (s: 'vouch
 }
 
 const medal = (pos: number | null) => pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : pos ? `#${pos}` : '⏳';
+const raceNote = (r: HistoryRow) => r.status === 'finished' ? `+${r.points} pts` : r.status === 'live' ? 'Racing now' : 'Waiting';
 
 /** Test-season leaderboard (points from every finish). */
 export function SeasonLeaderboard({ playerWallet }: { playerWallet: string | null }) {
@@ -122,7 +123,7 @@ export function SeasonLeaderboard({ playerWallet }: { playerWallet: string | nul
   return (
     <section className="inventory-page animated-enter season-page">
       <div className="inventory-header-bar">
-        <h2>Test Season Leaderboard</h2>
+        <h2>Beta Season Leaderboard</h2>
         <div className="inventory-stats">
           <span>Racers: <strong style={{ color: 'var(--primary)' }}>{players?.length ?? '…'}</strong></span>
         </div>
@@ -236,9 +237,9 @@ export function RaceHistoryList({ rows, onReplay, onOpenRoom }: { rows: HistoryR
             <span>{new Date(r.joinedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
           </div>
         </div>
-        <div className="season-race-pts">{r.status === 'finished' ? `+${r.points} pts` : 'Waiting'}</div>
-        {r.status === 'finished' ? (
-          <button className="btn btn-outline season-race-btn" onClick={() => onReplay(r.raceId)}>▶ Replay</button>
+        <div className="season-race-pts">{raceNote(r)}</div>
+        {r.status !== 'open' ? (
+          <button className="btn btn-outline season-race-btn" onClick={() => onReplay(r.raceId)}>{r.status === 'live' ? '▶ Watch' : '▶ Replay'}</button>
         ) : (
           <button className="btn btn-primary season-race-btn" onClick={() => onOpenRoom(r.raceId)}>Open Room</button>
         )}

@@ -30,7 +30,8 @@ Main app is a view-state monolith: `src/App.tsx`. Race engine lives in `src/race
 | Invites | Test season is invite-only for **new** wallets (registered wallets never need a code). Codes have N places: `npm run invite:create -- --uses 30 --note "…"`. Share link `https://pangsrally.com/?invite=CODE` pre-fills it. `TEST_OPEN_SIGNUP=1` (function secret) turns invites off. Dev code: `DEV-RALLY`. |
 | Sign-in | **Test season: MetaMask only.** Connect + sign a free message (no gas). Guest Mode / Mint Rookie were removed. No wallet → modal (desktop: install MetaMask; phone: open in the MetaMask app browser). |
 | Daily cap | 3 races/day per wallet (bot + online combined), **enforced server-side**, resets UTC midnight. Owner/testers exempt via `TEST_UNLIMITED_WALLETS`. |
-| Points | No token yet. Every finish scores season points `25/18/15/12/10/8/6/4/2/1`. Test-season leaderboard. |
+| Points | No token yet. Every finish scores season points `25/18/15/12/10/8/6/4/2/1` on the Beta season leaderboard. Points count only once the race has run on screen: `test_races.finished_at` = result time + `RACE_LEAD_IN_SECONDS` + race length (`raceEndsAt` in `core.ts`); the leaderboard view (migration 007), `me`, history (`status: 'live'` until then) and profile ignore races before that. |
+| Season name | Users see **Beta Season** (never "Test Season"); code, tables and the `test-season` function keep their old names. |
 | Fairness | Test season: every racer (players + bots) runs on equal stats 50/50/50 → pure seeded luck, ~10% win each (verified by `npm run test:season`). |
 | Token | `$PANGS` is cancelled. `$PANG` launches **after** the NFT mints; until then the site shows no token prizes, balances or fees. |
 

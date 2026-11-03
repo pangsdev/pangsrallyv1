@@ -152,10 +152,12 @@ ok('login with a real wallet signature');
   for (const p of race.players) assert.equal(p.points, POINTS_BY_POSITION[p.position - 1]);
   ok('room starts at its scheduled time, fills with bots, scores every player');
 
+  assert.equal((await call('history', {}, tokens[2])).body.races[0].status, 'live', 'still running on screen');
+  clock = Date.parse(race.finishedAt) + 1;
   const hist = (await call('history', {}, tokens[2])).body.races;
   assert.equal(hist[0].raceId, roomId);
   assert.ok(hist[0].position >= 1);
-  ok('the race shows up in My Races with its result');
+  ok('the race shows up in My Races with its result once it has run');
 }
 
 // --- scheduled rooms ---------------------------------------------------------
@@ -201,10 +203,28 @@ ok('login with a real wallet signature');
   const t = await signIn(dave);
   const join = await call('online-join', { terrain: 'Forest' }, t);
   clock = Date.parse(join.body.race.closesAt) + 5000;
+  assert.equal((await call('history', {}, t)).body.races[0].status, 'live');
+  clock += 120_000;
   const hist = (await call('history', {}, t)).body.races;
   assert.equal(hist[0].raceId, join.body.race.id);
   assert.equal(hist[0].status, 'finished');
   ok('a room nobody watches resolves when the player comes back');
+}
+
+// --- points count once the race has crossed the line on screen ---------------
+{
+  const erin = Wallet.createRandom();
+  const t = await signIn(erin);
+  const res = (await call('bot-race', { terrain: 'Forest' }, t)).body;
+  const wallet = erin.address.toLowerCase();
+  assert.ok(Date.parse(res.race.finishedAt) - clock > 10_000, 'ends after lead-in + race');
+  assert.equal(res.points, 0, 'no points while the race runs');
+  assert.equal((await call('history', {}, t)).body.races[0].points, 0);
+  assert.ok(!(await call('leaderboard')).body.players.some(p => p.wallet === wallet));
+  clock = Date.parse(res.race.finishedAt) + 1;
+  assert.equal((await call('me', {}, t)).body.points, res.you.points);
+  assert.ok((await call('leaderboard')).body.players.some(p => p.wallet === wallet));
+  ok('points and the leaderboard wait until the race has run on screen');
 }
 
 // --- profile ----------------------------------------------------------------

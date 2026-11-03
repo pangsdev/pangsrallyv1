@@ -92,7 +92,7 @@ export default function OnlineRoom({ categoryInfo, playerWallet, raceId, onBack,
         <button className="rr-btn" onClick={onBack}>← Rooms</button>
         <div style={{ textAlign: 'center' }}>
           <h2 className="rr-title" style={{ color: '#00c8ff' }}><TrackBadge terrain={terrain} size={26} style={{ marginRight: 8, verticalAlign: '-5px' }} />{terrain} Track · Online Race</h2>
-          <p className="rr-sub">Test Season · Equal stats for everyone · luck decides</p>
+          <p className="rr-sub">Beta Season · Equal stats for everyone · luck decides</p>
         </div>
         <div className="rr-header-spacer" />
       </div>
