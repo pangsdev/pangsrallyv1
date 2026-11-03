@@ -76,3 +76,16 @@
 .pf-inv-card dt { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
 .pf-inv-card dd { margin: 0; font-weight: 700; font-size: 0.9rem; }
 .pf-inv-card .btn { padding: 0.5rem 1rem; font-size: 0.9rem; }
+
+/* Racer name (Profile hero) */
+.pf-name { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.3rem 0.8rem; margin: 0.2rem 0 0.6rem; }
+.pf-name h2 { margin: 0; font-size: 1.6rem; overflow-wrap: anywhere; }
+.pf-name h2.is-name { font-family: var(--font-heading); font-size: 1.9rem; }
+.pf-name-edit { background: none; border: 0; padding: 0; color: #ffd166; font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.pf-name-wallet { width: 100%; font-family: ui-monospace, Menlo, monospace; font-size: 0.85rem; color: var(--text-muted); }
+.pf-name-form { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.35rem 0 0.7rem; }
+.pf-name-form input { flex: 1 1 200px; min-width: 0; padding: 0.55rem 0.8rem; border-radius: 12px; border: 1px solid rgba(255, 209, 102, 0.45); background: rgba(0, 0, 0, 0.3); color: var(--text-main); font: inherit; font-size: 1.05rem; font-weight: 700; }
+.pf-name-form input:focus { outline: 2px solid rgba(255, 209, 102, 0.5); outline-offset: 1px; }
+.pf-name-form .btn { padding: 0.5rem 1rem; font-size: 0.9rem; }
+.pf-name-form small { width: 100%; color: var(--text-muted); font-size: 0.8rem; }
+.pf-name-form small.pf-name-error { color: #ff6b81; }

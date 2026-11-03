@@ -11,7 +11,7 @@
  * chance to win.
  */
 import { RaceSimulation, DEFAULT_RACE_DISTANCE, type RacerInput, type RacerStats } from './simulation.ts';
-import { callNameForToken } from './callNames.ts';
+import { CALL_NAMES, callNameForToken } from './callNames.ts';
 import type { BodyColor } from './sprites.ts';
 
 export const FIELD_SIZE = 10;
@@ -79,12 +79,35 @@ export function shortWallet(wallet: string): string {
   return wallet.length > 12 ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : wallet;
 }
 
+/** Player names: 3-16 letters, digits or _, starting with a letter. */
+export const USERNAME_MIN = 3;
+export const USERNAME_MAX = 16;
+// Bot call names are reserved so a player never looks like a bot, and team words so nobody looks like staff.
+const RESERVED_NAMES = new Set([
+  ...CALL_NAMES.map(n => n.toLowerCase()),
+  'admin', 'administrator', 'mod', 'moderator', 'support', 'staff', 'team', 'official', 'dev', 'developer',
+  'pangs', 'pang', 'pangsrally', 'pangs_rally', 'rally', 'bot', 'system', 'owner', 'metamask', 'robinhood',
+]);
+const BLOCKED_PARTS = ['fuck', 'shit', 'bitch', 'cunt', 'nigg', 'fag', 'rape', 'nazi', 'hitler', 'porn', 'whore', 'slut', 'dick', 'pussy', 'retard'];
+
+/** The cleaned name, or a reason it cannot be used (checked in the browser and again on the server). */
+export function checkUsername(raw: string): { name: string } | { error: string } {
+  const name = raw.trim();
+  if (name.length < USERNAME_MIN || name.length > USERNAME_MAX) return { error: `Use ${USERNAME_MIN} to ${USERNAME_MAX} characters.` };
+  if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) return { error: 'Start with a letter; then use letters, numbers or _.' };
+  const lower = name.toLowerCase();
+  if (/^0x/.test(lower) || RESERVED_NAMES.has(lower) || BLOCKED_PARTS.some(p => lower.replace(/_/g, '').includes(p))) {
+    return { error: 'This name is not available.' };
+  }
+  return { name };
+}
+
 /**
  * The 10-racer field for a race. `wallets` are the players in join order;
  * bots fill the remaining lanes. A single-player (bot) race puts the player
  * in lane 5; with several players the seed shuffles who runs where.
  */
-export function buildTestField(seed: string, wallets: string[]): TestRacer[] {
+export function buildTestField(seed: string, wallets: string[], names: Record<string, string> = {}): TestRacer[] {
   const players = wallets.slice(0, FIELD_SIZE).map(w => w.toLowerCase());
   const lanes = assignLanes(seed, players.length);
 
@@ -95,7 +118,7 @@ export function buildTestField(seed: string, wallets: string[]): TestRacer[] {
   const usedNames = new Set<string>();
   const field: (TestRacer | null)[] = Array(FIELD_SIZE).fill(null);
   players.forEach((wallet, i) => {
-    field[lanes[i] - 1] = betaRacer(`p-${wallet}`, shortWallet(wallet), wallet);
+    field[lanes[i] - 1] = betaRacer(`p-${wallet}`, names[wallet] ?? shortWallet(wallet), wallet);
   });
   let b = 0;
   for (let lane = 0; lane < FIELD_SIZE; lane++) {

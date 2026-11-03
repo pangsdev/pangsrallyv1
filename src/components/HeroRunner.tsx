@@ -7,8 +7,9 @@ import { useEffect, useRef } from 'react';
  * The open pose is a 7×11 mesh whose triangles are drawn with affine-mapped clips.
  */
 
-const ART = '/landing/runner.webp';      // teaser #1 cut out; head at low x (flipped on screen)
-const BALL = '/sprites/ball_aurora.png'; // teaser #1's body is Aurora
+// Defaults: teaser #1 cut out (scripts/make-hero-runner.mjs), head at low x (flipped on screen); its body is Aurora.
+const ART = '/landing/runner.webp';
+const BALL = '/sprites/ball_aurora.png';
 const MESH_X = 7, MESH_Y = 11;
 const TAU = Math.PI * 2;
 
@@ -51,7 +52,7 @@ function loadImage(src: string) {
   return new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
 }
 
-export default function HeroRunner() {
+export default function HeroRunner({ art: artSrc = ART, ball: ballSrc = BALL, className = 'ld-runner-canvas' }: { art?: string; ball?: string; className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -79,8 +80,8 @@ export default function HeroRunner() {
       canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       artH = H * 0.62; ground = H - 10;
-      const src = await loadImage(ART).catch(() => null);
-      ball = ball ?? await loadImage(BALL).catch(() => null);
+      const src = await loadImage(artSrc).catch(() => null);
+      ball = ball ?? await loadImage(ballSrc).catch(() => null);
       if (!src) return;
       artW = artH * (src.width / src.height);
       ballR = artH * 0.5;
@@ -230,7 +231,7 @@ export default function HeroRunner() {
     const onVis = () => { visible = inView && !document.hidden; };
     document.addEventListener('visibilitychange', onVis);
     return () => { alive = false; cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); document.removeEventListener('visibilitychange', onVis); };
-  }, []);
+  }, [artSrc, ballSrc]);
 
-  return <canvas ref={canvasRef} className="ld-runner-canvas" aria-hidden="true" />;
+  return <canvas ref={canvasRef} className={className} aria-hidden="true" />;
 }

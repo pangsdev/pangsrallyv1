@@ -14,6 +14,8 @@ const SESSION_KEY = 'pangsrally_test_session';
 
 export interface PlayerStatus {
   wallet: string;
+  /** Name picked on the Profile page; null → the short wallet is shown. */
+  username: string | null;
   racesToday: number;
   dailyLimit: number;
   racesLeft: number;
@@ -258,4 +260,5 @@ export const testSeason = {
   history: () => call<{ races: HistoryRow[] }>('history'),
   profile: () => call<ProfileStatus>('profile'),
   leaderboard: () => call<{ players: LeaderboardPlayer[] }>('leaderboard'),
+  setUsername: (username: string) => call<PlayerStatus>('set-username', { username }),
 };

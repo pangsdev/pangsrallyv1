@@ -11,6 +11,7 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
   const betaMinted = new Set<string>();
   const sessions = new Map<string, { wallet: string; expiresAt: number }>();
   const players = new Map<string, { created: string; lastSeen: string }>();
+  const usernames = new Map<string, string>();
   const races = new Map<string, RaceRow>();
   let entries: EntryRow[] = [];
 
@@ -115,6 +116,14 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
         by.set(e.wallet, row);
       }
       return sortLeaderboard([...by.values()]).slice(0, limit);
+    },
+    async getUsernames(wallets) {
+      return Object.fromEntries(wallets.filter(w => usernames.has(w)).map(w => [w, usernames.get(w)!]));
+    },
+    async setUsername(wallet, name) {
+      for (const [w, n] of usernames) if (w !== wallet && n.toLowerCase() === name.toLowerCase()) return 'taken';
+      usernames.set(wallet, name);
+      return 'ok';
     },
     async history(wallet, limit) {
       return entries

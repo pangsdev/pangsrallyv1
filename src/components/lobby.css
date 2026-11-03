@@ -48,8 +48,26 @@
 .lobby-mode-art img { position: absolute; bottom: 0; filter: drop-shadow(0 8px 10px rgba(0,0,0,0.4)); }
 .lobby-mode.bot .lobby-mode-art img { width: 64px; left: calc(var(--i) * 58px + 6px); bottom: calc(var(--i) * 6px); animation: lobby-roll 3.2s linear infinite; animation-delay: calc(var(--i) * -0.4s); }
 .lobby-mode.bot .lobby-mode-art img:nth-child(2) { width: 76px; z-index: 1; bottom: 8px; }
-.lobby-mode-art.crowd img { width: 92px; height: 92px; object-fit: cover; border-radius: 50%; border: 2px solid rgba(76,201,255,0.55); left: calc(var(--i) * 50px); background: #e4dcff; }
-.lobby-mode-art.crowd img:nth-child(2) { z-index: 1; transform: scale(1.08); }
+
+/* Online card: the landing run-and-roll in the player's Beta racer, across the top of the card */
+.lobby-runner { align-self: stretch; height: 92px; margin: 0 -1.4rem; overflow: hidden; pointer-events: none; }
+.lobby-runner-canvas { display: block; width: 100%; height: 100%; }
+
+/* Online card: live board for the next room (start time, countdown, seats) */
+.lobby-board { width: min(100%, 290px); margin-bottom: 1rem; padding: 0.7rem 0.85rem 0.65rem; border-radius: 16px; text-align: left;
+  background: linear-gradient(180deg, rgba(76,201,255,0.10), rgba(45,125,255,0.04)), rgba(6, 10, 30, 0.6);
+  border: 1px solid rgba(76,201,255,0.35); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 30px rgba(0,0,0,0.3); }
+.lobby-board-top { display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; }
+.lobby-board-top strong { color: #fff; font-variant-numeric: tabular-nums; }
+.lobby-board-live { display: inline-flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 800; color: #4cc9ff; }
+.lobby-board-live i { width: 7px; height: 7px; border-radius: 50%; background: #4cc9ff; box-shadow: 0 0 0 0 rgba(76,201,255,0.7); animation: lobby-pulse 1.6s ease-out infinite; }
+.lobby-board-clock { margin: 0.15rem 0 0.45rem; font-family: ui-monospace, Menlo, monospace; font-size: 1.9rem; font-weight: 800; line-height: 1.1; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.lobby-board-seats { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+.lobby-board-seats span { aspect-ratio: 1; border-radius: 50%; border: 1.5px dashed rgba(76,201,255,0.35); overflow: hidden; }
+.lobby-board-seats span.on { border: 1.5px solid #4cc9ff; background: #e4dcff; box-shadow: 0 0 8px rgba(76,201,255,0.45); }
+.lobby-board-seats img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lobby-board-foot { margin-top: 0.45rem; font-size: 0.75rem; color: var(--text-muted); }
+@keyframes lobby-pulse { 70% { box-shadow: 0 0 0 7px rgba(76,201,255,0); } 100% { box-shadow: 0 0 0 0 rgba(76,201,255,0); } }
 @keyframes lobby-roll { to { rotate: 360deg; } }
 
 .lobby-chips { display: flex; justify-content: center; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
@@ -67,7 +85,7 @@
   .lobby-modes { grid-template-columns: 1fr; }
   .lobby-title h2 { font-size: 1.35rem; }
 }
-@media (prefers-reduced-motion: reduce) { .lobby-mode-art img { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .lobby-mode-art img, .lobby-board-live i { animation: none !important; } }
 
 /* Online rooms list */
 .rooms-intro { color: var(--text-muted); font-size: 0.92rem; line-height: 1.6; max-width: 760px; margin: 0 0 1.25rem; }

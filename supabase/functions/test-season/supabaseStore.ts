@@ -94,6 +94,18 @@ export function createSupabaseStore(db: SupabaseClient): Store {
         .order('points', { ascending: false }).order('wins', { ascending: false }).limit(Math.max(limit, 1))) as LeaderRow[];
       return sortLeaderboard(rows).slice(0, limit);
     },
+    async getUsernames(wallets) {
+      const unique = [...new Set(wallets)];
+      if (!unique.length) return {};
+      const rows = must(await db.from('test_players').select('wallet, username').in('wallet', unique).not('username', 'is', null)) as { wallet: string; username: string }[];
+      return Object.fromEntries(rows.map(r => [r.wallet, r.username]));
+    },
+    async setUsername(wallet, name) {
+      const res = await db.from('test_players').update({ username: name }).eq('wallet', wallet);
+      if (res.error?.code === UNIQUE_VIOLATION) return 'taken';
+      if (res.error) throw new Error(res.error.message);
+      return 'ok';
+    },
     async history(wallet, limit) {
       return must(await db.from('test_race_entries').select('*, race:test_races!inner(*)')
         .eq('wallet', wallet).order('joined_at', { ascending: false }).limit(limit)) as unknown as (EntryRow & { race: RaceRow })[];

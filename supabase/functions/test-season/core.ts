@@ -9,7 +9,7 @@
  */
 import {
   DAILY_RACE_LIMIT, FIELD_SIZE, OPEN_ROOMS, ROOM_MIN_LEAD_SECONDS, ROOM_SLOT_MINUTES, TEST_TERRAINS,
-  buildTestField, pointsFor, runTestRace, shortWallet, signInMessage,
+  buildTestField, checkUsername, pointsFor, runTestRace, shortWallet, signInMessage,
   type TestRacer, type TestRaceResult,
 } from './race/testSeason.ts';
 
@@ -77,6 +77,10 @@ export interface Store {
   setEntryResult(raceId: string, wallet: string, position: number, points: number): Promise<void>;
   /** Only races whose finished_at has passed `now` (Postgres: the view compares with now()). */
   leaderboard(limit: number, now: Date): Promise<LeaderRow[]>;
+  /** wallet → chosen name, for the wallets that have one. */
+  getUsernames(wallets: string[]): Promise<Record<string, string>>;
+  /** 'taken' when another wallet has this name in any letter case (migration 008). */
+  setUsername(wallet: string, name: string): Promise<'ok' | 'taken'>;
   history(wallet: string, limit: number): Promise<(EntryRow & { race: RaceRow })[]>;
 }
 
@@ -139,6 +143,7 @@ export async function handle(deps: Deps, action: string, body: Record<string, un
       case 'history': return ok(await history(deps, await requireWallet(deps, token)));
       case 'profile': return ok(await profile(deps, await requireWallet(deps, token)));
       case 'leaderboard': return ok(await leaderboard(deps));
+      case 'set-username': return ok(await setUsername(deps, await requireWallet(deps, token), str(body.username)));
       case 'beta-voucher': return ok(await betaVoucher(deps, await requireWallet(deps, token)));
       default: throw new HttpError(404, 'unknown_action', 'Unknown action.');
     }
@@ -213,8 +218,10 @@ async function me(deps: Deps, wallet: string) {
   const board = await deps.store.leaderboard(10_000, now);
   const index = board.findIndex(r => r.wallet === wallet);
   const row = board[index];
+  const username = (await deps.store.getUsernames([wallet]))[wallet] ?? null;
   return {
     wallet,
+    username,
     racesToday,
     dailyLimit: DAILY_RACE_LIMIT,
     racesLeft: unlimited ? DAILY_RACE_LIMIT : Math.max(0, DAILY_RACE_LIMIT - racesToday),
@@ -265,7 +272,7 @@ async function botRace(deps: Deps, wallet: string, terrain: string) {
   const now = deps.now();
   const id = deps.uuid();
   const seed = `bot-${id}`;
-  const field = buildTestField(seed, [wallet]);
+  const field = buildTestField(seed, [wallet], await deps.store.getUsernames([wallet]));
   const results = runTestRace(seed, field, terrain);
   const mine = results.find(r => r.id === field.find(f => f.wallet === wallet)?.id);
   if (!mine) throw new Error('player missing from field');
@@ -281,7 +288,7 @@ async function botRace(deps: Deps, wallet: string, terrain: string) {
     throw limitError(now);
   }
   return {
-    race: publicRace(await mustGetRace(deps, id), await deps.store.listEntries(id)),
+    race: await publicRace(deps, await mustGetRace(deps, id), await deps.store.listEntries(id)),
     you: { position: mine.position, points },
     ...(await me(deps, wallet)),
   };
@@ -386,7 +393,7 @@ async function onlineJoin(deps: Deps, wallet: string, terrain: string, roomId: s
 async function onlineStatus(deps: Deps, raceId: string) {
   const race = await mustGetRace(deps, raceId);
   const settled = await settleIfDue(deps, race);
-  return { race: publicRace(settled, await deps.store.listEntries(raceId)), serverTime: deps.now().toISOString() };
+  return { race: await publicRace(deps, settled, await deps.store.listEntries(raceId)), serverTime: deps.now().toISOString() };
 }
 
 /** Starts (resolves) an online room once it is full or its wait is over. */
@@ -401,7 +408,8 @@ async function settleIfDue(deps: Deps, race: RaceRow): Promise<RaceRow> {
     return { ...race, status: 'finished' };
   }
 
-  const field = buildTestField(race.seed, entries.map(e => e.wallet));
+  const wallets = entries.map(e => e.wallet);
+  const field = buildTestField(race.seed, wallets, await deps.store.getUsernames(wallets));
   const results = runTestRace(race.seed, field, race.terrain);
   const won = await deps.store.finishRace(race.id, { field, results, finished_at: raceEndsAt(now, results) });
   if (won) {
@@ -420,7 +428,7 @@ async function settleIfDue(deps: Deps, race: RaceRow): Promise<RaceRow> {
 
 async function replay(deps: Deps, raceId: string) {
   const race = await settleIfDue(deps, await mustGetRace(deps, raceId));
-  return { race: publicRace(race, await deps.store.listEntries(raceId)) };
+  return { race: await publicRace(deps, race, await deps.store.listEntries(raceId)) };
 }
 
 async function history(deps: Deps, wallet: string) {
@@ -473,9 +481,19 @@ async function profile(deps: Deps, wallet: string) {
 
 async function leaderboard(deps: Deps) {
   const rows = await deps.store.leaderboard(100, deps.now());
+  const names = await deps.store.getUsernames(rows.map(r => r.wallet));
   return {
-    players: rows.map((r, i) => ({ rank: i + 1, wallet: r.wallet, name: shortWallet(r.wallet), points: r.points, races: r.races, wins: r.wins, podiums: r.podiums })),
+    players: rows.map((r, i) => ({ rank: i + 1, wallet: r.wallet, name: names[r.wallet] ?? shortWallet(r.wallet), points: r.points, races: r.races, wins: r.wins, podiums: r.podiums })),
   };
+}
+
+async function setUsername(deps: Deps, wallet: string, raw: string) {
+  const checked = checkUsername(raw);
+  if ('error' in checked) throw new HttpError(400, 'bad_username', checked.error);
+  if (await deps.store.setUsername(wallet, checked.name) === 'taken') {
+    throw new HttpError(409, 'username_taken', 'Another racer already uses this name.');
+  }
+  return me(deps, wallet);
 }
 
 /* ------------------------------------------------------------------ */
@@ -516,7 +534,8 @@ async function claimSlot(deps: Deps, wallet: string, raceId: string, now: Date, 
   return false;
 }
 
-function publicRace(race: RaceRow, entries: EntryRow[]) {
+async function publicRace(deps: Deps, race: RaceRow, entries: EntryRow[]) {
+  const names = await deps.store.getUsernames(entries.map(e => e.wallet));
   return {
     id: race.id,
     kind: race.kind,
@@ -531,7 +550,7 @@ function publicRace(race: RaceRow, entries: EntryRow[]) {
     results: race.status === 'finished' ? race.results : null,
     players: entries
       .sort((a, b) => a.joined_at.localeCompare(b.joined_at))
-      .map(e => ({ wallet: e.wallet, name: shortWallet(e.wallet), position: e.position, points: e.points })),
+      .map(e => ({ wallet: e.wallet, name: names[e.wallet] ?? shortWallet(e.wallet), position: e.position, points: e.points })),
     maxPlayers: FIELD_SIZE,
   };
 }

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Cuts teaser #1 out of its flat background for the landing hero runner
- * (public/landing/runner.webp, transparent). Flood-fills the background from the
- * image border so white highlights inside the pangolin are kept.
+ * Cuts a racer out of its flat background for HeroRunner (transparent webp).
+ * Flood-fills the background from the image border so white highlights inside the pangolin are kept.
  *
- *   node scripts/make-hero-runner.mjs
+ *   node scripts/make-hero-runner.mjs                       # teaser #1 → public/landing/runner.webp (landing hero)
+ *   node scripts/make-hero-runner.mjs public/beta/beta-racer.webp public/landing/runner-beta.webp   # lobby Online card
  */
 import sharp from 'sharp';
 import { dirname, join, resolve } from 'node:path';
@@ -14,7 +14,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SIZE = 1024;
 const TOL = 38; // colour distance from the background still counted as background
 
-const { data, info } = await sharp(join(root, 'public/nft-images/1.webp')).resize(SIZE, SIZE).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+const [input = 'public/nft-images/1.webp', output = 'public/landing/runner.webp'] = process.argv.slice(2);
+const { data, info } = await sharp(join(root, input)).resize(SIZE, SIZE).removeAlpha().raw().toBuffer({ resolveWithObject: true });
 const { width: w, height: h } = info;
 const bg = [data[0], data[1], data[2]];
 const near = (p) => Math.hypot(data[p * 3] - bg[0], data[p * 3 + 1] - bg[1], data[p * 3 + 2] - bg[2]) < TOL;
@@ -46,5 +47,5 @@ await sharp(rgba, { raw: { width: w, height: h, channels: 4 } })
   .trim({ threshold: 1 })
   .resize({ width: 420 })
   .webp({ quality: 88, alphaQuality: 90 })
-  .toFile(join(root, 'public/landing/runner.webp'));
-console.log('wrote public/landing/runner.webp');
+  .toFile(join(root, output));
+console.log(`wrote ${output}`);

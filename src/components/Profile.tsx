@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { testSeason, type HistoryRow, type ProfileStatus } from '../testSeason/api';
+import { testSeason, type HistoryRow, type PlayerStatus, type ProfileStatus } from '../testSeason/api';
 import { fetchBetaPasses, type BetaPassInfo } from '../testSeason/betaPass';
-import { BETA_RACER_ART, POINTS_BY_POSITION, shortWallet } from '../race/testSeason';
+import { BETA_RACER_ART, POINTS_BY_POSITION, USERNAME_MAX, checkUsername, shortWallet } from '../race/testSeason';
 import { RaceHistoryList } from './SeasonPages';
 import { FlagIcon } from './Icons';
 import './profile.css';
@@ -14,13 +14,15 @@ interface Props {
   onOpenRoom: (raceId: string) => void;
   onGoRace: () => void;
   onMintBeta: () => void;
+  /** Fresh player status after a change (e.g. a new name), for the header and lobby. */
+  onPlayer: (status: PlayerStatus) => void;
 }
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const ordinal = (n: number) => `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`;
 
 /** The player's page: season stats, their Beta pass and every race with its replay. */
-export default function Profile({ signedIn, signingIn, onSignIn, onReplay, onOpenRoom, onGoRace, onMintBeta }: Props) {
+export default function Profile({ signedIn, signingIn, onSignIn, onReplay, onOpenRoom, onGoRace, onMintBeta, onPlayer }: Props) {
   const [profile, setProfile] = useState<ProfileStatus | null>(null);
   const [rows, setRows] = useState<HistoryRow[] | null>(null);
   const [beta, setBeta] = useState<BetaPassInfo | null>(null);
@@ -65,7 +67,11 @@ export default function Profile({ signedIn, signingIn, onSignIn, onReplay, onOpe
         <img className="pf-avatar" src={BETA_RACER_ART} alt="" />
         <div className="pf-id">
           <span className="pf-eyebrow">Beta season racer</span>
-          <h2>{shortWallet(profile.wallet)}</h2>
+          <NameEditor
+            username={profile.username}
+            wallet={profile.wallet}
+            onSaved={status => { setProfile(p => p && { ...p, username: status.username }); onPlayer(status); }}
+          />
           <div className="pf-badges">
             <span className="pf-badge gold">Rank {profile.rank ?? '—'}</span>
             <span className="pf-badge">{profile.points} pts</span>
@@ -138,6 +144,56 @@ export default function Profile({ signedIn, signingIn, onSignIn, onReplay, onOpe
         <RaceHistoryList rows={rows} onReplay={onReplay} onOpenRoom={onOpenRoom} />
       )}
     </section>
+  );
+}
+
+/** The racer's name: shown big, with an inline editor. Rules: checkUsername (checked again on the server). */
+function NameEditor({ username, wallet, onSaved }: { username: string | null; wallet: string; onSaved: (s: PlayerStatus) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(username ?? '');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    const checked = checkUsername(value);
+    if ('error' in checked) { setError(checked.error); return; }
+    setSaving(true);
+    try {
+      onSaved(await testSeason.setUsername(checked.name));
+      setEditing(false);
+      setError('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save the name.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <div className="pf-name">
+        <h2 className={username ? 'is-name' : ''}>{username ?? shortWallet(wallet)}</h2>
+        <button className="pf-name-edit" onClick={() => { setValue(username ?? ''); setEditing(true); }}>{username ? 'Edit name' : 'Pick a racer name'}</button>
+        {username && <span className="pf-name-wallet">{shortWallet(wallet)}</span>}
+      </div>
+    );
+  }
+  return (
+    <form className="pf-name-form" onSubmit={e => { e.preventDefault(); void save(); }}>
+      <input
+        value={value}
+        onChange={e => { setValue(e.target.value); setError(''); }}
+        maxLength={USERNAME_MAX}
+        placeholder="Your racer name"
+        aria-label="Racer name"
+        autoFocus
+        autoComplete="off"
+        spellCheck={false}
+      />
+      <button type="submit" className="btn btn-primary" disabled={saving || !value.trim()}>{saving ? 'Saving…' : 'Save'}</button>
+      <button type="button" className="btn btn-outline" disabled={saving} onClick={() => { setEditing(false); setError(''); }}>Cancel</button>
+      <small className={error ? 'pf-name-error' : ''}>{error || 'Letters, numbers and _ · 3 to 16 characters · shown on the track and the leaderboard'}</small>
+    </form>
   );
 }
 

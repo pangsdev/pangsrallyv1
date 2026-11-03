@@ -227,6 +227,25 @@ ok('login with a real wallet signature');
   ok('points and the leaderboard wait until the race has run on screen');
 }
 
+// --- usernames ----------------------------------------------------------------
+{
+  const fay = Wallet.createRandom(), gus = Wallet.createRandom();
+  const tf = await signIn(fay), tg = await signIn(gus);
+  for (const bad of ['ab', '1abc', 'has space', '0xabc', 'Ember', 'admin', 'x'.repeat(17)]) {
+    assert.equal((await call('set-username', { username: bad }, tf)).status, 400, bad);
+  }
+  assert.equal((await call('set-username', { username: 'Fay' }, null)).status, 401);
+  const set = await call('set-username', { username: 'Speedy_Fay' }, tf);
+  assert.equal(set.status, 200);
+  assert.equal(set.body.username, 'Speedy_Fay');
+  assert.equal((await call('set-username', { username: 'speedy_fay' }, tg)).status, 409, 'taken in any case');
+  const race = (await call('bot-race', { terrain: 'Forest' }, tf)).body.race;
+  assert.equal(race.field.find(f => f.wallet === fay.address.toLowerCase()).name, 'Speedy_Fay');
+  clock = Date.parse(race.finishedAt) + 1;
+  assert.equal((await call('leaderboard')).body.players.find(p => p.wallet === fay.address.toLowerCase()).name, 'Speedy_Fay');
+  ok('players pick a unique name; it shows in races and on the leaderboard; bad names are refused');
+}
+
 // --- profile ----------------------------------------------------------------
 {
   const pr = (await call('profile', {}, aliceToken)).body;

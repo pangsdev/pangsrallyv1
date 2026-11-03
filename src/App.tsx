@@ -163,8 +163,8 @@ function App() {
   const [replayRaceId, setReplayRaceId] = useState<string | null>(null);
 
   const applyPlayer = (status: PlayerStatus) => {
-    const { wallet, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta } = status;
-    setPlayer({ wallet, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta });
+    const { wallet, username, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta } = status;
+    setPlayer({ wallet, username: username ?? null, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta });
     setWalletConnected(true);
     setFullWalletAddress(wallet);
     setWalletAddress(shortWallet(wallet));
@@ -1430,7 +1430,7 @@ function App() {
                 style={{ cursor: 'pointer' }}
               >
                   <span className="wallet-dot"></span>
-                  {walletAddress}
+                  {player?.username ?? walletAddress}
                   {player && <span className="wallet-points">{player.points} pts</span>}
               </div>
             ) : (
@@ -2087,6 +2087,7 @@ function App() {
               setCurrentView('online-race');
             }}
             onGoRace={() => setCurrentView('rally')}
+            onPlayer={applyPlayer}
           />
         )}
 
