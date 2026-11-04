@@ -7,6 +7,7 @@ import type { RaceSimulation, RacerSim } from './simulation';
 import { BALL_SPRITES, BODY_ACCENT } from './sprites';
 import { getTheme, type TrackTheme } from './themes';
 import { cutoutImage } from './cutout';
+import { RIG_X, RIG_Y, buildRig, footLanded, poseRig, strideRate, suspension, type Rig } from './racerRig';
 import type { BBox } from './cutout-core';
 
 export interface PixiRaceTrackProps {
@@ -31,12 +32,13 @@ const PX_PER_M = 16;
 const START_X = 220;          // world x of the start line
 /** height of the trackside boards */
 const BOARD_H = 42;
+/** how far the body tumbles forward while it curls, radians */
+const CURL_SPIN = 2.2;
 const FINISH_PAD = 520;       // world space after the finish line
 const LEAD_SCREEN_FRAC = 0.58; // leader is kept at this fraction of the view width
 const SKY_FRAC = 0.24;         // share of the view height used by the sky/horizon
 const INTRO_DISTANCE = 170;    // racers jog in from this far left of the start line
 const INTRO_DURATION = 1.15;
-const MESH_X = 7, MESH_Y = 11; // deformation grid for the open-pose artwork
 const BARE_BODY_FRAC = 0.509;  // a pangolin's body height / artwork canvas height (228 of 448 px in the cut-out)
 
 /* ------------------------------------------------------------------ */
@@ -135,7 +137,7 @@ interface RacerView {
   root: Container;
   shadow: Graphics;
   open: MeshPlane | null;
-  openBase: Float32Array | null;
+  rig: Rig | null;
   openBBox: BBox | null;
   openBaseScale: number;
   ball: Sprite;
@@ -151,10 +153,14 @@ interface RacerView {
   dustTimer: number;
   lastPos: number;
   settleX: number | null;
+  /** render time this racer crossed the line */
+  finishAt: number;
   ballRadius: number;
-  stridePhase: number;
-  lastStrideSin: number;
-  deformed: boolean;
+  /** position in the stride; see racerRig.ts */
+  stride: number;
+  strideHz: number;
+  /** the walk-to-gallop blend, eased so the gait never snaps */
+  gait: number;
   introAt: number;
 }
 
@@ -888,13 +894,13 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
           root.addChild(ball);
 
           let open: MeshPlane | null = null;
-          let openBase: Float32Array | null = null;
+          let rig: Rig | null = null;
           let openBBox: BBox | null = null;
           let openBaseScale = 1;
           const art = avatarArt?.[i] ?? null;
           if (art) {
-            open = new MeshPlane({ texture: art.texture, verticesX: MESH_X, verticesY: MESH_Y });
-            openBase = Float32Array.from(open.geometry.positions);
+            open = new MeshPlane({ texture: art.texture, verticesX: RIG_X, verticesY: RIG_Y });
+            rig = buildRig(Float32Array.from(open.geometry.positions), art.texture.width, art.texture.height, art.bbox);
             openBBox = art.bbox;
             // pivot at the feet (bottom centre of the opaque pixels)
             open.pivot.set(art.bbox.x + art.bbox.w / 2, art.bbox.y + art.bbox.h);
@@ -930,50 +936,11 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
 
           racerLayer.addChild(root);
           views.push({
-            sim: r, root, shadow, open, openBase, openBBox, openBaseScale, ball, speedLines, tag, tagW: w, posBadge, posText, youRing,
-            laneIndex: i, lastX: START_X - INTRO_DISTANCE, rollAngle: 0, dustTimer: 0, lastPos: i + 1, settleX: null, ballRadius,
-            stridePhase: i * 1.3, lastStrideSin: 0, deformed: false, introAt: elapsed,
+            sim: r, root, shadow, open, rig, openBBox, openBaseScale, ball, speedLines, tag, tagW: w, posBadge, posText, youRing,
+            laneIndex: i, lastX: START_X - INTRO_DISTANCE, rollAngle: 0, dustTimer: 0, lastPos: i + 1, settleX: null, finishAt: 0, ballRadius,
+            stride: i * 0.37, strideHz: 0, gait: 0, introAt: elapsed,
           });
         });
-      };
-
-      /**
-       * Gallop deformation of the open-pose artwork. `amount` 0..1 blends the
-       * effect in/out; texture space has the head at low x (we flip on screen).
-       */
-      const deformOpen = (v: RacerView, amount: number) => {
-        const m = v.open!, base = v.openBase!, bb = v.openBBox!;
-        const buf = m.geometry.getBuffer('aPosition');
-        const pos = buf.data as Float32Array;
-        if (amount <= 0.001) {
-          if (!v.deformed) return;
-          pos.set(base);
-          buf.update();
-          v.deformed = false;
-          return;
-        }
-        v.deformed = true;
-        const ph = v.stridePhase;
-        const s = Math.sin(ph);
-        const swingA = bb.w * 0.085, liftA = bb.h * 0.05;
-        for (let i = 0; i < base.length; i += 2) {
-          const bx = base[i], by = base[i + 1];
-          const ub = clamp((bx - bb.x) / bb.w, 0, 1);   // 0 = head … 1 = tail
-          const vb = clamp((by - bb.y) / bb.h, 0, 1);   // 0 = back … 1 = feet
-          const legW = smoothstep(0.58, 1, vb);
-          const bodyW = 1 - legW;
-          const front = ub < 0.5 ? 1 : -1;              // front legs vs hind legs move in opposition
-          const swing = front * s;                       // > 0 → this leg is reaching forward (screen +x)
-          let dx = -swing * legW * swingA;               // texture −x is screen forward (flipped)
-          let dy = -legW * legW * liftA * Math.max(0, swing) * 1.4;   // tuck the leg as it swings forward
-          dy += -bodyW * bb.h * 0.022 * s * Math.sin(Math.PI * ub);   // spine arches mid-flight
-          if (ub < 0.3) dy += -bb.h * 0.02 * Math.sin(ph + 0.9) * ((0.3 - ub) / 0.3) * bodyW;   // head bob
-          if (ub > 0.7) dy += bb.h * 0.035 * Math.sin(ph - 0.7) * ((ub - 0.7) / 0.3) * bodyW;    // tail follows through
-          if (ub > 0.7) dx += bb.w * 0.015 * Math.sin(ph - 0.7) * ((ub - 0.7) / 0.3) * bodyW;
-          pos[i] = bx + dx * amount;
-          pos[i + 1] = by + dy * amount;
-        }
-        buf.update();
       };
 
       const layout = () => {
@@ -1080,8 +1047,8 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
         }
         // after the finish: glide a bit past the line and settle
         if (r.phase === 'finished') {
-          if (v.settleX === null) v.settleX = finishX + 70 + (r.position - 1) * 6;
-          const k = clamp(r.phaseTime / 1.1, 0, 1);
+          if (v.settleX === null) { v.settleX = finishX + 70 + (r.position - 1) * 6; v.finishAt = elapsed; }
+          const k = clamp((elapsed - v.finishAt) / 1.1, 0, 1);
           x = lerp(finishX, v.settleX, 1 - Math.pow(1 - k, 3));
         }
 
@@ -1097,35 +1064,40 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
         let openAlpha = 0, ballAlpha = 0;
         let openSx = 1, openSy = 1, openRot = 0;
         let ballScale = 1, ballSy = 1;
-        let gallop = 0;            // strength of the gallop deformation
-        let gallopSpeed = 0;       // 0..1, drives stride frequency
+        let stride = 0;            // 0 standing … 1 full stride
+        let curl = 0;              // 0 open … 1 curled up; see racerRig.ts
+        let spin = 0;              // how far the curling body has tumbled forward
+        let rest = 0;              // breathing and small moves while standing
 
         switch (r.phase) {
           case 'idle': {
             openAlpha = v.open ? 1 : 0; ballAlpha = v.open ? 0 : 1;
-            if (introMove > 0.02) {
-              gallop = Math.min(1, introMove * 1.6); gallopSpeed = 0.35;
-            } else {
-              openSy = 1 + Math.sin(t * 2.2) * 0.02; openSx = 1 - Math.sin(t * 2.2) * 0.012;
-            }
+            stride = Math.min(1, introMove * 2.2);
+            rest = 1 - stride;
             ballSy = 1 + Math.sin(t * 2.2) * 0.03;
             break;
           }
           case 'running': {
             openAlpha = v.open ? 1 : 0; ballAlpha = v.open ? 0 : 1;
-            gallop = 1; gallopSpeed = speedFactor;
+            stride = clamp(0.3 + speedFactor * 1.4, 0, 1);
+            // the first push off the line: a low crouch that the racer drives out of
+            openSy = 1 - 0.05 * (1 - clamp(r.phaseTime / 0.22, 0, 1));
+            openRot = 0.05 * speedFactor;
             ballSy = 1 - Math.abs(Math.sin(t * 16)) * 0.12; // ball-only fallback waddle
             break;
           }
           case 'curling': {
             const k = clamp(r.phaseTime / 0.45, 0, 1);
             const e = easeInOut(k);
-            openAlpha = v.open ? 1 - e : 0;
-            openSx = 1 - e * 0.45; openSy = 1 - e * 0.35; openRot = e * 0.9;
-            gallop = 1 - e; gallopSpeed = speedFactor;
-            ballAlpha = v.open ? e : 1;
-            ballScale = 0.55 + easeOutBack(k) * 0.45;
-            bounce = Math.sin(k * Math.PI) * 14;
+            curl = e;
+            spin = e * e * CURL_SPIN;
+            stride = (1 - e) * (1 - e);
+            openRot = 0.05 * speedFactor * (1 - e);
+            // the bent body hands over to the ball, which sits behind it, as the two shapes come to match
+            openAlpha = v.open ? 1 - smoothstep(0.66, 0.92, k) : 0;
+            ballAlpha = v.open ? smoothstep(0.38, 0.68, k) : 1;   // behind the body, it fills the ring as it closes
+            ballScale = v.open ? 0.8 + 0.2 * smoothstep(0.38, 0.95, k) : 0.55 + easeOutBack(k) * 0.45;
+            bounce = Math.sin(k * Math.PI) * laneH * 0.2;
             break;
           }
           case 'rolling': {
@@ -1139,44 +1111,51 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
             break;
           }
           case 'finished': {
-            const k = clamp((r.phaseTime - 0.5) / 0.5, 0, 1);   // uncurl after a short glide
+            // On the render clock: the simulation stops once the last racer is home, so its time would freeze them mid-glide.
+            const home = elapsed - v.finishAt;
+            const k = clamp((home - 0.5) / 0.5, 0, 1);           // uncurl after a short glide
             const e = easeInOut(k);
-            ballAlpha = v.open ? 1 - e : 1;
-            ballScale = 1 - e * 0.4;
-            openAlpha = v.open ? e : 0;
-            openSx = 0.6 + e * 0.4; openSy = 0.7 + e * 0.3; openRot = (1 - e) * 0.9;
+            ballAlpha = v.open ? 1 - smoothstep(0.04, 0.32, e) : 1;
+            ballScale = v.open ? 1 - 0.06 * smoothstep(0, 0.32, e) : 1;
+            openAlpha = v.open ? smoothstep(0, 0.28, e) : 0;
+            curl = 1 - e;
+            spin = (1 - e) * (1 - e) * CURL_SPIN;
+            rest = e;
             if (k >= 1 && r.position <= 3) {
-              const hop = Math.abs(Math.sin((r.phaseTime - 1) * 6));
+              const hop = Math.abs(Math.sin((home - 1) * 6));
               bounce = hop * (10 - (r.position - 1) * 3);
               openSy = 1 + hop * 0.06; openSx = 1 - hop * 0.04;
             } else if (k >= 1) {
-              openSy = 1 + Math.sin(t * 3) * 0.025; // catching breath
+              openSy = 1 + Math.sin(t * 3) * 0.018; // catching breath
             }
-            if (k >= 1 && !v.open) bounce = r.position <= 3 ? Math.abs(Math.sin((r.phaseTime - 1) * 6)) * 8 : 0;
+            if (k >= 1 && !v.open) bounce = r.position <= 3 ? Math.abs(Math.sin((home - 1) * 6)) * 8 : 0;
             break;
           }
         }
 
-        /* ---- gallop cycle (open pose) ---- */
-        if (v.open && gallop > 0) {
-          const freq = 2.1 + gallopSpeed * 1.5;                 // strides per second
-          v.stridePhase += TAU * freq * dt;
-          const s = Math.sin(v.stridePhase);
-          const air = Math.max(0, s);                            // airborne half of the stride
-          const hopH = laneH * (0.05 + 0.11 * gallopSpeed);
-          bounce += Math.pow(air, 0.8) * hopH * gallop;
-          // stretch in the air, compact on push-off; lean into the run
-          openSx *= 1 + 0.05 * s * gallop;
-          openSy *= 1 - 0.045 * s * gallop;
-          openRot += (0.07 * gallopSpeed - 0.055 * Math.sin(v.stridePhase - 0.7)) * gallop;
-          // footfall → puff of dust
-          if (v.lastStrideSin > 0 && s <= 0 && r.phase !== 'idle') {
-            spawnDust(x - laneH * 0.35, laneBaseY - 1, speedFactor, theme.dust, theme.dustAlpha, 2);
+        /* ---- stride (open pose): see racerRig.ts ---- */
+        if (v.open && v.rig && openAlpha > 0) {
+          const groundPx = dt > 0 ? Math.abs(dx) / dt : 0;       // screen px per second
+          const scale = v.openBaseScale;
+          // Gait follows real speed: a walk that opens into a gallop, eased so it never snaps.
+          const wantGait = smoothstep(50, 150, groundPx);
+          v.gait += (wantGait - v.gait) * (1 - Math.exp(-dt * 7));
+          if (stride > 0.01) {
+            const hz = clamp(strideRate(v.rig, v.gait, groundPx / scale), 1.1, 4.4);
+            v.strideHz += (hz - v.strideHz) * (1 - Math.exp(-dt * 10));
+            const from = v.stride;
+            v.stride += v.strideHz * dt;
+            // footfall → puff of dust
+            if (r.phase === 'running' && (footLanded(from, v.stride, v.gait, true) || footLanded(from, v.stride, v.gait, false))) {
+              spawnDust(x - laneH * 0.3, laneBaseY - 1, speedFactor, theme.dust, theme.dustAlpha, 2);
+            }
+            bounce += suspension(v.stride) * v.gait * stride * laneH * 0.07;
           }
-          v.lastStrideSin = s;
-          deformOpen(v, gallop);
-        } else if (v.open && v.deformed) {
-          deformOpen(v, 0);
+          poseRig(v.rig, v.open.geometry.getBuffer('aPosition').data as Float32Array, {
+            cycle: v.stride, gait: v.gait, stride, curl,
+            curlRadius: v.ballRadius / scale, spin, time: t, rest,
+          });
+          v.open.geometry.getBuffer('aPosition').update();
         }
 
         // roll the ball according to horizontal travel
@@ -1199,7 +1178,7 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
         // shadow
         v.shadow.clear();
         const isOpen = !!v.open && openAlpha > 0.5;
-        const bodyHalfW = isOpen && v.openBBox ? (v.openBBox.w * v.openBaseScale) / 2 : v.ballRadius;
+        const bodyHalfW = isOpen && v.openBBox ? lerp((v.openBBox.w * v.openBaseScale) / 2, v.ballRadius, curl) : v.ballRadius;
         const shW = bodyHalfW * (1.05 - bounce / 80);
         v.shadow.ellipse(0, 2, shW, shW * (isOpen ? 0.22 : 0.3)).fill({ color: 0x000000, alpha: 0.28 - bounce / 140 });
 
