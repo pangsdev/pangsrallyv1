@@ -78,6 +78,8 @@ Server-authoritative: the browser never decides results or points.
 
 **Track** (`PixiRaceTrack.tsx`): Pixi scene, camera follows leader. NFT open-pose cutout (Web Worker chroma-key) then curl into Body-colored ball sprites (`public/sprites/ball_*.png`). Gallop is a MeshPlane deform, not image-shake. Countdown 3-2-1 sits **on the live track**, then GO. Two-stage load: scenery first, avatars second, 900 ms jog-in, then countdown.
 
+**Course look** (Nov 2026, `PixiRaceTrack.tsx`, all four themes): kerbs on both edges (`theme.kerb`), boards with our logo on dark and light panels and `On Robinhood Chain`, alternating, framed panels on legs (name only, black on #ccff00; their brand guidelines bar the feather alone, altered logos and use in NFTs or collectibles, so no Robinhood logo without their approval) with a running rail (`theme.rail`), covered grandstands along the course (`standAt`), start/finish gantries beside the lanes, ground = texture at two scales + generated patches (`patchTexture`) so it does not look tiled.
+
 **Themes** (`themes.ts`): Forest / Desert / Volcanic / Midnight all exist (sky, sun/moon, decor, ground webp, particles). **Lobby locks Class 4/3/2** (`entry: 'Locked'` in `App.tsx` `mockCategories`). Only Forest is playable from UI. Midnight could map to collection trait `Snow` if unlocked.
 
 **NFTs in bot race**: selected wallet NFT (or guest) uses its image + Body + traits. Beta Pass → Gold + `/beta-pass-nft.png`. Guest → `nft-images/1.webp` + rainbow ball, stats 15/15/15. Bots use `token-index.json` (1000 tokens) + `/nft-images/{id}.webp`.
@@ -94,11 +96,12 @@ Server-authoritative: the browser never decides results or points.
 - `Number 4 breaks on top!` / `Number 6 surges to the front, and takes the lead!`
 - `Halfway, and Number 6 leads.` / `Number 6 turns for home, with a narrow lead.`
 - `Number 6 just in front, and it's too close to call!` / `Number 6 wins it, by a nose!`
-- `Number 5 comes home fourth.` / `Number 5 charges up to second!` (player lines, baked for lane 5 only)
+- `You come home fourth.` / `You charge up to second!` (player lines say "you": the player's lane is random, so one clip fits every lane)
+- `Wow, Number 2 just hit the turbo!` and 3 other wordings / `You find another gear!` (speed-burst reactions: at most 3 per race, front five or the player, ~1.35 per race)
 
 **Racers are called by saddle number 1–10** (owner's choice), shown on the track badge and standings. Never say token ids. Call names (`callNames.ts`) still label racers on screen; players show as short wallets.
 
-**Audio is baked, one whole sentence per clip** (owner: no stitching, natural commas/breaths). 107 clips in `public/audio/announcer/` + `manifest.json`, recorded by `npm run bake:announcer` (Daniel, flash v2.5, stability 0.28, speed 1.18). A line without a clip (e.g. player lines for a lane ≠ 5 in online rooms) falls back to live TTS, which fails quiet when unavailable.
+**Audio is baked, one whole sentence per clip** (owner: no stitching, natural commas/breaths). 149 clips in `public/audio/announcer/` + `manifest.json`, recorded by `npm run bake:announcer` (Daniel, flash v2.5, stability 0.28, speed 1.18). A line without a clip falls back to live TTS, which fails quiet when unavailable.
 
 **ElevenLabs (free plan) is wired but not the end state.**
 

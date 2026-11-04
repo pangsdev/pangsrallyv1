@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import {
-  Application, Assets, Container, Graphics, MeshPlane, Sprite, Text, TilingSprite, Texture, FillGradient,
+  Application, Assets, Container, Graphics, MeshPlane, Rectangle, Sprite, Text, TilingSprite, Texture, FillGradient,
 } from 'pixi.js';
 import seedrandom from 'seedrandom';
 import type { RaceSimulation, RacerSim } from './simulation';
@@ -29,6 +29,8 @@ export interface PixiRaceTrackProps {
 /* ------------------------------------------------------------------ */
 const PX_PER_M = 16;
 const START_X = 220;          // world x of the start line
+/** height of the trackside boards */
+const BOARD_H = 42;
 const FINISH_PAD = 520;       // world space after the finish line
 const LEAD_SCREEN_FRAC = 0.58; // leader is kept at this fraction of the view width
 const SKY_FRAC = 0.24;         // share of the view height used by the sky/horizon
@@ -81,6 +83,29 @@ async function loadAvatarArt(url: string | null): Promise<AvatarArt | null> {
   if (cut) return { texture: Texture.from(cut.canvas), bbox: cut.bbox };
   const tex = await loadTexture(url);
   return tex ? { texture: tex, bbox: { x: 0, y: 0, w: tex.width, h: tex.height } } : null;
+}
+
+/** Seamless soft light and dark patches, laid over the ground so the course does not look tiled. */
+function patchTexture(seed: string): Texture {
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const rng = seedrandom(`patches:${seed}`);
+  for (let i = 0; i < 46; i++) {
+    const x = rng() * size, y = rng() * size, r = 40 + rng() * 110;
+    const tone = rng() < 0.55 ? '0,0,0' : '255,255,255';
+    const a = 0.05 + rng() * 0.08;
+    // drawn at every wrapped position, so the tile edges meet
+    for (const ox of [-size, 0, size]) for (const oy of [-size, 0, size]) {
+      const grad = ctx.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+      grad.addColorStop(0, `rgba(${tone},${a})`);
+      grad.addColorStop(1, `rgba(${tone},0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
+    }
+  }
+  return Texture.from(canvas);
 }
 
 function softCircleTexture(app: Application, radius = 16): Texture {
@@ -176,8 +201,10 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
       a.canvas.style.height = '100%';
 
       /* ---------- small local textures (fast) ---------- */
-      const [groundTex, ...ballTexList] = await Promise.all([
+      const [groundTex, darkLogoTex, lightLogoTex, ...ballTexList] = await Promise.all([
         loadTexture(theme.groundTexture),
+        loadTexture('/dark-logo.webp'),
+        loadTexture('/light-logo.webp'),
         ...Object.values(BALL_SPRITES).map(loadTexture),
       ]);
       if (cancelled) return;
@@ -208,6 +235,8 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
       world.addChild(groundLayer, laneLayer, decorBack, buntingLayer, racerLayer, particleLayer, decorFront);
 
       let ground: TilingSprite | null = null;
+      let groundDetail: TilingSprite | null = null;
+      let groundPatches: TilingSprite | null = null;
       let roadTop = 0, roadBottom = 0, laneH = 0, viewW = 0, viewH = 0, horizon = 0;
       const worldLength = START_X + sim.totalDistance * PX_PER_M + FINISH_PAD;
       const finishX = START_X + sim.totalDistance * PX_PER_M;
@@ -357,7 +386,6 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
         g.ellipse(-w * 0.1, 0, w * 0.42, h * 0.5).fill({ color: tint, alpha: 0.95 });
         g.ellipse(w * 0.2, -h * 0.15, w * 0.3, h * 0.45).fill({ color: tint, alpha: 0.95 });
         g.ellipse(-w * 0.35, h * 0.1, w * 0.22, h * 0.35).fill({ color: tint, alpha: 0.95 });
-        g.rect(-w * 0.5, h * 0.35, w, h * 0.3).fill({ color: under, alpha: 0.9 });
         return g;
       };
 
@@ -519,13 +547,27 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
           ground.tileScale.set(0.4);
           ground.y = top;
           groundLayer.addChild(ground);
+          // The same texture at another scale, over it: the two repeats never line up.
+          groundDetail = new TilingSprite({ texture: groundTex, width: viewW + 4, height: h });
+          groundDetail.tileScale.set(0.67);
+          groundDetail.alpha = 0.42;
+          groundDetail.y = top;
+          groundLayer.addChild(groundDetail);
         } else {
           ground = null;
+          groundDetail = null;
           const g = new Graphics();
           g.rect(0, top, viewW + 4, h).fill(theme.groundColor);
           groundLayer.addChild(g);
         }
+        groundPatches = new TilingSprite({ texture: patchTexture(theme.id), width: viewW + 4, height: h });
+        groundPatches.tileScale.set(1.5);
+        groundPatches.alpha = 0.65;
+        groundPatches.y = top;
+        groundLayer.addChild(groundPatches);
         const shade_ = new Graphics();
+        // A wash of the ground colour quiets a busy texture, so the racers stay the focus.
+        if (theme.groundCalm) shade_.rect(0, top, viewW + 4, h).fill({ color: theme.groundColor, alpha: theme.groundCalm });
         shade_.rect(0, roadTop, viewW + 4, roadBottom - roadTop).fill({ color: 0x000000, alpha: theme.roadShade });
         for (let i = 0; i < sim.racers.length; i++) {
           if (i % 2 === 0) continue;
@@ -537,20 +579,48 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
           colorStops: [{ offset: 0, color: 'rgba(0,0,0,0.32)' }, { offset: 1, color: 'rgba(0,0,0,0)' }],
         });
         shade_.rect(0, roadTop, viewW + 4, 22).fill(sh);
-        shade_.rect(0, roadTop - 4, viewW + 4, 6).fill({ color: theme.edgeColor, alpha: 0.9 });
-        shade_.rect(0, roadBottom - 2, viewW + 4, 8).fill({ color: theme.edgeColor, alpha: 0.9 });
+        // Depth: the far side falls into haze, the near side into shade.
+        const road = roadBottom - roadTop;
+        const far = new FillGradient({
+          type: 'linear', start: { x: 0, y: 0 }, end: { x: 0, y: 1 }, textureSpace: 'local',
+          colorStops: [{ offset: 0, color: 'rgba(255,255,255,0.09)' }, { offset: 1, color: 'rgba(255,255,255,0)' }],
+        });
+        shade_.rect(0, roadTop, viewW + 4, road * 0.4).fill(far);
+        const near = new FillGradient({
+          type: 'linear', start: { x: 0, y: 0 }, end: { x: 0, y: 1 }, textureSpace: 'local',
+          colorStops: [{ offset: 0, color: 'rgba(0,0,0,0)' }, { offset: 1, color: 'rgba(0,0,0,0.26)' }],
+        });
+        shade_.rect(0, roadTop + road * 0.55, viewW + 4, road * 0.45).fill(near);
         groundLayer.addChild(shade_);
       };
 
       const buildLanes = () => {
         laneLayer.clear();
+        if (theme.decor === 'trees') {
+          // Mown turf: wide light and dark bands across the course.
+          for (let x = 0; x < worldLength; x += 360) laneLayer.rect(x, roadTop, 180, roadBottom - roadTop).fill({ color: 0xffffff, alpha: 0.05 });
+        }
         for (let i = 1; i < sim.racers.length; i++) {
           const y = roadTop + laneH * i;
-          for (let x = 0; x < worldLength; x += 56) {
-            laneLayer.rect(x, y - 1.5, 32, 3).fill({ color: theme.laneLine, alpha: theme.laneLineAlpha });
+          for (let x = 0; x < worldLength; x += 64) {
+            laneLayer.rect(x, y - 1, 40, 2).fill({ color: theme.laneLine, alpha: theme.laneLineAlpha });
           }
         }
-        laneLayer.rect(START_X - 4, roadTop, 8, roadBottom - roadTop).fill({ color: 0xffffff, alpha: 0.85 });
+        // Kerbs along both edges of the course.
+        const kerb = 44;
+        for (const [y, h] of [[roadTop - 7, 9], [roadBottom - 2, 10]] as const) {
+          laneLayer.rect(0, y, worldLength, h).fill(theme.kerb[1]);
+          for (let x = 0; x < worldLength; x += kerb * 2) laneLayer.rect(x, y, kerb, h).fill(theme.kerb[0]);
+          laneLayer.rect(0, y + h - 2, worldLength, 2).fill({ color: 0x000000, alpha: 0.22 });
+        }
+        // Start line: a chequered strip, slimmer than the finish.
+        const sc = 8;
+        for (let yy = roadTop + 2; yy < roadBottom - 2; yy += sc) {
+          for (let c = 0; c < 2; c++) {
+            const dark = (Math.round((yy - roadTop) / sc) + c) % 2 === 0;
+            laneLayer.rect(START_X - sc + c * sc, yy, sc, Math.min(sc, roadBottom - 2 - yy)).fill({ color: dark ? 0x15151c : 0xffffff, alpha: 0.9 });
+          }
+        }
         const cell = 12;
         for (let yy = roadTop; yy < roadBottom; yy += cell) {
           for (let c = 0; c < 3; c++) {
@@ -560,47 +630,77 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
         }
         for (let m = 50; m < sim.totalDistance; m += 50) {
           const x = START_X + m * PX_PER_M;
-          laneLayer.rect(x - 1, roadTop - 14, 2, 14).fill({ color: 0xffffff, alpha: 0.5 });
+          laneLayer.rect(x - 1, roadTop + 2, 2, roadBottom - roadTop - 4).fill({ color: 0xffffff, alpha: 0.1 });
         }
       };
 
+      /** Start / finish gantry: stands behind the boards, so nothing crosses the lanes. */
       const makeBanner = (x: number, label: string, color: number) => {
         const c = new Container();
         const g = new Graphics();
-        const h = roadBottom - roadTop;
-        // posts with candy stripes
-        for (const px of [x - 8, x + 8]) {
-          g.rect(px - 4, roadTop - 78, 8, h + 78).fill(0xe8e8ee);
-          for (let yy = roadTop - 78; yy < roadTop + h; yy += 24) g.rect(px - 4, yy, 8, 12).fill(shade(color, 0.9));
+        const top = roadTop - 134, foot = roadTop - 6, half = 118;
+        for (const px of [x - half, x + half]) {
+          g.rect(px - 5, top, 10, foot - top).fill(0x2a2a36);
+          g.rect(px - 5, top, 3, foot - top).fill(0x4a4a5c);
         }
-        g.roundRect(x - 96, roadTop - 100, 192, 36, 8).fill(shade(color, 0.8));
-        g.roundRect(x - 96, roadTop - 104, 192, 36, 8).fill(color);
-        g.roundRect(x - 96, roadTop - 104, 192, 36, 8).stroke({ color: 0xffffff, alpha: 0.4, width: 2 });
+        g.roundRect(x - half - 12, top - 6, (half + 12) * 2, 44, 6).fill(shade(color, 0.55));
+        g.roundRect(x - half - 12, top - 10, (half + 12) * 2, 44, 6).fill(color);
+        g.roundRect(x - half - 12, top - 10, (half + 12) * 2, 44, 6).stroke({ color: 0xffffff, alpha: 0.5, width: 2 });
+        // chequered ends
+        for (const sx of [-half - 4, half - 16]) {
+          for (let r = 0; r < 4; r++) for (let k = 0; k < 2; k++) {
+            g.rect(x + sx + k * 10, top - 6 + r * 9, 10, 9).fill((r + k) % 2 ? 0xffffff : 0x15151c);
+          }
+        }
         c.addChild(g);
-        const t = new Text({ text: label, style: { fontFamily: 'Outfit, Inter, sans-serif', fontSize: 20, fontWeight: '900', fill: 0xffffff, letterSpacing: 3 } });
-        t.anchor.set(0.5); t.x = x; t.y = roadTop - 86; t.resolution = 2;
+        const t = new Text({ text: label, style: { fontFamily: 'Outfit, Inter, sans-serif', fontSize: 24, fontWeight: '900', fill: 0xffffff, letterSpacing: 4 } });
+        t.anchor.set(0.5); t.x = x; t.y = top + 12; t.resolution = 2;
         c.addChild(t);
         return c;
       };
 
-      const crowdAt = (g: Graphics, cx: number, half: number, rng: () => number) => {
-        const y = roadTop - 10;
-        const palette = [0xff6b6b, 0xffd166, 0x06d6a0, 0x4cc9f0, 0xf72585, 0xffffff, 0x9b5de5, 0xf7b267];
-        // stand
-        g.rect(cx - half - 10, y - 18, half * 2 + 20, 22).fill(shade(theme.fence, 0.8));
-        g.rect(cx - half - 10, y - 20, half * 2 + 20, 3).fill(shade(theme.fence, 1.2));
-        for (let row = 1; row >= 0; row--) {
-          for (let x = cx - half; x < cx + half; x += 11 + rng() * 5) {
-            const body = palette[Math.floor(rng() * palette.length)];
-            const skin = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac][Math.floor(rng() * 5)];
-            const by = y - 18 - row * 12 + rng() * 3;
-            g.roundRect(x - 5, by - 12, 10, 12, 3).fill(body);
-            g.circle(x, by - 16, 4.5).fill(skin);
-            if (rng() < 0.35) { // raised arm with a flag
-              g.rect(x + 4, by - 24, 1.5, 12).fill(skin);
-              g.poly([x + 5, by - 24, x + 13, by - 21, x + 5, by - 18]).fill(theme.bunting[Math.floor(rng() * theme.bunting.length)]);
-            }
+      /**
+       * A covered grandstand. The crowd sits in blocks of a few muted colours, like fan sections,
+       * and is tinted toward the stand so it reads as one mass rather than confetti.
+       */
+      const standAt = (g: Graphics, cx: number, half: number, rng: () => number) => {
+        const foot = roadTop - 36, rows = 4, rowH = 19;
+        const top = foot - rows * rowH - 6;
+        const roof = theme.bunting[0];
+        const wall = mix(theme.fence, 0x14141c, 0.7);
+        const sections = [0x5432d3, 0xe9e4d8, 0x39415c, 0xd9a441, 0x7a8798, 0xb5533c];
+        const skins = [0xd9ab84, 0xb98560, 0x8a5f42];
+        g.rect(cx - half, top, half * 2, foot - top).fill(wall);
+        const blockW = half / 2;
+        for (let row = rows - 1; row >= 0; row--) {
+          const y = foot - row * rowH;
+          const fade = 0.2 + row * 0.09; // the upper rows sit further back, in the roof's shade
+          g.rect(cx - half, y - 3, half * 2, 3).fill(mix(wall, 0xffffff, 0.14));
+          for (let x = cx - half + 8; x < cx + half - 6; x += 12 + rng() * 2) {
+            if (rng() < 0.14) continue; // an empty seat
+            const block = Math.floor((x - cx + half) / blockW);
+            const main = sections[(block + Math.floor(cx / 97)) % sections.length];
+            const body = mix(rng() < 0.8 ? main : sections[2], wall, fade);
+            const skin = mix(skins[Math.floor(rng() * skins.length)], wall, fade);
+            const py = y - 3;
+            // shoulders and head only: at this size that is all the eye reads
+            g.roundRect(x - 4.6, py - 9, 9.2, 9, 3.5).fill(body);
+            g.circle(x, py - 11.5, 3.3).fill(skin);
           }
+        }
+        // roof shadow on the top rows
+        const shadow = new FillGradient({
+          type: 'linear', start: { x: 0, y: 0 }, end: { x: 0, y: 1 }, textureSpace: 'local',
+          colorStops: [{ offset: 0, color: 'rgba(0,0,0,0.55)' }, { offset: 1, color: 'rgba(0,0,0,0)' }],
+        });
+        g.rect(cx - half, top, half * 2, 30).fill(shadow);
+        // pillars and roof
+        for (let x = cx - half; x <= cx + half + 1; x += blockW) g.rect(x - 2, top - 2, 4, foot - top + 2).fill(0xc8cad2);
+        g.poly([cx - half - 14, top - 2, cx + half + 14, top - 2, cx + half - 10, top - 18, cx - half + 10, top - 18]).fill(roof);
+        g.poly([cx - half - 14, top - 2, cx + half + 14, top - 2, cx + half + 12, top + 3, cx - half - 12, top + 3]).fill(shade(roof, 0.6));
+        for (let x = cx - half + 30; x < cx + half; x += 90) {
+          g.rect(x - 1, top - 34, 2, 18).fill(0xc8cad2);
+          g.poly([x + 1, top - 34, x + 17, top - 29, x + 1, top - 24]).fill(theme.bunting[Math.floor(rng() * theme.bunting.length)]);
         }
       };
 
@@ -621,42 +721,104 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
         for (let x = 0; x < worldLength; x += 26 + rng() * 40) tuftAt(back, x, roadTop - 3, 0.9 + rng() * 0.6, shade(theme.decorColors[1], 1.1));
         decorBack.addChild(back);
 
-        // crowd stands near the start and the finish
-        const crowd = new Graphics();
-        crowdAt(crowd, START_X + 230, 170, rng);
-        crowdAt(crowd, finishX - 250, 190, rng);
-        crowdAt(crowd, finishX + 170, 110, rng);
-        decorBack.addChild(crowd);
-
-        // rail fence along the top edge
-        const fence = new Graphics();
-        const railY = roadTop - 10;
-        fence.rect(0, railY - 14, worldLength, 3).fill(theme.fence);
-        fence.rect(0, railY - 5, worldLength, 3).fill(theme.fence);
-        for (let x = 10; x < worldLength; x += 96) {
-          fence.rect(x - 2.5, railY - 24, 5, 26).fill(shade(theme.fence, 0.85));
-          fence.rect(x - 2.5, railY - 24, 2, 26).fill(shade(theme.fence, 1.15));
+        // grandstands: big ones at the start and the finish, smaller ones along the way
+        for (const [cx, half] of [
+          [START_X + 330, 250], [START_X + 100 * PX_PER_M, 190], [START_X + 200 * PX_PER_M, 230],
+          [START_X + 300 * PX_PER_M, 190], [finishX - 340, 300], [finishX + 290, 170],
+        ]) {
+          const stand = new Graphics();
+          standAt(stand, cx, half, rng);
+          decorBack.addChild(stand);
         }
+
+        // running rail, behind the boards
+        const fence = new Graphics();
+        const railY = roadTop - 36;
+        for (let x = 10; x < worldLength; x += 80) fence.rect(x - 1.5, railY, 3, 28).fill(shade(theme.rail, 0.75));
+        fence.roundRect(0, railY - 2, worldLength, 4, 2).fill(theme.rail);
+        fence.rect(0, railY + 2, worldLength, 1).fill({ color: 0x000000, alpha: 0.25 });
         decorBack.addChild(fence);
 
         decorBack.addChild(makeBanner(START_X, 'START', 0x5432d3));
         decorBack.addChild(makeBanner(finishX + 18, 'FINISH', 0xc0392b));
 
+        // Trackside boards: separate framed panels on legs, standing on the verge in front of the rail.
+        // Each logo file has a solid background, so its panel is filled with that same colour.
+        // Robinhood Chain: name only, black on Robin Neon, an approved pairing in its brand guidelines
+        // (docs.robinhood.com/chain/brand-guidelines). Do not add its logo or feather without their approval.
+        const boardH = BOARD_H, boardW = 296, pitch = 320, frame = 3;
+        const boardTop = roadTop - 15 - boardH;
+        const inner = boardH - frame * 2;
+        const logoSprite = (tex: Texture | null) => {
+          if (!tex) return null;
+          // the art sits inside wide margins: trim them so the logo fills the panel
+          const h = tex.height * 0.8;
+          const sprite = new Sprite(new Texture({ source: tex.source, frame: new Rectangle(0, tex.height * 0.1, tex.width, h) }));
+          sprite.anchor.set(0.5);
+          sprite.scale.set(inner / h);
+          return sprite;
+        };
+        // Sheen from above and shade below, shared by every panel, so print and panel catch the same light.
+        const sheen = new FillGradient({
+          type: 'linear', start: { x: 0, y: 0 }, end: { x: 0, y: 1 }, textureSpace: 'local',
+          colorStops: [
+            { offset: 0, color: 'rgba(255,255,255,0.2)' },
+            { offset: 0.3, color: 'rgba(255,255,255,0)' },
+            { offset: 1, color: 'rgba(0,0,0,0.3)' },
+          ],
+        });
+        for (let cx = START_X - pitch, n = 0; cx < worldLength + pitch; cx += pitch, n++) {
+          const left = cx - boardW / 2;
+          const chain = n % 2 === 1;
+          const logoTex = n % 4 === 0 ? darkLogoTex : lightLogoTex;
+          const back = new Graphics();
+          // shadow on the verge, then legs
+          back.ellipse(cx, roadTop - 9, boardW / 2 + 6, 5).fill({ color: 0x000000, alpha: 0.28 });
+          for (const lx of [left + 42, left + boardW - 42]) {
+            back.rect(lx - 4, boardTop + boardH - 2, 8, 12).fill(0x23252e);
+            back.rect(lx - 4, boardTop + boardH - 2, 2.5, 12).fill(0x444754);
+            back.rect(lx - 8, roadTop - 8, 16, 2).fill(0x15161c);
+          }
+          // panel
+          back.rect(left + frame, boardTop + frame, boardW - frame * 2, inner).fill(chain ? 0xccff00 : n % 4 === 0 ? 0x0b0519 : 0xfefefe);
+          decorBack.addChild(back);
+
+          const art = chain
+            ? new Text({ text: 'On Robinhood Chain', style: { fontFamily: 'Outfit, Inter, sans-serif', fontSize: 21, fontWeight: '800', fill: 0x000000 } })
+            : logoSprite(logoTex);
+          if (art) {
+            if (art instanceof Text) { art.anchor.set(0.5); art.resolution = 2; }
+            art.x = cx; art.y = boardTop + boardH / 2;
+            decorBack.addChild(art);
+          }
+
+          // the light and the track's tone go over the print too, then the metal frame on top
+          const front = new Graphics();
+          front.rect(left + frame, boardTop + frame, boardW - frame * 2, inner).fill({ color: theme.edgeColor, alpha: theme.boardShade });
+          front.rect(left + frame, boardTop + frame, boardW - frame * 2, inner).fill(sheen);
+          front.rect(left, boardTop, boardW, frame).fill(0x5a5e6c);
+          front.rect(left, boardTop + boardH - frame, boardW, frame).fill(0x1d1f27);
+          front.rect(left, boardTop, frame, boardH).fill(0x34363f);
+          front.rect(left + boardW - frame, boardTop, frame, boardH).fill(0x24262e);
+          front.rect(left + frame, boardTop + frame, boardW - frame * 2, 1.5).fill({ color: 0x000000, alpha: 0.3 });
+          decorBack.addChild(front);
+        }
+
         for (let m = 50; m < sim.totalDistance; m += 50) {
           const x = START_X + m * PX_PER_M;
           const sign = new Graphics();
-          sign.roundRect(x - 18, roadTop - 44, 36, 18, 4).fill(0x1b1b24);
-          sign.roundRect(x - 18, roadTop - 44, 36, 18, 4).stroke({ color: 0xffffff, alpha: 0.35, width: 1 });
-          sign.rect(x - 1.5, roadTop - 26, 3, 14).fill(0x9a9aa8);
+          sign.rect(x - 1.5, roadTop - 82, 3, 34).fill(0xd8dae2);
+          sign.roundRect(x - 22, roadTop - 102, 44, 22, 4).fill(0x141226);
+          sign.roundRect(x - 22, roadTop - 102, 44, 22, 4).stroke({ color: 0xffd166, alpha: 0.7, width: 1.5 });
           decorBack.addChild(sign);
-          const t = new Text({ text: `${m}m`, style: { fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: '800', fill: 0xffffff } });
-          t.anchor.set(0.5); t.x = x; t.y = roadTop - 35; t.resolution = 2;
+          const t = new Text({ text: `${m}m`, style: { fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: '800', fill: 0xffffff } });
+          t.anchor.set(0.5); t.x = x; t.y = roadTop - 91; t.resolution = 2;
           decorBack.addChild(t);
         }
 
         // bunting strings over the start and finish zones
         const bunting = (from: number, to: number) => {
-          const y0 = roadTop - 112;
+          const y0 = roadTop - 150;
           const line = new Graphics();
           const sag = 14;
           line.moveTo(from, y0);
@@ -675,8 +837,9 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
             flags.push({ node: f, seed: rng() * TAU });
           }
         };
-        bunting(START_X - 150, START_X + 420);
-        bunting(finishX - 460, finishX + 300);
+        bunting(START_X + 135, START_X + 620);
+        bunting(finishX - 620, finishX - 118);
+        bunting(finishX + 154, finishX + 460);
 
         // front edge: bushes / rocks / tufts peeking over the bottom edge
         const front = new Graphics();
@@ -1097,6 +1260,8 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
         world.x = -camX;
         groundLayer.x = camX;            // ground is drawn in screen space; scroll its texture instead
         if (ground) ground.tilePosition.x = -camX;
+        if (groundDetail) groundDetail.tilePosition.x = -camX;
+        if (groundPatches) groundPatches.tilePosition.x = -camX;
         farLayer.x = -camX * 0.12;
         cloudLayer.x = -camX * 0.18;
         treelineLayer.x = -camX * 0.32;

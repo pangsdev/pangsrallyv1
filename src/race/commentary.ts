@@ -24,6 +24,9 @@ export interface CommentaryState {
   playerBest: number;
   stumbled: Set<string>;
   flags: Set<string>;
+  /** burst reactions so far, and when the last one was */
+  bursts: number;
+  lastBurstAt: number;
 }
 
 export function createCommentaryState(): CommentaryState {
@@ -34,6 +37,8 @@ export function createCommentaryState(): CommentaryState {
     playerBest: 99,
     stumbled: new Set(),
     flags: new Set(),
+    bursts: 0,
+    lastBurstAt: -99,
   };
 }
 
@@ -48,6 +53,13 @@ export interface CommentaryContext {
 const COOLDOWN = 3.2;
 /** Lead (metres) under which the caller says "narrow lead" (about two lengths). */
 const NARROW_LEAD_M = 5;
+/** Burst reactions colour the race; they must not bury the calls that matter. */
+const MAX_BURST_CALLS = 3;
+const BURST_CALL_GAP = 5;
+/** A burst is called only while it has this long left, so the words land on the speed-up. */
+const BURST_MIN_LEFT = 0.6;
+/** Bursts at the back of the field are left out, except the player's. */
+const BURST_MAX_POSITION = 5;
 
 export function considerCall(state: CommentaryState, ctx: CommentaryContext): CommentaryCall | null {
   const { sim, uiPhase, terrain } = ctx;
@@ -90,6 +102,17 @@ export function considerCall(state: CommentaryState, ctx: CommentaryContext): Co
 
   if (leadPct > 0.78 && !state.flags.has('stretch')) {
     return emit(state, 'stretch', 7, t, LINES.turnsHome(leader.number, !second || gap < NARROW_LEAD_M));
+  }
+
+  if (state.bursts < MAX_BURST_CALLS && t - state.lastBurstAt >= BURST_CALL_GAP && canSpeak(state, t, 5)) {
+    const hot = sorted.filter(r => r.burstLeft > BURST_MIN_LEFT && r.finishTime === null && (r.isPlayer || r.position <= BURST_MAX_POSITION));
+    const racer = hot.find(r => r.isPlayer) ?? hot[0];
+    if (racer) {
+      const v = state.bursts + racer.number;
+      state.bursts++;
+      state.lastBurstAt = t;
+      return emit(state, `burst-${racer.id}-${Math.floor(t)}`, 5, t, racer.isPlayer ? LINES.youBurst(v) : LINES.burst(racer.number, v));
+    }
   }
 
   if (leadPct > 0.48 && leadPct < 0.72 && !state.flags.has('halfway')) {

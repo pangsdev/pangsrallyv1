@@ -17,6 +17,7 @@ export const CLIP_MANIFEST = `${CLIP_BASE}/manifest.json`;
 
 export const BAKED_TRACKS = ['Forest', 'Desert', 'Volcanic', 'Midnight'] as const;
 export const MAX_NUMBER = 10;
+export const BURST_VARIANTS = 4;
 
 const ORDINAL_WORDS = ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
 const NUMBER_WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
@@ -37,6 +38,14 @@ export const LINES = {
   stumbles: (n: number) => `${call(n)} stumbles, and the lead is wide open!`,
   wins: (n: number) => `${call(n)} wins it!`,
   winsByNose: (n: number) => `${call(n)} wins it, by a nose!`,
+  /** A racer's speed burst. `v` picks the wording, so the caller does not repeat himself. */
+  burst: (n: number, v: number) => [
+    `Wow, ${call(n)} just hit the turbo!`,
+    `Look at ${call(n)} go, what a burst of speed!`,
+    `${call(n)} finds another gear!`,
+    `${call(n)} is absolutely flying now!`,
+  ][v % BURST_VARIANTS],
+  youBurst: (v: number) => ['Wow, you just hit the turbo!', 'You find another gear!'][v % 2],
   /** The player's own lines say "you", so one set of clips fits every lane (the player's lane is random). */
   comesHome: (place: number) => `You come home ${ORDINAL_WORDS[place]}.`,
   chargesUp: (place: number) => `You charge up to ${ORDINAL_WORDS[place]}!`,
@@ -59,7 +68,9 @@ export function bakeVocabulary(): BakeEntry[] {
       LINES.turnsHome(n, true), LINES.turnsHome(n, false),
       LINES.tooClose(n), LINES.stumbles(n), LINES.wins(n), LINES.winsByNose(n),
     );
+    for (let v = 0; v < BURST_VARIANTS; v++) lines.push(LINES.burst(n, v));
   }
+  lines.push(LINES.youBurst(0), LINES.youBurst(1));
   for (let p = 2; p <= MAX_NUMBER; p++) lines.push(LINES.comesHome(p));
   for (let p = 1; p <= 3; p++) lines.push(LINES.chargesUp(p));
   return lines.map(text => ({ id: lineClipId(text), text: spokenText(text) }));

@@ -6,6 +6,8 @@ export interface TrackTheme {
   /** tileable ground texture, or null to use a flat colour */
   groundTexture: string | null;
   groundColor: number;
+  /** wash of groundColor over a busy ground texture (0–1) */
+  groundCalm?: number;
   /** darkening overlay on the road band (0–1) */
   roadShade: number;
   laneLine: number;
@@ -29,6 +31,12 @@ export interface TrackTheme {
   ambientColors: number[];
   /** fence + bunting colours */
   fence: number;
+  /** running rail along the far side */
+  rail: number;
+  /** how much the track's edge colour tones down the trackside boards (0–1) */
+  boardShade: number;
+  /** kerb stripes along both edges of the course */
+  kerb: [number, number];
   bunting: number[];
   ember?: number;
   stars?: boolean;
@@ -42,6 +50,7 @@ export const THEMES: Record<string, TrackTheme> = {
     skyBottom: 0xdcefc9,
     groundTexture: '/forest_track.webp',
     groundColor: 0x4f8a3a,
+    groundCalm: 0.62,
     roadShade: 0.22,
     laneLine: 0xffffff,
     laneLineAlpha: 0.3,
@@ -58,6 +67,9 @@ export const THEMES: Record<string, TrackTheme> = {
     ambient: 'leaves',
     ambientColors: [0x7bc26a, 0xb9d86a, 0xd9a24a],
     fence: 0x8a5a2b,
+    boardShade: 0.16,
+    rail: 0xf4f6f2,
+    kerb: [0xd8342a, 0xf4f4f0],
     bunting: [0xff5e5e, 0xffd54a, 0x5ec8ff, 0x7cfc9a, 0xff9ddb],
     hudAccent: '#b8ce55',
   },
@@ -83,6 +95,9 @@ export const THEMES: Record<string, TrackTheme> = {
     ambient: 'sand',
     ambientColors: [0xf3dcae, 0xe7c88e],
     fence: 0x9a6a3a,
+    boardShade: 0.16,
+    rail: 0xf2e6cf,
+    kerb: [0xc9552a, 0xf4e8cf],
     bunting: [0xff7a3a, 0xffd54a, 0xffffff, 0xd9534f],
     hudAccent: '#e67e22',
   },
@@ -108,6 +123,9 @@ export const THEMES: Record<string, TrackTheme> = {
     ambient: 'embers',
     ambientColors: [0xff7a2a, 0xffb347, 0xff4a1a],
     fence: 0x3a2a2a,
+    boardShade: 0.42,
+    rail: 0x8a7670,
+    kerb: [0xff5a1f, 0x2a2224],
     bunting: [0xff7a2a, 0xffd54a, 0xff4a1a],
     ember: 0xff7a2a,
     hudAccent: '#e74c3c',
@@ -134,6 +152,9 @@ export const THEMES: Record<string, TrackTheme> = {
     ambient: 'fireflies',
     ambientColors: [0xcfff7a, 0xfff79a],
     fence: 0x2a2f55,
+    boardShade: 0.5,
+    rail: 0xaab6ff,
+    kerb: [0x6a5cff, 0xdfe4ff],
     bunting: [0x9fb3ff, 0xff9ddb, 0xcfff7a],
     stars: true,
     hudAccent: '#9b59b6',
