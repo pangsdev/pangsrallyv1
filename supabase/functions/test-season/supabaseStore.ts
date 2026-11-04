@@ -32,6 +32,10 @@ export function createSupabaseStore(db: SupabaseClient): Store {
       if (res.error) throw new Error(res.error.message);
       return res.data as 'exists' | 'joined' | 'invalid';
     },
+    async inviteIsFull(code) {
+      const row = must(await db.from('test_invite_codes').select('uses, max_uses, active').eq('code', code).maybeSingle()) as { uses: number; max_uses: number; active: boolean } | null;
+      return !!row && row.active && row.uses >= row.max_uses;
+    },
     async getBetaMinted(wallet) {
       const row = must(await db.from('test_players').select('beta_minted_at').eq('wallet', wallet).maybeSingle()) as { beta_minted_at: string | null } | null;
       return !!row?.beta_minted_at;

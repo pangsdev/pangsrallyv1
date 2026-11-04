@@ -200,8 +200,8 @@ export async function signInWithWallet(askInvite: (reason: string) => Promise<st
       const { token: _token, ...status } = res;
       return status;
     } catch (e) {
-      if (!(e instanceof ApiError) || (e.code !== 'invite_required' && e.code !== 'invite_invalid')) throw e;
-      inviteCode = await askInvite(e.code === 'invite_invalid' && inviteCode ? e.message : '');
+      if (!(e instanceof ApiError) || (e.code !== 'invite_required' && e.code !== 'invite_invalid' && e.code !== 'invite_full')) throw e;
+      inviteCode = await askInvite(e.code !== 'invite_required' && inviteCode ? e.message : '');
       if (!inviteCode) throw new ApiError(0, 'invite_cancelled', 'The Beta season is invite-only. Ask the Pangs Rally team for a code.');
     }
   }

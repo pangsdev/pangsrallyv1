@@ -79,7 +79,7 @@ export function considerCall(state: CommentaryState, ctx: CommentaryContext): Co
   }
 
   if (player && player.finishTime !== null && player.position > 1 && !state.flags.has('youhome')) {
-    return emit(state, 'youhome', 8, t, LINES.comesHome(player.number, player.position));
+    return emit(state, 'youhome', 8, t, LINES.comesHome(player.position));
   }
 
   if (!canSpeak(state, t, 5)) return null;
@@ -119,7 +119,7 @@ export function considerCall(state: CommentaryState, ctx: CommentaryContext): Co
     !state.flags.has(`you-${player.position}`)
   ) {
     state.playerBest = player.position;
-    return emit(state, `you-${player.position}`, 6, t, LINES.chargesUp(player.number, player.position));
+    return emit(state, `you-${player.position}`, 6, t, LINES.chargesUp(player.position));
   }
   if (player && player.position < state.playerBest) state.playerBest = player.position;
 

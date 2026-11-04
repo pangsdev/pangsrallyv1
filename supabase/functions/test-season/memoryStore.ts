@@ -41,6 +41,10 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
       players.set(wallet, { created: now, lastSeen: now });
       return 'joined';
     },
+    async inviteIsFull(code) {
+      const c = codes.get(code);
+      return !!c && c.uses >= c.max;
+    },
     async getBetaMinted(wallet) {
       return betaMinted.has(wallet);
     },

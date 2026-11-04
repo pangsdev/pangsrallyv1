@@ -27,8 +27,6 @@ export const OPEN_ROOMS = 3;
 export const ROOM_MIN_LEAD_SECONDS = 120;
 /** Tracks open during the Beta season. */
 export const TEST_TERRAINS = ['Forest'];
-/** The lone player of a bot race always runs in lane 5 (the caller's player lines are baked for number 5). */
-export const BOT_RACE_PLAYER_LANE = 5;
 const TEST_STATS: RacerStats = { speed: 50, burst: 50, endurance: 50 };
 /**
  * Only collection tokens 1–10 have public artwork (public/nft-images); the rest stays private until
@@ -105,7 +103,7 @@ export function checkUsername(raw: string): { name: string } | { error: string }
 /**
  * The 10-racer field for a race. `wallets` are the players in join order;
  * bots fill the remaining lanes. A single-player (bot) race puts the player
- * in lane 5; with several players the seed shuffles who runs where.
+ * in a seeded random lane, same as several players in a room.
  */
 export function buildTestField(seed: string, wallets: string[], names: Record<string, string> = {}): TestRacer[] {
   const players = wallets.slice(0, FIELD_SIZE).map(w => w.toLowerCase());
@@ -163,7 +161,6 @@ function betaRacer(id: string, name: string, wallet: string): TestRacer {
 
 /** 1-based lanes for the players, in join order. */
 function assignLanes(seed: string, count: number): number[] {
-  if (count === 1) return [BOT_RACE_PLAYER_LANE];
   const lanes = shuffle(Array.from({ length: FIELD_SIZE }, (_, i) => i + 1), seededRandom(seed));
   return lanes.slice(0, count);
 }

@@ -11,7 +11,8 @@
     "bake:announcer": "node scripts/bake-announcer.mjs",
     "sync:server": "node scripts/sync-race-shared.mjs",
     "test:season": "node scripts/test-season-check.mjs",
-    "invite:create": "node scripts/create-invite.mjs"
+    "invite:create": "node scripts/create-invite.mjs",
+    "beta:stats": "node scripts/beta-stats.mjs"
   },
   "dependencies": {
     "@pinata/sdk": "^2.1.0",

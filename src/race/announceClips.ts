@@ -17,8 +17,6 @@ export const CLIP_MANIFEST = `${CLIP_BASE}/manifest.json`;
 
 export const BAKED_TRACKS = ['Forest', 'Desert', 'Volcanic', 'Midnight'] as const;
 export const MAX_NUMBER = 10;
-/** A bot-race player runs in lane 5 (BOT_RACE_PLAYER_LANE in testSeason.ts); only that number gets the player-only lines baked. */
-export const PLAYER_NUMBER = 5;
 
 const ORDINAL_WORDS = ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
 const NUMBER_WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
@@ -39,8 +37,9 @@ export const LINES = {
   stumbles: (n: number) => `${call(n)} stumbles, and the lead is wide open!`,
   wins: (n: number) => `${call(n)} wins it!`,
   winsByNose: (n: number) => `${call(n)} wins it, by a nose!`,
-  comesHome: (n: number, place: number) => `${call(n)} comes home ${ORDINAL_WORDS[place]}.`,
-  chargesUp: (n: number, place: number) => `${call(n)} charges up to ${ORDINAL_WORDS[place]}!`,
+  /** The player's own lines say "you", so one set of clips fits every lane (the player's lane is random). */
+  comesHome: (place: number) => `You come home ${ORDINAL_WORDS[place]}.`,
+  chargesUp: (place: number) => `You charge up to ${ORDINAL_WORDS[place]}!`,
 };
 
 export type ClipPart = { kind: 'clip'; id: string };
@@ -61,8 +60,8 @@ export function bakeVocabulary(): BakeEntry[] {
       LINES.tooClose(n), LINES.stumbles(n), LINES.wins(n), LINES.winsByNose(n),
     );
   }
-  for (let p = 2; p <= MAX_NUMBER; p++) lines.push(LINES.comesHome(PLAYER_NUMBER, p));
-  for (let p = 1; p <= 3; p++) lines.push(LINES.chargesUp(PLAYER_NUMBER, p));
+  for (let p = 2; p <= MAX_NUMBER; p++) lines.push(LINES.comesHome(p));
+  for (let p = 1; p <= 3; p++) lines.push(LINES.chargesUp(p));
   return lines.map(text => ({ id: lineClipId(text), text: spokenText(text) }));
 }
 

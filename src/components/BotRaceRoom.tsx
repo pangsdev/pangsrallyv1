@@ -9,7 +9,9 @@ import { getTheme } from '../race/themes';
 import { considerCall, createCommentaryState, type CommentaryCall } from '../race/commentary';
 import { isAnnouncerMuted, setAnnouncerMuted, speakCall, stopAnnounce, warmCall } from '../race/announce';
 import { resolveCallName } from '../race/callNames';
-import { LINES, PLAYER_NUMBER } from '../race/announceClips';
+import { LINES } from '../race/announceClips';
+
+const PLAYER_NUMBER = 5; // legacy room (no longer imported): fixed lane
 import '../race/race.css';
 
 interface Props {

@@ -55,6 +55,8 @@ export interface Store {
   playerExists(wallet: string): Promise<boolean>;
   /** Registers a new wallet and takes one place on the code, atomically. */
   joinWithInvite(wallet: string, code: string): Promise<'exists' | 'joined' | 'invalid'>;
+  /** True when the code exists and is active but all its places are taken (so "full" can be told apart from "wrong"). */
+  inviteIsFull(code: string): Promise<boolean>;
   /** Cached "this wallet minted its Beta pass" flag, so the chain is asked only until it is true. */
   getBetaMinted(wallet: string): Promise<boolean>;
   setBetaMinted(wallet: string, now: Date): Promise<void>;
@@ -182,6 +184,9 @@ async function login(deps: Deps, body: Record<string, unknown>) {
     const code = normalizeInvite(body.inviteCode);
     if (!code) throw new HttpError(403, 'invite_required', 'The Beta season is invite-only. Enter your invite code to join.');
     if (await deps.store.joinWithInvite(wallet, code) === 'invalid') {
+      if (await deps.store.inviteIsFull(code)) {
+        throw new HttpError(403, 'invite_full', 'This invite code has no places left. All its spots are taken, so nothing is wrong on your side. Ask the Pangs Rally team for a new code.');
+      }
       throw new HttpError(403, 'invite_invalid', 'This invite code is not valid or has no places left.');
     }
   }

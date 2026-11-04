@@ -79,7 +79,7 @@ ok('login with a real wallet signature');
 
   const rush = await Promise.all([Wallet.createRandom(), Wallet.createRandom(), Wallet.createRandom()].map(w => login(w, 'TWO-SEATS')));
   assert.equal(rush.filter(r => r.status === 200).length, 1, 'one place was left');
-  assert.equal(rush.filter(r => r.body.error === 'invite_invalid').length, 2);
+  assert.equal(rush.filter(r => r.body.error === 'invite_full').length, 2, 'a full code says it is full');
   ok('a 2-place code admits exactly 2 wallets, even in parallel');
 
   assert.equal((await login(Wallet.createRandom())).status === 200, false);
@@ -103,7 +103,7 @@ ok('login with a real wallet signature');
     const { race, you } = r.body;
     assert.equal(race.field.length, FIELD_SIZE);
     assert.equal(race.field.filter(f => f.wallet).length, 1);
-    assert.equal(race.field[4].wallet, alice.address.toLowerCase(), 'player runs in lane 5');
+    assert.equal(race.field.filter(f => f.wallet === alice.address.toLowerCase()).length, 1, 'the player is in the field once');
     // The browser replays the race from seed + field: it must land on the same result.
     const replay = runTestRace(race.seed, race.field, race.terrain);
     assert.deepEqual(replay, race.results);
@@ -301,15 +301,19 @@ ok('login with a real wallet signature');
 // --- fairness: identical stats → ~10% win rate per racer -------------------
 {
   const N = 2000;
-  const wins = Array(FIELD_SIZE).fill(0);
+  let playerWins = 0;
+  const lanes = Array(FIELD_SIZE).fill(0);
   const { buildTestField } = await import('../supabase/functions/test-season/race/testSeason.ts');
   for (let i = 0; i < N; i++) {
     const seed = `fair-${i}`;
     const field = buildTestField(seed, ['0x' + 'a'.repeat(40)]);
     const res = runTestRace(seed, field, 'Forest');
-    wins[res.find(r => r.position === 1) ? field.findIndex(f => f.id === res.find(r => r.position === 1).id) : 0]++;
+    const winner = res.find(r => r.position === 1);
+    if (field[field.findIndex(f => f.id === winner.id)].wallet) playerWins++;
+    lanes[field.findIndex(f => f.wallet)]++;
   }
-  const playerWin = wins[4] / N;
+  const playerWin = playerWins / N;
+  assert.ok(lanes.every(n => n > N / FIELD_SIZE * 0.6), `the player's lane is random: ${lanes}`);
   assert.ok(playerWin > 0.07 && playerWin < 0.13, `player win rate ${playerWin}`);
   ok(`fair field: player wins ${(playerWin * 100).toFixed(1)}% of ${N} races (expected ~10%)`);
 }
