@@ -11,6 +11,7 @@ import {
   DAILY_RACE_LIMIT, FIELD_SIZE, OPEN_ROOMS, ROOM_MIN_LEAD_SECONDS, ROOM_SLOT_MINUTES, TEST_TERRAINS,
   buildTestField, checkUsername, pointsFor, runTestRace, shortWallet, signInMessage,
   type TestRacer, type TestRaceResult,
+  streakFor,
 } from './race/testSeason.ts';
 
 export interface RaceRow {
@@ -55,6 +56,8 @@ export interface Store {
   playerExists(wallet: string): Promise<boolean>;
   /** Registers a new wallet and takes one place on the code, atomically. */
   joinWithInvite(wallet: string, code: string): Promise<'exists' | 'joined' | 'invalid'>;
+  /** The UTC days each wallet raced on (one entry per race; streakFor counts a day once). */
+  raceDays(wallets: string[]): Promise<Record<string, string[]>>;
   /** True when the code exists and is active but all its places are taken (so "full" can be told apart from "wrong"). */
   inviteIsFull(code: string): Promise<boolean>;
   /** Cached "this wallet minted its Beta pass" flag, so the chain is asked only until it is true. */
@@ -224,9 +227,11 @@ async function me(deps: Deps, wallet: string) {
   const index = board.findIndex(r => r.wallet === wallet);
   const row = board[index];
   const username = (await deps.store.getUsernames([wallet]))[wallet] ?? null;
+  const days = (await deps.store.raceDays([wallet]))[wallet] ?? [];
   return {
     wallet,
     username,
+    streak: streakFor(days, utcDay(now)),
     racesToday,
     dailyLimit: DAILY_RACE_LIMIT,
     racesLeft: unlimited ? DAILY_RACE_LIMIT : Math.max(0, DAILY_RACE_LIMIT - racesToday),
@@ -487,8 +492,10 @@ async function profile(deps: Deps, wallet: string) {
 async function leaderboard(deps: Deps) {
   const rows = await deps.store.leaderboard(100, deps.now());
   const names = await deps.store.getUsernames(rows.map(r => r.wallet));
+  const days = await deps.store.raceDays(rows.map(r => r.wallet));
+  const today = utcDay(deps.now());
   return {
-    players: rows.map((r, i) => ({ rank: i + 1, wallet: r.wallet, name: names[r.wallet] ?? shortWallet(r.wallet), points: r.points, races: r.races, wins: r.wins, podiums: r.podiums })),
+    players: rows.map((r, i) => ({ rank: i + 1, wallet: r.wallet, name: names[r.wallet] ?? shortWallet(r.wallet), badge: streakFor(days[r.wallet] ?? [], today).badge, points: r.points, races: r.races, wins: r.wins, podiums: r.podiums })),
   };
 }
 

@@ -97,6 +97,7 @@ export default function RaceLobby({ categoryInfo, player, onSelectMode, onBack }
                   <span><strong>{player.points}</strong> pts</span>
                   <span><strong>{player.wins}</strong> wins</span>
                   <span>Rank <strong>{player.rank ?? '—'}</strong></span>
+                  {player.streak.current > 0 && <span><strong>{player.streak.current}</strong> day streak</span>}
                 </div>
               </div>
             </div>

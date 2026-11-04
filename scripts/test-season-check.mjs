@@ -298,6 +298,42 @@ ok('login with a real wallet signature');
   ok('each racer\'s ball matches its artwork (Beta ball for players), and every file exists');
 }
 
+// --- streaks and badges ------------------------------------------------------
+{
+  const { streakFor } = await import('../supabase/functions/test-season/race/testSeason.ts');
+  const run = (from, n) => Array.from({ length: n }, (_, i) => new Date(Date.UTC(2026, 10, from + i)).toISOString().slice(0, 10));
+  assert.deepEqual(streakFor([], '2026-11-10'), { current: 0, best: 0, ranToday: false, week: Array(7).fill(false), badge: 0 });
+  // Three races on one day are still one day.
+  assert.equal(streakFor(['2026-11-10', '2026-11-10', '2026-11-10'], '2026-11-10').current, 1);
+  // Today still open: yesterday's streak is alive, and today's race extends it.
+  assert.equal(streakFor(run(7, 3), '2026-11-10').current, 3);
+  assert.equal(streakFor(run(7, 3), '2026-11-10').ranToday, false);
+  assert.equal(streakFor(run(7, 4), '2026-11-10').current, 4);
+  ok('a streak counts days in a row, and today stays open until midnight UTC');
+
+  // A missed day breaks the streak, but the badge stays.
+  const broken = streakFor(run(1, 7), '2026-11-10');
+  assert.equal(broken.current, 0);
+  assert.equal(broken.best, 7);
+  assert.equal(broken.badge, 7);
+  assert.equal(streakFor(run(1, 2), '2026-11-02').badge, 0);
+  assert.equal(streakFor(run(1, 3), '2026-11-03').badge, 3);
+  assert.equal(streakFor([...run(1, 14), ...run(20, 3)], '2026-11-22').badge, 14);
+  ok('a broken streak resets, and earned badges are kept');
+
+  // Across a month end.
+  assert.equal(streakFor(['2026-10-30', '2026-10-31', '2026-11-01'], '2026-11-01').current, 3);
+  assert.deepEqual(streakFor(['2026-11-10', '2026-11-08'], '2026-11-10').week, [false, false, false, false, true, false, true]);
+  ok('streaks cross month ends, and the week strip ends on today');
+
+  const me = (await call('me', {}, aliceToken)).body;
+  assert.equal(me.streak.ranToday, true);
+  assert.ok(me.streak.current >= 1, 'she raced today');
+  const board = (await call('leaderboard', {})).body.players;
+  assert.equal(board.every(p => typeof p.badge === 'number'), true);
+  ok('the server reports the streak on the player and the badge on the leaderboard');
+}
+
 // --- fairness: identical stats → ~10% win rate per racer -------------------
 {
   const N = 2000;

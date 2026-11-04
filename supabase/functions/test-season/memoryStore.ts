@@ -41,6 +41,11 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
       players.set(wallet, { created: now, lastSeen: now });
       return 'joined';
     },
+    async raceDays(wallets) {
+      const out: Record<string, string[]> = {};
+      for (const e of entries) if (wallets.includes(e.wallet)) (out[e.wallet] ??= []).push(e.day);
+      return out;
+    },
     async inviteIsFull(code) {
       const c = codes.get(code);
       return !!c && c.uses >= c.max;

@@ -32,6 +32,18 @@ export function createSupabaseStore(db: SupabaseClient): Store {
       if (res.error) throw new Error(res.error.message);
       return res.data as 'exists' | 'joined' | 'invalid';
     },
+    async raceDays(wallets) {
+      const unique = [...new Set(wallets)];
+      const out: Record<string, string[]> = {};
+      if (!unique.length) return out;
+      // The API returns at most 1000 rows per call, so read in pages; (wallet, day, slot) is unique, so the order is stable.
+      for (let from = 0; ; from += 1000) {
+        const rows = must(await db.from('test_race_entries').select('wallet, day').in('wallet', unique)
+          .order('wallet').order('day').order('slot').range(from, from + 999)) as { wallet: string; day: string }[];
+        for (const r of rows) (out[r.wallet] ??= []).push(r.day);
+        if (rows.length < 1000) return out;
+      }
+    },
     async inviteIsFull(code) {
       const row = must(await db.from('test_invite_codes').select('uses, max_uses, active').eq('code', code).maybeSingle()) as { uses: number; max_uses: number; active: boolean } | null;
       return !!row && row.active && row.uses >= row.max_uses;

@@ -11,6 +11,7 @@ import RaceLobby from './components/RaceLobby';
 import OnlineRooms from './components/OnlineRooms';
 import Profile, { BetaInventory } from './components/Profile';
 import Landing from './components/Landing';
+import { BadgeUnlocked, markBadgeSeen, unseenBadge } from './components/Badges';
 import { SeasonLeaderboard, SignInGate, NoWalletModal, InviteCodeModal, BetaMintModal } from './components/SeasonPages';
 import { clearSession, getSession, hasWallet, mintBetaPass, signInWithWallet, testSeason, type PlayerStatus } from './testSeason/api';
 import { shortWallet } from './race/testSeason';
@@ -154,6 +155,7 @@ function App() {
 
   /* ---------- Test season: wallet sign-in, daily races, points (server-side) ---------- */
   const [player, setPlayer] = useState<PlayerStatus | null>(null);
+  const [, setBadgeSeen] = useState(0); // re-render once a new badge has been closed
   const [signingIn, setSigningIn] = useState(false);
   const [noWalletHelp, setNoWalletHelp] = useState(false);
   /** bumps to start a fresh bot race ("Race Again") */
@@ -163,8 +165,8 @@ function App() {
   const [replayRaceId, setReplayRaceId] = useState<string | null>(null);
 
   const applyPlayer = (status: PlayerStatus) => {
-    const { wallet, username, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta } = status;
-    setPlayer({ wallet, username: username ?? null, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta });
+    const { wallet, username, streak, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta } = status;
+    setPlayer({ wallet, username: username ?? null, streak, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta });
     setWalletConnected(true);
     setFullWalletAddress(wallet);
     setWalletAddress(shortWallet(wallet));
@@ -1237,8 +1239,14 @@ function App() {
     setRaceStatus('waiting');
   };
 
+  // A new badge waits for the race on screen to end before it is celebrated.
+  const newBadge = player && !['bot-race', 'online-race'].includes(currentView) ? unseenBadge(player.wallet, player.streak.badge) : 0;
+
   return (
     <>
+      {newBadge > 0 && player && (
+        <BadgeUnlocked days={newBadge} onClose={() => { markBadgeSeen(player.wallet, newBadge); setBadgeSeen(n => n + 1); }} />
+      )}
       {/* Toast Notifications */}
       <div style={{position: 'fixed', top: '90px', right: '20px', zIndex: 10000, display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end', pointerEvents: 'none'}}>
         {toasts.map(toast => (

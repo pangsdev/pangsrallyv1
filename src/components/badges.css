@@ -1,0 +1,83 @@
+/* Streak badges: Profile card, medals and the unlock moment */
+.bdg-medal { display: block; flex: none; overflow: visible; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45)); }
+.bdg-medal.locked { filter: grayscale(1) brightness(0.5) contrast(0.9); opacity: 0.6; }
+
+.bdg-card { position: relative; overflow: hidden; margin-top: 1.2rem; padding: 1.4rem; border-radius: 22px; background: radial-gradient(120% 140% at 0% 0%, rgba(255, 120, 40, 0.14), transparent 55%), var(--bg-panel); border: 1px solid var(--border-color); }
+.bdg-card.lit { border-color: rgba(255, 160, 60, 0.45); }
+.bdg-card.risk { border-color: rgba(255, 209, 102, 0.5); }
+.bdg-card.out { background: var(--bg-panel); }
+
+.bdg-top { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.6rem; }
+.bdg-count { display: flex; align-items: center; gap: 0.7rem; }
+.bdg-count strong { display: block; font-family: var(--font-heading); font-size: 3.4rem; line-height: 0.95; font-weight: 800; }
+.bdg-count span { color: var(--text-muted); font-size: 0.82rem; white-space: nowrap; }
+.bdg-flame { flex: none; transform-origin: 50% 100%; }
+.bdg-flame.lit { filter: drop-shadow(0 0 12px rgba(255, 130, 40, 0.7)); animation: bdg-flicker 2.4s ease-in-out infinite; }
+.bdg-flame.risk { filter: drop-shadow(0 0 7px rgba(255, 170, 60, 0.45)); animation: bdg-flicker 1.3s ease-in-out infinite; }
+
+.bdg-status { min-width: 0; }
+.bdg-status h3 { margin: 0 0 0.2rem; font-size: 1.15rem; }
+.bdg-status p { margin: 0; color: var(--text-muted); font-size: 0.9rem; max-width: 420px; }
+.bdg-status b { color: #ffd166; }
+.bdg-go { margin-top: 0.7rem; padding: 0.5rem 1.1rem; font-size: 0.9rem; }
+
+.bdg-week ol { list-style: none; display: flex; gap: 0.4rem; margin: 0; padding: 0; }
+.bdg-week li { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+.bdg-week li span { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; color: #2a1500; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); }
+.bdg-week li.on span { background: linear-gradient(160deg, #ffd166, #ff8a2e); border-color: transparent; }
+.bdg-week li.today span { box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.55); }
+.bdg-week small { color: var(--text-muted); font-size: 0.7rem; }
+.bdg-week li.today small { color: #ffd166; font-weight: 700; }
+.bdg-week em { display: block; margin-top: 0.45rem; text-align: right; font-style: normal; color: var(--text-muted); font-size: 0.8rem; }
+.bdg-week em b { color: var(--text-main); }
+
+.bdg-road { position: relative; margin-top: 1.4rem; padding-top: 1.1rem; border-top: 1px solid var(--border-color); }
+.bdg-rail { position: absolute; left: 0; right: 0; top: calc(1.1rem + 44px); height: 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+.bdg-rail span { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #ff6b2e, #ffd166); transition: width 0.6s ease; }
+.bdg-road ul { position: relative; list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin: 0; padding: 0; }
+.bdg-road li { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
+.bdg-road strong { margin-top: 0.35rem; font-size: 0.95rem; }
+.bdg-road small { color: var(--text-muted); font-size: 0.78rem; }
+.bdg-road li.earned small { color: #ffd166; font-weight: 700; }
+.bdg-road li.next small { color: var(--text-main); }
+.bdg-road li.earned .bdg-medal { transition: transform 0.2s ease; }
+.bdg-road li.earned:hover .bdg-medal { transform: translateY(-3px) scale(1.04); }
+
+/* Leaderboard and lobby */
+.bdg-inline { display: inline-block; vertical-align: -6px; margin-right: 6px; }
+.bdg-chip { display: inline-flex; align-items: center; gap: 0.25rem; }
+.bdg-chip .bdg-flame { width: 12px; height: 15px; animation: none; }
+
+/* Unlock moment */
+.bdg-unlock { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 16px; background: rgba(6, 5, 16, 0.82); backdrop-filter: blur(6px); animation: bdg-fade 0.25s ease both; }
+.bdg-unlock-box { position: relative; overflow: hidden; width: min(420px, 100%); padding: 2rem 1.6rem 1.6rem; border-radius: 26px; text-align: center; background: linear-gradient(180deg, #1c1740, #100d24); border: 1px solid rgba(255, 209, 102, 0.4); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); }
+.bdg-rays { position: absolute; left: 50%; top: 118px; width: 620px; height: 620px; margin: -310px 0 0 -310px; border-radius: 50%; opacity: 0.32; background: repeating-conic-gradient(#ffd166 0 9deg, transparent 9deg 24deg); -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 62%); mask-image: radial-gradient(circle, #000 18%, transparent 62%); animation: bdg-spin 22s linear infinite; }
+.bdg-unlock-medal { position: relative; display: flex; justify-content: center; animation: bdg-pop 0.7s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+.bdg-eyebrow { position: relative; display: block; margin-top: 0.6rem; color: #ffd166; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+.bdg-unlock-box h2 { position: relative; margin: 0.15rem 0 0.4rem; font-family: var(--font-heading); font-size: 2rem; }
+.bdg-unlock-box p { position: relative; margin: 0 0 1.2rem; color: var(--text-muted); font-size: 0.92rem; }
+.bdg-unlock-box .btn { position: relative; }
+
+@keyframes bdg-flicker { 0%, 100% { transform: scale(1) rotate(-1deg); } 50% { transform: scale(1.05, 1.08) rotate(1.5deg); } }
+@keyframes bdg-spin { to { transform: rotate(360deg); } }
+@keyframes bdg-pop { from { transform: scale(0.3) rotate(-14deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes bdg-fade { from { opacity: 0; } }
+
+@media (max-width: 860px) {
+  .bdg-top { grid-template-columns: auto 1fr; }
+  .bdg-week { grid-column: 1 / -1; }
+  .bdg-week ol { justify-content: space-between; }
+  .bdg-week em { text-align: left; }
+}
+@media (max-width: 520px) {
+  .bdg-card { padding: 1.1rem; }
+  .bdg-top { gap: 1rem; }
+  .bdg-count strong { font-size: 2.6rem; }
+  .bdg-road .bdg-medal { width: 68px; height: 68px; }
+  .bdg-rail { top: calc(1.1rem + 32px); }
+  .bdg-road strong { font-size: 0.8rem; }
+  .bdg-road small { font-size: 0.7rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bdg-flame.lit, .bdg-flame.risk, .bdg-rays, .bdg-unlock-medal, .bdg-unlock { animation: none; }
+}

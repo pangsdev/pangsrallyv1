@@ -3,7 +3,7 @@
  * Dev talks to the Vite stand-in at /api/test-season; production to the Edge Function.
  */
 import { BrowserProvider, Contract } from 'ethers';
-import { signInMessage, type TestRacer, type TestRaceResult } from '../race/testSeason';
+import { signInMessage, type Streak, type TestRacer, type TestRaceResult } from '../race/testSeason';
 
 /** The Supabase project's public URL (not a secret). Used when the host sets no VITE_SUPABASE_URL. */
 const PROJECT_URL = 'https://rzpcppmzpyocoqnjwrwp.supabase.co';
@@ -16,6 +16,7 @@ export interface PlayerStatus {
   wallet: string;
   /** Name picked on the Profile page; null → the short wallet is shown. */
   username: string | null;
+  streak: Streak;
   racesToday: number;
   dailyLimit: number;
   racesLeft: number;
@@ -73,6 +74,8 @@ export interface LeaderboardPlayer {
   rank: number;
   wallet: string;
   name: string;
+  /** days of the highest streak badge, 0 for none */
+  badge: number;
   points: number;
   races: number;
   wins: number;

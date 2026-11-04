@@ -99,6 +99,47 @@ export function checkUsername(raw: string): { name: string } | { error: string }
   return { name };
 }
 
+/** Streak badges: earned by racing this many UTC days in a row. Earned once, kept for good. */
+export const STREAK_BADGES = [
+  { days: 3, name: 'On a Roll', ball: 'brown' },
+  { days: 7, name: 'Hard Shell', ball: 'silver' },
+  { days: 14, name: 'Iron Scales', ball: 'gold' },
+  { days: 30, name: 'Unbroken', ball: 'aurora' },
+] as const;
+
+export interface Streak {
+  /** days in a row up to today, or up to yesterday while today is still open */
+  current: number;
+  /** longest run ever; badges follow this, so a broken streak never takes one away */
+  best: number;
+  ranToday: boolean;
+  /** the last 7 UTC days, oldest first, today last */
+  week: boolean[];
+  /** days of the highest badge earned, 0 for none */
+  badge: number;
+}
+
+const DAY_MS = 86_400_000;
+const dayNumber = (day: string) => Math.floor(Date.parse(`${day.slice(0, 10)}T00:00:00Z`) / DAY_MS);
+
+/** The streak from the UTC days (YYYY-MM-DD) a wallet raced on. A day counts once, however many races it had. */
+export function streakFor(days: string[], today: string): Streak {
+  const raced = new Set(days.map(dayNumber));
+  const now = dayNumber(today);
+  const ordered = [...raced].sort((a, b) => a - b);
+  let best = 0;
+  let run = 0;
+  ordered.forEach((d, i) => {
+    run = i > 0 && d === ordered[i - 1] + 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+  });
+  const ranToday = raced.has(now);
+  let current = 0;
+  for (let d = ranToday ? now : now - 1; raced.has(d); d--) current++;
+  const badge = STREAK_BADGES.reduce((top, b) => (best >= b.days ? b.days : top), 0);
+  return { current, best, ranToday, week: Array.from({ length: 7 }, (_, i) => raced.has(now - 6 + i)), badge };
+}
+
 /**
  * The 10-racer field for a race. `wallets` are the players in join order;
  * bots fill the remaining lanes. A single-player (bot) race puts the player
