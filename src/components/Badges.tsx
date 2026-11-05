@@ -13,34 +13,132 @@ const METALS: Record<number, [string, string, string, string]> = {
 };
 
 const tierOf = (days: number): Tier | undefined => STREAK_BADGES.find(b => b.days === days);
-const HEX = 'M60 6 L106.8 33 L106.8 87 L60 114 L13.2 87 L13.2 33 Z';
+/* Medal geometry, in the 120-unit medal space. The plate is a pointy-top hexagon around (60, 60). */
+const LIGHT = -125;                 // light comes from the upper left, as a degree on the medal
+const PLATE_R = 54;
+const FACE_R = 46.4;
+const rad = (deg: number) => deg * Math.PI / 180;
+const at = (r: number, deg: number) => `${(60 + r * Math.cos(rad(deg))).toFixed(2)} ${(60 + r * Math.sin(rad(deg))).toFixed(2)}`;
+const hexPath = (r: number) => `M${[0, 1, 2, 3, 4, 5].map(i => at(r, -90 + i * 60)).join(' L')} Z`;
 
-/** Laurel branch on the left of the medal; mirrored for the right. */
-function Laurel({ fill }: { fill: string }) {
+function mix(a: string, b: string, t: number): string {
+  const n = (c: string, i: number) => parseInt(c.slice(1 + i * 2, 3 + i * 2), 16);
+  return `#${[0, 1, 2].map(i => Math.round(n(a, i) + (n(b, i) - n(a, i)) * t).toString(16).padStart(2, '0')).join('')}`;
+}
+/** Tone of a flat metal face turned towards `deg`. */
+function lit(deg: number, hi: string, mid: string, lo: string): string {
+  const d = Math.cos(rad(deg - LIGHT));
+  return d > 0 ? mix(mid, hi, d) : mix(mid, lo, -d);
+}
+
+/** The plate's rim: six bevelled faces, each catching the light on its own. */
+function Rim({ hi, mid, lo }: { hi: string; mid: string; lo: string }) {
   return (
-    <g fill={fill}>
-      {[0, 1, 2, 3, 4, 5, 6, 7].map(i => {
-        const deg = 112 + i * 17;
-        const a = deg * Math.PI / 180;
-        const x = 60 + 56 * Math.cos(a);
-        const y = 60 + 56 * Math.sin(a);
-        return <path key={i} d="M0 8 C-5 3 -5 -4 0 -9 C5 -4 5 3 0 8 Z" transform={`translate(${x} ${y}) rotate(${deg + 24})`} />;
+    <g>
+      {[0, 1, 2, 3, 4, 5].map(i => {
+        const a = -90 + i * 60;
+        return <path key={i} d={`M${at(PLATE_R, a)} L${at(PLATE_R, a + 60)} L${at(FACE_R, a + 60)} L${at(FACE_R, a)} Z`} fill={lit(a + 30, hi, mid, lo)} stroke={lit(a + 30, hi, mid, lo)} strokeWidth="0.3" />;
       })}
+      <path d={hexPath(PLATE_R)} fill="none" stroke={mix(lo, '#000000', 0.45)} strokeWidth="0.9" strokeLinejoin="round" />
+    </g>
+  );
+}
+
+const SCALE_STEPS = 14;
+/** One armour scale, tip up: h is half its length, w half its width. */
+const scalePath = (h: number, w: number) => `M0 ${-h} C${w * 0.5} ${-h * 0.62} ${w} ${-h * 0.05} ${w * 0.74} ${h * 0.5} Q0 ${h * 1.2} ${-w * 0.74} ${h * 0.5} C${-w} ${-h * 0.05} ${-w * 0.5} ${-h * 0.62} 0 ${-h} Z`;
+const scaleShade = (h: number, w: number) => `M0 ${-h} C${w * 0.5} ${-h * 0.62} ${w} ${-h * 0.05} ${w * 0.74} ${h * 0.5} Q${w * 0.38} ${h * 0.82} 0 ${h * 0.85} Z`;
+
+/** Iron Scales: a wreath of overlapping pangolin scales climbing from the base. Each scale lies over the next one up. */
+function ScaleWreath({ id, hi, lo }: { id: string; hi: string; lo: string }) {
+  const side = (
+    <g>
+      {Array.from({ length: SCALE_STEPS }, (_, n) => SCALE_STEPS - 1 - n).map(i => {
+        const k = i / (SCALE_STEPS - 1);
+        const deg = 110 + i * 10.6;
+        const h = 11 - k * 4;
+        const w = 8 - k * 3.2;
+        const r = 54.5 - k * 0.6;
+        const x = 60 + r * Math.cos(rad(deg));
+        const y = 60 + r * Math.sin(rad(deg));
+        return (
+          <g key={i} transform={`translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${(deg + 164).toFixed(1)})`}>
+            <path d={scalePath(h, w)} fill={`url(#${id}s)`} stroke={mix(lo, '#000000', 0.35)} strokeWidth="0.55" strokeLinejoin="round" />
+            <path d={scaleShade(h, w)} fill={lo} opacity="0.38" />
+            <path d={`M0 ${-h * 0.8} L0 ${h * 0.55}`} stroke={hi} strokeOpacity="0.55" strokeWidth="0.4" strokeLinecap="round" />
+          </g>
+        );
+      })}
+    </g>
+  );
+  return (
+    <g>
+      {side}
+      <g transform="matrix(-1 0 0 1 120 0)">{side}</g>
+    </g>
+  );
+}
+
+const STAR_POINTS = 12;
+/** Unbroken: an order star of cut points, each with a bright and a dark face, held by one closed ring. */
+function OrderStar({ id, hi, mid, lo }: { id: string; hi: string; mid: string; lo: string }) {
+  const step = 360 / STAR_POINTS;
+  const edge = mix(lo, '#000000', 0.45);
+  const layer = (turn: number, tip: number, notch: number, bright: string, dark: string) => Array.from({ length: STAR_POINTS }, (_, i) => {
+    const deg = -90 + turn + i * step;
+    if (deg === 90) return null;   // the day plate sits here
+    return (
+      <g key={i}>
+        <path d={`M${at(tip, deg)} L${at(notch, deg - step / 2)} L${at(36, deg)} Z`} fill={bright} />
+        <path d={`M${at(tip, deg)} L${at(notch, deg + step / 2)} L${at(36, deg)} Z`} fill={dark} />
+      </g>
+    );
+  });
+  return (
+    <g>
+      <defs>
+        <radialGradient id={`${id}a`} gradientUnits="userSpaceOnUse" cx="60" cy="60" r="64">
+          <stop offset="0.68" stopColor={mid} />
+          <stop offset="1" stopColor={hi} />
+        </radialGradient>
+        <radialGradient id={`${id}b`} gradientUnits="userSpaceOnUse" cx="60" cy="60" r="64">
+          <stop offset="0.68" stopColor={lo} />
+          <stop offset="1" stopColor={mid} />
+        </radialGradient>
+      </defs>
+      <g stroke={edge} strokeWidth="0.5" strokeLinejoin="round">{layer(step / 2, 54.5, 46, mix(mid, lo, 0.45), mix(lo, '#000000', 0.25))}</g>
+      <g stroke={edge} strokeWidth="0.5" strokeLinejoin="round">{layer(0, 63.5, 47, `url(#${id}a)`, `url(#${id}b)`)}</g>
+      <circle cx="60" cy="60" r="46" fill="#0b0a18" stroke={edge} strokeWidth="4.4" />
+      <circle cx="60" cy="60" r="46" fill="none" stroke={`url(#${id}r)`} strokeWidth="3.2" />
+      <circle cx="60" cy="60" r="46" fill="none" stroke={hi} strokeOpacity="0.5" strokeWidth="0.4" />
+    </g>
+  );
+}
+
+function DayPlate({ id, y, days, hi, lo }: { id: string; y: number; days: number; hi: string; lo: string }) {
+  return (
+    <g>
+      <rect x="39" y={y} width="42" height="20" rx="10" fill={`url(#${id}r)`} stroke={mix(lo, '#000000', 0.45)} strokeWidth="0.9" />
+      <rect x="41.5" y={y + 2.5} width="37" height="15" rx="7.5" fill="#100e22" />
+      <text x="60" y={y + 14} textAnchor="middle" fontSize="12" fontWeight="800" fill={hi} fontFamily="Outfit, Inter, sans-serif">{days}</text>
     </g>
   );
 }
 
 /**
- * A streak medal: a hexagonal metal plate holding the game's own rolled pangolin ball.
- * Higher tiers gain laurels, then rays. `compact` drops the details for small sizes (leaderboard).
+ * A streak medal: a bevelled hexagonal plate holding the game's own rolled pangolin ball.
+ * The top tiers sit in a frame of their own: a wreath of scales at 14 days, an order star at 30.
+ * `compact` keeps only the plate for small sizes (leaderboard).
  */
 export function BadgeMedal({ days, size = 96, locked = false, compact = false }: { days: number; size?: number; locked?: boolean; compact?: boolean }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   const tier = tierOf(days);
   if (!tier) return null;
   const [hi, mid, lo, glow] = METALS[days];
-  const showLaurel = !compact && days >= 14;
-  const showRays = !compact && days >= 30;
+  const wreath = !compact && days === 14;
+  const star = !compact && days === 30;
+  const framed = wreath || star;
+  const plateScale = wreath ? 0.8 : star ? 0.78 : 1;
 
   return (
     <svg className={`bdg-medal ${locked ? 'locked' : ''}`} width={size} height={size} viewBox={compact ? '8 0 104 120' : '-6 -6 132 132'} role="img" aria-label={`${tier.name} badge${locked ? ' (locked)' : ''}`}>
@@ -51,6 +149,11 @@ export function BadgeMedal({ days, size = 96, locked = false, compact = false }:
           <stop offset="0.7" stopColor={lo} />
           <stop offset="1" stopColor={mid} />
         </linearGradient>
+        <linearGradient id={`${id}s`} x1="0.5" y1="0" x2="0.5" y2="1">
+          <stop offset="0" stopColor={hi} />
+          <stop offset="0.6" stopColor={mid} />
+          <stop offset="1" stopColor={lo} />
+        </linearGradient>
         <radialGradient id={`${id}p`} cx="0.5" cy="0.42" r="0.7">
           <stop offset="0" stopColor={glow} stopOpacity="0.5" />
           <stop offset="0.6" stopColor="#14112b" />
@@ -59,28 +162,17 @@ export function BadgeMedal({ days, size = 96, locked = false, compact = false }:
         <clipPath id={`${id}c`}><circle cx="60" cy={compact ? 60 : 57} r={compact ? 42 : 37} /></clipPath>
       </defs>
 
-      {showRays && (
-        <path d={HEX} fill={`url(#${id}r)`} stroke={lo} strokeWidth="1" strokeLinejoin="round" transform="rotate(30 60 60) scale(1.0)" opacity="0.92" />
-      )}
-      {showLaurel && (
-        <>
-          <Laurel fill={mid} />
-          <g transform="matrix(-1 0 0 1 120 0)"><Laurel fill={mid} /></g>
-        </>
-      )}
+      {wreath && <ScaleWreath id={id} hi={hi} lo={lo} />}
+      {star && <OrderStar id={id} hi={hi} mid={mid} lo={lo} />}
 
-      <path d={HEX} fill={`url(#${id}r)`} stroke={lo} strokeWidth="1" strokeLinejoin="round" />
-      <path d={HEX} fill={`url(#${id}p)`} transform="translate(60 60) scale(0.86) translate(-60 -60)" stroke={hi} strokeOpacity="0.45" strokeWidth="1.4" strokeLinejoin="round" />
+      <g transform={framed ? `translate(60 60) scale(${plateScale}) translate(-60 -60)` : undefined}>
+        <Rim hi={hi} mid={mid} lo={lo} />
+        <path d={hexPath(FACE_R)} fill={`url(#${id}p)`} stroke={mix(lo, '#000000', 0.5)} strokeWidth="0.8" strokeLinejoin="round" />
+        <path d={hexPath(FACE_R - 1.4)} fill="none" stroke={hi} strokeOpacity="0.28" strokeWidth="0.6" strokeLinejoin="round" />
+        <image href={`/sprites/ball_${tier.ball}.png`} x={compact ? 18 : 23} y={compact ? 18 : 20} width={compact ? 84 : 74} height={compact ? 84 : 74} clipPath={`url(#${id}c)`} preserveAspectRatio="xMidYMid slice" />
+      </g>
 
-      <image href={`/sprites/ball_${tier.ball}.png`} x={compact ? 18 : 23} y={compact ? 18 : 20} width={compact ? 84 : 74} height={compact ? 84 : 74} clipPath={`url(#${id}c)`} preserveAspectRatio="xMidYMid slice" />
-
-      {!compact && (
-        <g>
-          <rect x="39" y="91" width="42" height="20" rx="10" fill={`url(#${id}r)`} stroke={lo} strokeWidth="1" />
-          <rect x="41.5" y="93.5" width="37" height="15" rx="7.5" fill="#100e22" />
-          <text x="60" y="105" textAnchor="middle" fontSize="12" fontWeight="800" fill={hi} fontFamily="Outfit, Inter, sans-serif">{days}</text>
-        </g>
-      )}
+      {!compact && <DayPlate id={id} y={framed ? 100 : 91} days={days} hi={hi} lo={lo} />}
     </svg>
   );
 }
