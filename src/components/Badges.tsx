@@ -286,7 +286,7 @@ export function SeasonBadge({ number, size = 120 }: { number: number; size?: num
 export function SeasonCard({ number }: { number: number }) {
   return (
     <article className="bdg-season">
-      <SeasonBadge number={number} size={132} />
+      <SeasonBadge number={number} size={176} />
       <div>
         <span className="bdg-eyebrow">Beta Season</span>
         <h3>{SEASON_BADGE_NAME}</h3>

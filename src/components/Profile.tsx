@@ -79,19 +79,20 @@ export default function Profile({ signedIn, signingIn, onSignIn, onReplay, onOpe
             {st.firstRace && <span className="pf-badge muted">Racing since {new Date(st.firstRace).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
           </div>
         </div>
+        <div className="pf-tiles">
+          <div><strong>{st.races}</strong><span>races</span></div>
+          <div><strong>{profile.wins}</strong><span>wins</span></div>
+          <div><strong>{st.races ? pct(st.winRate) : '—'}</strong><span>win rate</span></div>
+          <div><strong>{profile.podiums}</strong><span>podiums</span></div>
+          <div><strong>{st.avgPosition ? st.avgPosition.toFixed(1) : '—'}</strong><span>avg finish</span></div>
+          <div><strong>{st.best ? ordinal(st.best) : '—'}</strong><span>best finish</span></div>
+        </div>
         <button className="btn btn-primary pf-race" onClick={onGoRace}>Race <FlagIcon size={16} /></button>
       </header>
 
-      {profile.racerNumber !== null && <SeasonCard number={profile.racerNumber} />}
-      <StreakCard streak={profile.streak} resetsAt={profile.resetsAt} onGoRace={onGoRace} />
-
-      <div className="pf-tiles">
-        <div><strong>{st.races}</strong><span>races</span></div>
-        <div><strong>{profile.wins}</strong><span>wins</span></div>
-        <div><strong>{st.races ? pct(st.winRate) : '—'}</strong><span>win rate</span></div>
-        <div><strong>{profile.podiums}</strong><span>podiums</span></div>
-        <div><strong>{st.avgPosition ? st.avgPosition.toFixed(1) : '—'}</strong><span>avg finish</span></div>
-        <div><strong>{st.best ? ordinal(st.best) : '—'}</strong><span>best finish</span></div>
+      <div className={`pf-honors ${profile.racerNumber !== null ? 'two' : ''}`}>
+        {profile.racerNumber !== null && <SeasonCard number={profile.racerNumber} />}
+        <StreakCard streak={profile.streak} resetsAt={profile.resetsAt} onGoRace={onGoRace} />
       </div>
 
       <div className="pf-grid">

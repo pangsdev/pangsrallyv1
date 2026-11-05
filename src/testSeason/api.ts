@@ -176,6 +176,14 @@ export function inviteFromUrl(): string | null {
   return INVITE_AT_LOAD;
 }
 
+/** A plain message for a wallet that refused the connection; the raw error is full of RPC details. */
+function walletConnectError(e: unknown): ApiError {
+  const err = e as { code?: unknown; error?: { code?: unknown }; info?: { error?: { code?: unknown } } };
+  const codes = [err?.code, err?.error?.code, err?.info?.error?.code];
+  if (codes.includes(-32002)) return new ApiError(0, 'wallet_busy', 'Your wallet already has a request waiting. Open your wallet, finish it, then try again.');
+  return new ApiError(0, 'wallet_cancelled', 'Wallet connection was cancelled. Unlock your wallet, make sure it has an account, and try again.');
+}
+
 /**
  * Connect the wallet and sign the (free) sign-in message. A wallet that has not joined yet
  * needs an invite code: `askInvite` is called with the reason and returns the code typed in
@@ -187,7 +195,11 @@ export async function signInWithWallet(askInvite: (reason: string) => Promise<st
   // Check the server first so nobody is asked to sign a message that cannot be used.
   await call('leaderboard');
   const provider = new BrowserProvider(eth as never);
-  await provider.send('eth_requestAccounts', []);
+  try {
+    await provider.send('eth_requestAccounts', []);
+  } catch (e) {
+    throw walletConnectError(e);
+  }
   const signer = await provider.getSigner();
   const address = await signer.getAddress();
   const message = signInMessage(address, new Date().toISOString());
