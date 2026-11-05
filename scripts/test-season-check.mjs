@@ -339,7 +339,10 @@ ok('login with a real wallet signature');
   assert.equal((await call('me', {}, aliceToken)).body.racerNumber, me.racerNumber);
   deps.betaSeasonEnd = new Date(0);
   assert.equal((await call('me', {}, aliceToken)).body.racerNumber, null);
+  const rowOf = async () => (await call('leaderboard', {})).body.players.find(p => p.wallet === me.wallet);
+  assert.equal((await rowOf()).racerNumber, null);
   delete deps.betaSeasonEnd;
+  assert.equal((await rowOf()).racerNumber, me.racerNumber);
   ok('the Early Pangolin number stays the same, and wallets joining after the season get none');
 }
 

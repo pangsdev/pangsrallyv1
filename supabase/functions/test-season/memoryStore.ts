@@ -51,6 +51,13 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
       if (!p || (before && Date.parse(p.created) >= before.getTime())) return null;
       return [...players.keys()].indexOf(wallet) + 1;
     },
+    async racerNumbers(before) {
+      const out: Record<string, number> = {};
+      [...players.entries()].forEach(([wallet, p], i) => {
+        if (!before || Date.parse(p.created) < before.getTime()) out[wallet] = i + 1;
+      });
+      return out;
+    },
     async inviteIsFull(code) {
       const c = codes.get(code);
       return !!c && c.uses >= c.max;

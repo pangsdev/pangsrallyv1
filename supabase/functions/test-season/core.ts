@@ -60,6 +60,8 @@ export interface Store {
   raceDays(wallets: string[]): Promise<Record<string, string[]>>;
   /** The wallet's place in sign-up order (1 = first player); null when it joined at or after `before`. */
   racerNumber(wallet: string, before: Date | null): Promise<number | null>;
+  /** Every racer's place in sign-up order, by wallet, without those who joined at or after `before`. */
+  racerNumbers(before: Date | null): Promise<Record<string, number>>;
   /** True when the code exists and is active but all its places are taken (so "full" can be told apart from "wrong"). */
   inviteIsFull(code: string): Promise<boolean>;
   /** Cached "this wallet minted its Beta pass" flag, so the chain is asked only until it is true. */
@@ -498,9 +500,10 @@ async function leaderboard(deps: Deps) {
   const rows = await deps.store.leaderboard(100, deps.now());
   const names = await deps.store.getUsernames(rows.map(r => r.wallet));
   const days = await deps.store.raceDays(rows.map(r => r.wallet));
+  const numbers = await deps.store.racerNumbers(deps.betaSeasonEnd ?? null);
   const today = utcDay(deps.now());
   return {
-    players: rows.map((r, i) => ({ rank: i + 1, wallet: r.wallet, name: names[r.wallet] ?? shortWallet(r.wallet), badge: streakFor(days[r.wallet] ?? [], today).badge, points: r.points, races: r.races, wins: r.wins, podiums: r.podiums })),
+    players: rows.map((r, i) => ({ rank: i + 1, wallet: r.wallet, name: names[r.wallet] ?? shortWallet(r.wallet), badge: streakFor(days[r.wallet] ?? [], today).badge, racerNumber: numbers[r.wallet] ?? null, points: r.points, races: r.races, wins: r.wins, podiums: r.podiums })),
   };
 }
 

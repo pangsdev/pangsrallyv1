@@ -78,6 +78,8 @@ export interface LeaderboardPlayer {
   name: string;
   /** days of the highest streak badge, 0 for none */
   badge: number;
+  /** place in sign-up order for the Early Pangolin badge, null without one */
+  racerNumber: number | null;
   points: number;
   races: number;
   wins: number;

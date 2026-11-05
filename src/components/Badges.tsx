@@ -204,14 +204,14 @@ function RingScale({ deg }: { deg: number }) {
   );
 }
 
-/** The Early Pangolin badge; `number` is the racer's place in sign-up order. */
-export function SeasonBadge({ number, size = 120 }: { number: number; size?: number }) {
+/** The Early Pangolin badge; `number` is the racer's place in sign-up order. `compact` is the scene alone, for the leaderboard. */
+export function SeasonBadge({ number, size = 120, compact = false }: { number: number; size?: number; compact?: boolean }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   const edge = mix(GOLD.lo, '#000000', 0.5);
   const scales = Array.from({ length: SCALE_RING }, (_, i) => 90 + i * (360 / SCALE_RING));   // the seam sits under the number
   const kerbs = Array.from({ length: 12 }, (_, i) => i);
   return (
-    <svg className="bdg-medal" width={size} height={size} viewBox="-12 -12 144 148" role="img" aria-label={`${SEASON_BADGE_NAME} badge, racer ${number}`}>
+    <svg className="bdg-medal" width={size} height={size} viewBox={compact ? '21 21 78 78' : '-12 -12 144 148'} role="img" aria-label={`${SEASON_BADGE_NAME} badge, racer ${number}`}>
       <defs>
         <linearGradient id={`${id}r`} x1="0.1" y1="0" x2="0.9" y2="1">
           <stop offset="0" stopColor={GOLD.hi} />
@@ -243,12 +243,15 @@ export function SeasonBadge({ number, size = 120 }: { number: number; size?: num
         </filter>
       </defs>
 
-      {scales.map(deg => <RingScale key={deg} deg={deg} />)}
-
-      <circle cx="60" cy="60" r="49.4" fill={edge} />
-      <circle cx="60" cy="60" r="48.8" fill={`url(#${id}r)`} />
-      <circle cx="60" cy="60" r="46.2" fill="#100c2e" stroke={edge} strokeWidth="0.7" />
-      <circle cx="60" cy="60" r="36.9" fill={`url(#${id}r)`} stroke={edge} strokeWidth="0.6" />
+      {!compact && (
+        <>
+          {scales.map(deg => <RingScale key={deg} deg={deg} />)}
+          <circle cx="60" cy="60" r="49.4" fill={edge} />
+          <circle cx="60" cy="60" r="48.8" fill={`url(#${id}r)`} />
+          <circle cx="60" cy="60" r="46.2" fill="#100c2e" stroke={edge} strokeWidth="0.7" />
+        </>
+      )}
+      <circle cx="60" cy="60" r={compact ? 38.6 : 36.9} fill={`url(#${id}r)`} stroke={edge} strokeWidth="0.6" />
 
       <g clipPath={`url(#${id}k)`}>
         <rect x="24" y="24" width="72" height="72" fill={`url(#${id}s)`} />
@@ -266,18 +269,18 @@ export function SeasonBadge({ number, size = 120 }: { number: number; size?: num
         </g>
       </g>
 
-      <g fill={GOLD.hi} fontFamily="Outfit, Inter, sans-serif" fontWeight="800" textAnchor="middle">
+      {!compact && <g fill={GOLD.hi} fontFamily="Outfit, Inter, sans-serif" fontWeight="800" textAnchor="middle">
         <text fontSize="7.4" letterSpacing="0.9"><textPath href={`#${id}t`} startOffset="50%">EARLY PANGOLIN</textPath></text>
         <text fontSize="6.2" letterSpacing="1.1" fill={GOLD.mid}><textPath href={`#${id}b`} startOffset="50%">BETA SEASON</textPath></text>
-      </g>
+      </g>}
 
-      <image href="/badges/early-pangolin.webp" x="18" y="44" width="84" height="48.5" filter={`url(#${id}d)`} preserveAspectRatio="xMidYMid meet" />
+      <image href="/badges/early-pangolin.webp" x={compact ? 25 : 18} y={compact ? 42 : 44} width={compact ? 70 : 84} height={compact ? 40.4 : 48.5} filter={compact ? undefined : `url(#${id}d)`} preserveAspectRatio="xMidYMid meet" />
 
-      <g>
+      {!compact && <g>
         <rect x="37" y="110" width="46" height="21" rx="10.5" fill={`url(#${id}r)`} stroke={edge} strokeWidth="0.9" />
         <rect x="39.6" y="112.6" width="40.8" height="15.8" rx="7.9" fill="#100e22" />
         <text x="60" y="125" textAnchor="middle" fontSize="12.5" fontWeight="800" fill={GOLD.hi} fontFamily="Outfit, Inter, sans-serif">#{number}</text>
-      </g>
+      </g>}
     </svg>
   );
 }

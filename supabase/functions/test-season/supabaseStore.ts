@@ -51,6 +51,17 @@ export function createSupabaseStore(db: SupabaseClient): Store {
       if (earlier.error) throw new Error(earlier.error.message);
       return (earlier.count ?? 0) + 1;
     },
+    async racerNumbers(before) {
+      const out: Record<string, number> = {};
+      // The API returns at most 1000 rows per call, so read in pages.
+      for (let from = 0; ; from += 1000) {
+        const rows = must(await db.from('test_players').select('wallet, created_at').order('created_at').order('wallet').range(from, from + 999)) as { wallet: string; created_at: string }[];
+        rows.forEach((r, i) => {
+          if (!before || Date.parse(r.created_at) < before.getTime()) out[r.wallet] = from + i + 1;
+        });
+        if (rows.length < 1000) return out;
+      }
+    },
     async inviteIsFull(code) {
       const row = must(await db.from('test_invite_codes').select('uses, max_uses, active').eq('code', code).maybeSingle()) as { uses: number; max_uses: number; active: boolean } | null;
       return !!row && row.active && row.uses >= row.max_uses;
