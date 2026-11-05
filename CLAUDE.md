@@ -107,7 +107,7 @@ Server-authoritative: the browser never decides results or points.
 
 **Racers are called by saddle number 1–10** (owner's choice), shown on the track badge and standings. Never say token ids. Call names (`callNames.ts`) still label racers on screen; players show as short wallets.
 
-**Audio is baked, one whole sentence per clip** (owner: no stitching, natural commas/breaths). 149 clips in `public/audio/announcer/` + `manifest.json`, recorded by `npm run bake:announcer` (Daniel, flash v2.5, stability 0.28, speed 1.18). A line without a clip falls back to live TTS, which fails quiet when unavailable.
+**Audio is baked, one whole sentence per clip** (owner: no stitching, natural commas/breaths). 149 clips in `public/audio/announcer/` + `manifest.json`, recorded by `npm run bake:announcer` (Daniel, `eleven_v3`, stability 0, excited audio tags in `excited()` of the bake script; the owner found the flat flash v2.5 delivery too dull). A line without a clip falls back to live TTS, which fails quiet when unavailable.
 
 **ElevenLabs (free plan) is wired but not the end state.**
 
