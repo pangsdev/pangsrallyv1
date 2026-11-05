@@ -1121,14 +1121,7 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
             curl = 1 - e;
             spin = (1 - e) * (1 - e) * CURL_SPIN;
             rest = e;
-            if (k >= 1 && r.position <= 3) {
-              const hop = Math.abs(Math.sin((home - 1) * 6));
-              bounce = hop * (10 - (r.position - 1) * 3);
-              openSy = 1 + hop * 0.06; openSx = 1 - hop * 0.04;
-            } else if (k >= 1) {
-              openSy = 1 + Math.sin(t * 3) * 0.018; // catching breath
-            }
-            if (k >= 1 && !v.open) bounce = r.position <= 3 ? Math.abs(Math.sin((home - 1) * 6)) * 8 : 0;
+            if (k >= 1) openSy = 1 + Math.sin(t * 3) * 0.018; // catching breath, feet stay on the ground
             break;
           }
         }
