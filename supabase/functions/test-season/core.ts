@@ -91,6 +91,21 @@ export interface Store {
   /** 'taken' when another wallet has this name in any letter case (migration 008). */
   setUsername(wallet: string, name: string): Promise<'ok' | 'taken'>;
   history(wallet: string, limit: number): Promise<(EntryRow & { race: RaceRow })[]>;
+  insertReport(report: ReportRow): Promise<void>;
+  /** Reports since `since`: by this wallet, or by signed-out visitors when wallet is null. */
+  countReports(since: string, wallet: string | null): Promise<number>;
+}
+
+export interface ReportRow {
+  id: string;
+  wallet: string | null;
+  kind: string;
+  area: string;
+  message: string;
+  contact: string | null;
+  page: string | null;
+  agent: string | null;
+  created_at: string;
 }
 
 export interface Deps {
@@ -154,6 +169,7 @@ export async function handle(deps: Deps, action: string, body: Record<string, un
       case 'history': return ok(await history(deps, await requireWallet(deps, token)));
       case 'profile': return ok(await profile(deps, await requireWallet(deps, token)));
       case 'leaderboard': return ok(await leaderboard(deps));
+      case 'report': return ok(await report(deps, body, token));
       case 'set-username': return ok(await setUsername(deps, await requireWallet(deps, token), str(body.username)));
       case 'beta-voucher': return ok(await betaVoucher(deps, await requireWallet(deps, token)));
       default: throw new HttpError(404, 'unknown_action', 'Unknown action.');
@@ -226,7 +242,12 @@ async function me(deps: Deps, wallet: string) {
   const now = deps.now();
   await deps.store.upsertPlayer(wallet, now);
   // Rooms the player left before they started still resolve and score.
-  for (const room of await deps.store.openRoomsFor(wallet)) await settleIfDue(deps, room);
+  const bookedSeats: string[] = [];
+  for (const room of await deps.store.openRoomsFor(wallet)) {
+    const settled = await settleIfDue(deps, room);
+    if (settled.status === 'open' && settled.closes_at) bookedSeats.push(settled.closes_at);
+  }
+  bookedSeats.sort();
   const unlimited = deps.unlimitedWallets.has(wallet);
   const racesToday = await deps.store.countEntriesOnDay(wallet, utcDay(now));
   const board = await deps.store.leaderboard(10_000, now);
@@ -242,6 +263,8 @@ async function me(deps: Deps, wallet: string) {
     racesToday,
     dailyLimit: DAILY_RACE_LIMIT,
     racesLeft: unlimited ? DAILY_RACE_LIMIT : Math.max(0, DAILY_RACE_LIMIT - racesToday),
+    /** start times of the rooms this player holds a seat in; each seat already used one of today's races */
+    bookedSeats,
     unlimited,
     points: row?.points ?? 0,
     races: row?.races ?? 0,
@@ -598,6 +621,37 @@ function utcDay(d: Date): string {
 function nextUtcMidnight(d: Date): string {
   const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1));
   return next.toISOString();
+}
+
+/* ------------------------------------------------------------------ */
+/* Bug reports                                                         */
+/* ------------------------------------------------------------------ */
+
+const REPORT_KINDS = ['bug', 'idea', 'other'];
+const REPORT_AREAS = ['racing', 'rooms', 'wallet', 'leaderboard', 'profile', 'other'];
+/** Per UTC day. Sign-in problems are worth hearing about, so signed-out visitors can report too, under one shared limit. */
+const REPORTS_PER_WALLET = 5;
+const REPORTS_SIGNED_OUT = 30;
+
+async function report(deps: Deps, body: Record<string, unknown>, token: string | null) {
+  const kind = str(body.kind), area = str(body.area), message = str(body.message);
+  if (!REPORT_KINDS.includes(kind) || !REPORT_AREAS.includes(area)) throw new HttpError(400, 'bad_request', 'Pick a type and an area.');
+  if (message.length < 10) throw new HttpError(400, 'report_short', 'Tell us a little more, at least 10 characters.');
+  if (message.length > 2000) throw new HttpError(400, 'report_long', 'Please keep it under 2000 characters.');
+  const now = deps.now();
+  const wallet = token ? await deps.store.getSessionWallet(await deps.sha256Hex(token), now) : null;
+  const used = await deps.store.countReports(`${utcDay(now)}T00:00:00.000Z`, wallet);
+  if (used >= (wallet ? REPORTS_PER_WALLET : REPORTS_SIGNED_OUT)) {
+    throw new HttpError(429, 'report_limit', 'You have sent a lot of reports today. Please try again tomorrow.');
+  }
+  await deps.store.insertReport({
+    id: deps.uuid(), wallet, kind, area, message,
+    contact: str(body.contact).slice(0, 80) || null,
+    page: str(body.page).slice(0, 120) || null,
+    agent: str(body.agent).slice(0, 300) || null,
+    created_at: now.toISOString(),
+  });
+  return { sent: true };
 }
 
 function str(v: unknown): string {

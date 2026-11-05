@@ -3,7 +3,7 @@
  * supabase/migrations/003_test_season.sql and 004_test_invites.sql so limits behave like production.
  * Data is lost when the dev server restarts.
  */
-import { raceOver, type EntryRow, type LeaderRow, type RaceRow, type Store } from './core.ts';
+import { raceOver, type EntryRow, type LeaderRow, type RaceRow, type ReportRow, type Store } from './core.ts';
 
 /** `invites`: code → places, e.g. { 'DEV-RALLY': 1000 } so dev sign-in works. */
 export function createMemoryStore(invites: Record<string, number> = {}): Store {
@@ -14,6 +14,7 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
   const usernames = new Map<string, string>();
   const races = new Map<string, RaceRow>();
   let entries: EntryRow[] = [];
+  const reports: ReportRow[] = [];
 
   const clone = <T>(v: T): T => (v === null || v === undefined ? v : JSON.parse(JSON.stringify(v)));
 
@@ -107,6 +108,8 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
       races.set(room.id, clone(room));
       return 'ok';
     },
+    async insertReport(report) { reports.push(clone(report)); },
+    async countReports(since, wallet) { return reports.filter(r => r.created_at >= since && r.wallet === wallet).length; },
     async openRoomsFor(wallet) {
       const ids = new Set(entries.filter(e => e.wallet === wallet).map(e => e.race_id));
       return clone([...races.values()].filter(r => ids.has(r.id) && r.kind === 'online' && r.status === 'open'));

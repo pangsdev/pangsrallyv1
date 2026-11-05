@@ -11,6 +11,7 @@ interface Props {
   onRally: () => void;
   onVision: () => void;
   onLeaderboard: () => void;
+  onReport: () => void;
 }
 
 // Only the ten public teasers ship before the mint.
@@ -53,7 +54,7 @@ const ROADMAP = [
   { tag: 'Later', title: 'The Laboratory', text: 'Breeding opens, and a new generation of pangolins joins the track.' },
 ];
 
-export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision, onLeaderboard }: Props) {
+export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision, onLeaderboard, onReport }: Props) {
   const [hero, setHero] = useState(1);
   useEffect(() => {
     const id = setInterval(() => setHero(h => (h % TEASERS.length) + 1), 1800);
@@ -237,6 +238,7 @@ export default function Landing({ signedIn, signingIn, onJoin, onRally, onVision
           <nav>
             <a onClick={onVision}>The Vision</a>
             <a onClick={onLeaderboard}>Leaderboard</a>
+            <a onClick={onReport}>Report a bug</a>
             <a href="https://x.com/PangsRally" target="_blank" rel="noopener noreferrer">X / Twitter</a>
           </nav>
         </div>

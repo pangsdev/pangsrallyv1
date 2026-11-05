@@ -110,6 +110,13 @@ export function createSupabaseStore(db: SupabaseClient): Store {
       if (res.error) throw new Error(res.error.message);
       return 'ok';
     },
+    async insertReport(report) { must(await db.from('test_reports').insert(report)); },
+    async countReports(since, wallet) {
+      const q = db.from('test_reports').select('id', { count: 'exact', head: true }).gte('created_at', since);
+      const { count, error } = await (wallet ? q.eq('wallet', wallet) : q.is('wallet', null));
+      if (error) throw new Error(error.message);
+      return count ?? 0;
+    },
     async openRoomsFor(wallet) {
       const rows = must(await db.from('test_race_entries').select('race:test_races!inner(*)')
         .eq('wallet', wallet).eq('race.kind', 'online').eq('race.status', 'open')) as unknown as { race: RaceRow }[];

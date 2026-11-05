@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { testSeason, type PlayerStatus, type RoomSummary } from '../testSeason/api';
+import { seatNote, testSeason, type PlayerStatus, type RoomSummary } from '../testSeason/api';
 import './lobby.css';
 import { BETA_RACER_ART, FIELD_SIZE, POINTS_BY_POSITION, ROOM_SLOT_MINUTES, shortWallet } from '../race/testSeason';
 import { BALL_SPRITES } from '../race/sprites';
@@ -81,7 +81,7 @@ export default function RaceLobby({ categoryInfo, player, onSelectMode, onBack }
             {player.unlimited
               ? 'Unlimited races (tester)'
               : canRace
-                ? `${player.racesLeft} of ${player.dailyLimit} races left today`
+                ? `${player.racesLeft} of ${player.dailyLimit} races left today${seatNote(player)}`
                 : `Daily limit reached · new races at ${resets}`}
           </div>
         </header>
@@ -126,7 +126,7 @@ export default function RaceLobby({ categoryInfo, player, onSelectMode, onBack }
                 <HeroRunner art="/landing/runner-beta.webp" ball={BALL_SPRITES.Beta} className="lobby-runner-canvas" />
               </div>
               <h3>Online Race</h3>
-              <p>Pick a room and race other players. A new room starts every {ROOM_SLOT_MINUTES} minutes; empty lanes get bots.</p>
+              <p>Pick a room and race other players. A new room starts every {ROOM_SLOT_MINUTES} minutes; empty lanes get bots. Taking a seat uses one of today's races.</p>
               <NextRoomBoard terrain={terrain} />
               <div className="lobby-chips"><span>Real players</span><span>Up to 10</span><span>Up to {POINTS_BY_POSITION[0]} pts</span></div>
               <span className="lobby-cta">{canRace ? 'See Rooms' : 'Limit Reached'}</span>

@@ -22,6 +22,8 @@ export interface PlayerStatus {
   racesToday: number;
   dailyLimit: number;
   racesLeft: number;
+  /** start times of rooms the player holds a seat in; each seat already used one of today's races */
+  bookedSeats: string[];
   unlimited: boolean;
   points: number;
   races: number;
@@ -268,6 +270,17 @@ export async function mintBetaPass(onStep: (step: 'voucher' | 'chain' | 'confirm
   return call<PlayerStatus>('me');
 }
 
+/** ' · 1 seat booked for 7:30 PM', so a waiting room explains why the count dropped. */
+export function seatNote(player: Pick<PlayerStatus, 'bookedSeats'>): string {
+  const seats = player.bookedSeats ?? [];
+  if (!seats.length) return '';
+  if (seats.length > 1) return ` · ${seats.length} seats booked`;
+  return ` · 1 seat booked for ${new Date(seats[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+}
+
+export type ReportKind = 'bug' | 'idea' | 'other';
+export type ReportArea = 'racing' | 'rooms' | 'wallet' | 'leaderboard' | 'profile' | 'other';
+
 export const testSeason = {
   me: () => call<PlayerStatus>('me'),
   botRace: (terrain: string) => call<PlayerStatus & { race: PublicRace; you: { position: number; points: number } }>('bot-race', { terrain }),
@@ -279,5 +292,6 @@ export const testSeason = {
   history: () => call<{ races: HistoryRow[] }>('history'),
   profile: () => call<ProfileStatus>('profile'),
   leaderboard: () => call<{ players: LeaderboardPlayer[] }>('leaderboard'),
+  report: (r: { kind: ReportKind; area: ReportArea; message: string; contact: string; page: string; agent: string }) => call<{ sent: boolean }>('report', r),
   setUsername: (username: string) => call<PlayerStatus>('set-username', { username }),
 };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { testSeason, type HistoryRow, type PlayerStatus, type ProfileStatus } from '../testSeason/api';
+import { seatNote, testSeason, type HistoryRow, type PlayerStatus, type ProfileStatus } from '../testSeason/api';
 import { fetchBetaPasses, type BetaPassInfo } from '../testSeason/betaPass';
 import { BETA_RACER_ART, POINTS_BY_POSITION, USERNAME_MAX, checkUsername, shortWallet } from '../race/testSeason';
 import { RaceHistoryList } from './SeasonPages';
@@ -120,7 +120,7 @@ export default function Profile({ signedIn, signingIn, onSignIn, onReplay, onOpe
               <small>{st[k].races} races · {st[k].wins} wins</small>
             </div>
           ))}
-          <div className="pf-today">{profile.unlimited ? 'Unlimited races (tester)' : `${profile.racesLeft} of ${profile.dailyLimit} races left today`}</div>
+          <div className="pf-today">{profile.unlimited ? 'Unlimited races (tester)' : `${profile.racesLeft} of ${profile.dailyLimit} races left today${seatNote(profile)}`}</div>
         </article>
 
         <article className="pf-card pf-pass">

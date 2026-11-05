@@ -398,4 +398,25 @@ ok('login with a real wallet signature');
   deps.beta = null;
 }
 
+{
+  // Booked seats and reports
+  const ann = Wallet.createRandom();
+  const t = await signIn(ann);
+  const joined = await call('online-join', { terrain: 'Forest' }, t);
+  assert.equal(joined.status, 200, JSON.stringify(joined.body));
+  const me = (await call('me', {}, t)).body;
+  assert.equal(me.bookedSeats.length, 1);
+  assert.equal(me.racesLeft, DAILY_RACE_LIMIT - 1);
+  ok('a waiting room shows as a booked seat and has used one race');
+
+  const good = { kind: 'bug', area: 'wallet', message: 'The nickname signs me out.', contact: '@ann', page: '/rally', agent: 'test' };
+  assert.equal((await call('report', { ...good, message: 'short' }, t)).body.error, 'report_short');
+  assert.equal((await call('report', { ...good, message: 'x'.repeat(2001) }, t)).body.error, 'report_long');
+  assert.equal((await call('report', { ...good, kind: 'spam' }, t)).body.error, 'bad_request');
+  assert.equal((await call('report', good, null)).status, 200, 'signed-out visitors can report');
+  for (let i = 0; i < 5; i++) assert.equal((await call('report', good, t)).status, 200);
+  assert.equal((await call('report', good, t)).body.error, 'report_limit');
+  ok('reports are checked, work signed out, and stop at the daily limit');
+}
+
 console.log(`\n${checks} checks passed.`);

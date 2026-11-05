@@ -12,6 +12,8 @@ import OnlineRooms from './components/OnlineRooms';
 import Profile, { BetaInventory } from './components/Profile';
 import Landing from './components/Landing';
 import { BadgeUnlocked, SeasonBadgeUnlocked, markBadgeSeen, markSeasonBadgeSeen, seasonBadgeUnseen, unseenBadge } from './components/Badges';
+import WalletMenu from './components/WalletMenu';
+import ReportPage from './components/ReportPage';
 import { SeasonLeaderboard, SignInGate, NoWalletModal, InviteCodeModal, BetaMintModal } from './components/SeasonPages';
 import { clearSession, getSession, hasWallet, mintBetaPass, signInWithWallet, testSeason, type PlayerStatus } from './testSeason/api';
 import { shortWallet } from './race/testSeason';
@@ -127,7 +129,7 @@ function App() {
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [selectedNFTDetails, setSelectedNFTDetails] = useState<any | null>(null);
   const [renameInput, setRenameInput] = useState('');
-  const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'race-lobby' | 'bot-race' | 'online-rooms' | 'online-race' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral' | 'replay'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'race-lobby' | 'bot-race' | 'online-rooms' | 'online-race' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral' | 'replay' | 'report'>('landing');
 
   const [parentA, setParentA] = useState<any>(null);
   const [parentB, setParentB] = useState<any>(null);
@@ -165,8 +167,8 @@ function App() {
   const [replayRaceId, setReplayRaceId] = useState<string | null>(null);
 
   const applyPlayer = (status: PlayerStatus) => {
-    const { wallet, username, streak, racerNumber, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta } = status;
-    setPlayer({ wallet, username: username ?? null, streak, racerNumber, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta });
+    const { wallet, username, streak, racerNumber, racesToday, dailyLimit, racesLeft, bookedSeats, unlimited, points, races, wins, podiums, rank, resetsAt, beta } = status;
+    setPlayer({ wallet, username: username ?? null, streak, racerNumber, racesToday, dailyLimit, racesLeft, bookedSeats: bookedSeats ?? [], unlimited, points, races, wins, podiums, rank, resetsAt, beta });
     setWalletConnected(true);
     setFullWalletAddress(wallet);
     setWalletAddress(shortWallet(wallet));
@@ -808,7 +810,7 @@ function App() {
   /* ---------------------------------------------------------------- */
   const SIMPLE_PATHS: Partial<Record<typeof currentView, string>> = {
     landing: '/', 'how-to-play': '/vision', rally: '/rally', leaderboard: '/leaderboard', 'my-races': '/profile',
-    inventory: '/inventory', marketplace: '/marketplace', laboratory: '/lab',
+    inventory: '/inventory', marketplace: '/marketplace', laboratory: '/lab', report: '/report',
   };
   const pathForView = (): string | null => {
     const track = `/rally/${String(activeCategoryInfo?.terrain ?? 'forest').toLowerCase()}`;
@@ -822,6 +824,9 @@ function App() {
       default: return SIMPLE_PATHS[currentView] ?? null;
     }
   };
+  // The page the player was on before opening the report form, sent along with the report.
+  const lastPage = useRef('');
+  useEffect(() => { if (currentView !== 'report') lastPage.current = window.location.pathname; }, [currentView, activeCategoryInfo, onlineRaceId, replayRaceId]);
   // Set while a view change comes from the address itself: replace the entry instead of pushing a new one.
   const routeFromAddress = useRef(true);
   const applyPath = (path: string) => {
@@ -1433,19 +1438,13 @@ function App() {
           </nav>
           <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             {walletConnected ? (
-              <div 
-                className="wallet-connected-badge glass-panel" 
-                onClick={() => {
-                  signOut();
-                  showToast('Wallet disconnected', 'info');
-                }}
-                title="Click to disconnect"
-                style={{ cursor: 'pointer' }}
-              >
-                  <span className="wallet-dot"></span>
-                  {player?.username ?? walletAddress}
-                  {player && <span className="wallet-points">{player.points} pts</span>}
-              </div>
+              <WalletMenu
+                label={player?.username ?? walletAddress}
+                points={player?.points ?? null}
+                onProfile={() => setCurrentView('my-races')}
+                onReport={() => setCurrentView('report')}
+                onDisconnect={() => { signOut(); showToast('Wallet disconnected', 'info'); }}
+              />
             ) : (
               <button className="btn btn-primary" onClick={connectWallet} disabled={signingIn}>{signingIn ? 'Check wallet…' : 'Connect Wallet'}</button>
             )}
@@ -1468,6 +1467,7 @@ function App() {
             onRally={() => setCurrentView('rally')}
             onVision={() => setCurrentView('how-to-play')}
             onLeaderboard={() => setCurrentView('leaderboard')}
+            onReport={() => setCurrentView('report')}
           />
         )}
 
@@ -2084,6 +2084,14 @@ function App() {
 
         {currentView === 'leaderboard' && (
           <SeasonLeaderboard playerWallet={player?.wallet ?? null} />
+        )}
+
+        {currentView === 'report' && (
+          <ReportPage
+            racer={player ? (player.username ?? `${player.wallet.slice(0, 6)}…${player.wallet.slice(-4)}`) : null}
+            fromPage={lastPage.current}
+            onSignIn={connectWallet}
+          />
         )}
 
         {currentView === 'my-races' && (

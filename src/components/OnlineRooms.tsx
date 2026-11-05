@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { testSeason, type RoomSummary } from '../testSeason/api';
+import { seatNote, testSeason, type RoomSummary } from '../testSeason/api';
 import { OPEN_ROOMS, ROOM_SLOT_MINUTES } from '../race/testSeason';
 import type { PlayerStatus } from '../testSeason/api';
 import { ClockIcon, TrackBadge } from './Icons';
@@ -79,7 +79,7 @@ export default function OnlineRooms({ categoryInfo, player, onOpenRoom, onBack, 
           </div>
           <div className={`lobby-pill ${canRace ? 'ok' : 'out'}`}>
             <ClockIcon size={15} />
-            {player.unlimited ? 'Unlimited races (tester)' : `${player.racesLeft} of ${player.dailyLimit} races left today`}
+            {player.unlimited ? 'Unlimited races (tester)' : `${player.racesLeft} of ${player.dailyLimit} races left today${seatNote(player)}`}
           </div>
         </header>
 
