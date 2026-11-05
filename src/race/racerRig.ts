@@ -6,7 +6,7 @@
  * therefore gets its own region of the mesh and steps on its own, instead of all legs sharing one swing.
  *
  * Gait: a four-beat walk at low speed blending into a gallop at speed. A foot in stance travels backward
- * at the speed of the ground, so `strideRate` is derived from the racer's real speed and paws do not skate.
+ * at the speed of the ground, so `strideRate` follows the racer's real speed; `cadence` keeps a gallop quick.
  *
  * Curl: the body bends along its spine into a ring with the back outermost, so the legs fold inside
  * and head and tail meet, then it hands over to the ball sprite. Uncurling is the same bend in reverse.
@@ -36,9 +36,9 @@ const LEGS: Leg[] = [
 ];
 
 const BACK_Y = 0.222;      // top of the back on the canvas
-const WALK_DUTY = 0.68, RUN_DUTY = 0.32;
-const WALK_REACH = 0.034, RUN_REACH = 0.074;    // half a stride, as a fraction of the canvas width
-const WALK_LIFT = 0.024, RUN_LIFT = 0.06;       // foot clearance, as a fraction of the canvas height
+const WALK_DUTY = 0.68, RUN_DUTY = 0.3;
+const WALK_REACH = 0.034, RUN_REACH = 0.104;    // half a stride, as a fraction of the canvas width
+const WALK_LIFT = 0.024, RUN_LIFT = 0.066;       // foot clearance, as a fraction of the canvas height
 /** share of the ring the spine closes when fully curled */
 const CURL_CLOSE = 0.92;
 const TAU = Math.PI * 2;
@@ -114,10 +114,18 @@ export function strideRate(rig: Rig, gait: number, groundSpeed: number): number 
   return (groundSpeed * lerp(WALK_DUTY, RUN_DUTY, gait)) / (2 * strideReach(rig, gait));
 }
 
+/**
+ * Strides per second to animate at. A small animal runs on quick steps: a gallop never drops below
+ * a brisk cadence, even if that lets a foot slip a little, which reads as effort at this speed.
+ */
+export function cadence(rig: Rig, gait: number, groundSpeed: number): number {
+  return clamp(Math.max(strideRate(rig, gait, groundSpeed), lerp(1.1, 3.9, gait)), 1.1, 4.8);
+}
+
 /** How long the racer is in the air at this point of the gallop: 0 … 1, peaking just before the hind feet land. */
 export function suspension(cycle: number): number {
   const p = cycle - Math.floor(cycle);
-  return p < 0.8 ? 0 : Math.sin(((p - 0.8) / 0.2) * Math.PI);
+  return p < 0.78 ? 0 : Math.sin(((p - 0.78) / 0.22) * Math.PI);
 }
 
 /** True when a foot landed between two cycle values; `hind` picks the near hind foot, else the near fore. */
@@ -128,7 +136,7 @@ export function footLanded(from: number, to: number, gait: number, hind: boolean
 }
 
 export function poseRig(rig: Rig, out: Float32Array, pose: Pose) {
-  const { base, h, along, weight, depth, plant } = rig;
+  const { base, w, h, along, weight, depth, plant } = rig;
   const { gait, stride, curl, time, rest } = pose;
   const cycle = pose.cycle - Math.floor(pose.cycle);
   const phi = cycle * TAU;
@@ -153,13 +161,20 @@ export function poseRig(rig: Rig, out: Float32Array, pose: Pose) {
   }
 
   // the body: walk bobs twice a stride; gallop rocks, arching as the legs gather and stretching as they reach
-  const bob = lerp(0.007 * Math.cos(phi * 2), 0, gait) * h * stride;
-  const rock = lerp(0.006 * Math.sin(phi * 2 + 0.6), 0.02 * Math.sin(phi + 0.9), gait) * h * stride;
-  const arch = gait * 0.02 * Math.cos(phi - 0.4) * h * stride;
-  const stretch = gait * 0.03 * Math.sin(phi + 0.2) * stride;
+  // The gallop drives forward, not up: the body stays low and thrusts ahead over its planted feet.
+  const bob = lerp(0.007 * Math.cos(phi * 2), -0.011 * Math.cos(phi - TAU * 0.9), gait) * h * stride;
+  const rock = lerp(0.006 * Math.sin(phi * 2 + 0.6), 0.018 * Math.sin(phi + 0.9), gait) * h * stride;
+  const arch = gait * 0.024 * Math.cos(phi - 0.4) * h * stride;
+  const stretch = gait * 0.07 * Math.sin(phi + 0.2) * stride;
+  const lunge = gait * 0.034 * w * Math.sin(phi - 0.3) * stride;
+  // the armour shivers down the back with every stride
+  const ripple = gait * 0.006 * h * stride;
   // head and tail follow the body late, so they read as carried rather than glued on
-  const nod = lerp(0.012 * Math.sin(phi * 2 - 0.8), 0.016 * Math.sin(phi - 0.4), gait) * h * stride;
-  const wag = lerp(0.03 * Math.sin(phi - 1.2), 0.05 * Math.sin(phi - 1.5), gait) * h * stride;
+  const nod = lerp(0.012 * Math.sin(phi * 2 - 0.8), 0.02 * Math.sin(phi - 0.4), gait) * h * stride;
+  const wag = lerp(0.03 * Math.sin(phi - 1.2), 0.055 * Math.sin(phi - 1.5), gait) * h * stride;
+  // at speed the head reaches low and forward and the tail streams up behind
+  const reachHead = gait * stride;
+  const streamTail = gait * 0.075 * h * stride;
   const breath = 0.0045 * Math.sin(time * 2.1) * h * rest;
   const sniff = 0.007 * Math.sin(time * 1.3) * h * rest;
   const sway = 0.013 * Math.sin(time * 1.1 + 1) * h * rest;
@@ -183,10 +198,15 @@ export function poseRig(rig: Rig, out: Float32Array, pose: Pose) {
     const free = 1 - plant[i];
 
     let dy = (bob + rock * (u - 0.5) * 2 + arch * Math.sin(Math.PI * u) * -1) * free;
-    let dx = -(u - 0.5) * rig.bodyW * stretch * free;
+    let dx = (-(u - 0.5) * rig.bodyW * stretch - lunge) * free;
     dy += breath * Math.sin(Math.PI * u) * free;
-    if (u < 0.3) { const k = (0.3 - u) / 0.3; dy += (nod + sniff) * k * k; }
-    if (u > 0.68) { const k = (u - 0.68) / 0.32; dy += (wag + sway) * k * k; }
+    dy += ripple * Math.sin(u * 13 - phi * 2) * free;
+    if (u < 0.3) {
+      const k = (0.3 - u) / 0.3;
+      dy += (nod + sniff + reachHead * 0.03 * h) * k * k;
+      dx -= reachHead * 0.024 * w * k * k;
+    }
+    if (u > 0.68) { const k = (u - 0.68) / 0.32; dy += (wag + sway - streamTail) * k * k; }
 
     for (let k = 0; k < legs; k++) {
       const wgt = weight[i * legs + k];

@@ -7,7 +7,7 @@ import type { RaceSimulation, RacerSim } from './simulation';
 import { BALL_SPRITES, BODY_ACCENT } from './sprites';
 import { getTheme, type TrackTheme } from './themes';
 import { cutoutImage } from './cutout';
-import { RIG_X, RIG_Y, buildRig, footLanded, poseRig, strideRate, suspension, type Rig } from './racerRig';
+import { RIG_X, RIG_Y, buildRig, cadence, footLanded, poseRig, suspension, type Rig } from './racerRig';
 import type { BBox } from './cutout-core';
 
 export interface PixiRaceTrackProps {
@@ -1082,7 +1082,7 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
             stride = clamp(0.3 + speedFactor * 1.4, 0, 1);
             // the first push off the line: a low crouch that the racer drives out of
             openSy = 1 - 0.05 * (1 - clamp(r.phaseTime / 0.22, 0, 1));
-            openRot = 0.05 * speedFactor;
+            openRot = 0.1 * clamp(speedFactor * 1.6, 0, 1);   // leans into the run
             ballSy = 1 - Math.abs(Math.sin(t * 16)) * 0.12; // ball-only fallback waddle
             break;
           }
@@ -1092,7 +1092,7 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
             curl = e;
             spin = e * e * CURL_SPIN;
             stride = (1 - e) * (1 - e);
-            openRot = 0.05 * speedFactor * (1 - e);
+            openRot = 0.1 * clamp(speedFactor * 1.6, 0, 1) * (1 - e);
             // the bent body hands over to the ball, which sits behind it, as the two shapes come to match
             openAlpha = v.open ? 1 - smoothstep(0.66, 0.92, k) : 0;
             ballAlpha = v.open ? smoothstep(0.38, 0.68, k) : 1;   // behind the body, it fills the ring as it closes
@@ -1141,15 +1141,15 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
           const wantGait = smoothstep(50, 150, groundPx);
           v.gait += (wantGait - v.gait) * (1 - Math.exp(-dt * 7));
           if (stride > 0.01) {
-            const hz = clamp(strideRate(v.rig, v.gait, groundPx / scale), 1.1, 4.4);
+            const hz = cadence(v.rig, v.gait, groundPx / scale);
             v.strideHz += (hz - v.strideHz) * (1 - Math.exp(-dt * 10));
             const from = v.stride;
             v.stride += v.strideHz * dt;
             // footfall → puff of dust
             if (r.phase === 'running' && (footLanded(from, v.stride, v.gait, true) || footLanded(from, v.stride, v.gait, false))) {
-              spawnDust(x - laneH * 0.3, laneBaseY - 1, speedFactor, theme.dust, theme.dustAlpha, 2);
+              spawnDust(x - laneH * 0.45, laneBaseY - 1, speedFactor + 0.3, theme.dust, theme.dustAlpha, 3);
             }
-            bounce += suspension(v.stride) * v.gait * stride * laneH * 0.07;
+            bounce += suspension(v.stride) * v.gait * stride * laneH * 0.03;
           }
           poseRig(v.rig, v.open.geometry.getBuffer('aPosition').data as Float32Array, {
             cycle: v.stride, gait: v.gait, stride, curl,
