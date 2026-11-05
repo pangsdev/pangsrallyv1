@@ -132,7 +132,7 @@ export function SeasonLeaderboard({ playerWallet }: { playerWallet: string | nul
 
       <p className="season-rules">
         Points for every finish: {POINTS_BY_POSITION.map((p, i) => `${i + 1}${['st', 'nd', 'rd'][i] ?? 'th'} ${p}`).join(' · ')}.
-        Ties go to more wins, then to whoever got there first. Season rewards may follow once the test ends.
+        Ties go to more wins, then to whoever got there first.
       </p>
 
       <div className="leaderboard-list glass-panel season-board">
