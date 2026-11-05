@@ -11,7 +11,7 @@ import RaceLobby from './components/RaceLobby';
 import OnlineRooms from './components/OnlineRooms';
 import Profile, { BetaInventory } from './components/Profile';
 import Landing from './components/Landing';
-import { BadgeUnlocked, markBadgeSeen, unseenBadge } from './components/Badges';
+import { BadgeUnlocked, SeasonBadgeUnlocked, markBadgeSeen, markSeasonBadgeSeen, seasonBadgeUnseen, unseenBadge } from './components/Badges';
 import { SeasonLeaderboard, SignInGate, NoWalletModal, InviteCodeModal, BetaMintModal } from './components/SeasonPages';
 import { clearSession, getSession, hasWallet, mintBetaPass, signInWithWallet, testSeason, type PlayerStatus } from './testSeason/api';
 import { shortWallet } from './race/testSeason';
@@ -165,8 +165,8 @@ function App() {
   const [replayRaceId, setReplayRaceId] = useState<string | null>(null);
 
   const applyPlayer = (status: PlayerStatus) => {
-    const { wallet, username, streak, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta } = status;
-    setPlayer({ wallet, username: username ?? null, streak, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta });
+    const { wallet, username, streak, racerNumber, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta } = status;
+    setPlayer({ wallet, username: username ?? null, streak, racerNumber, racesToday, dailyLimit, racesLeft, unlimited, points, races, wins, podiums, rank, resetsAt, beta });
     setWalletConnected(true);
     setFullWalletAddress(wallet);
     setWalletAddress(shortWallet(wallet));
@@ -1240,10 +1240,15 @@ function App() {
   };
 
   // A new badge waits for the race on screen to end before it is celebrated.
-  const newBadge = player && !['bot-race', 'online-race'].includes(currentView) ? unseenBadge(player.wallet, player.streak.badge) : 0;
+  const racing = ['bot-race', 'online-race'].includes(currentView);
+  const pioneer = player && !racing && player.racerNumber != null && seasonBadgeUnseen(player.wallet) ? player.racerNumber : 0;
+  const newBadge = player && !racing && !pioneer ? unseenBadge(player.wallet, player.streak.badge) : 0;
 
   return (
     <>
+      {pioneer > 0 && player && (
+        <SeasonBadgeUnlocked number={pioneer} onClose={() => { markSeasonBadgeSeen(player.wallet); setBadgeSeen(n => n + 1); }} />
+      )}
       {newBadge > 0 && player && (
         <BadgeUnlocked days={newBadge} onClose={() => { markBadgeSeen(player.wallet, newBadge); setBadgeSeen(n => n + 1); }} />
       )}

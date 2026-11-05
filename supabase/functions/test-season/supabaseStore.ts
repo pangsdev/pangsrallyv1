@@ -44,6 +44,13 @@ export function createSupabaseStore(db: SupabaseClient): Store {
         if (rows.length < 1000) return out;
       }
     },
+    async racerNumber(wallet, before) {
+      const row = must(await db.from('test_players').select('created_at').eq('wallet', wallet).maybeSingle()) as { created_at: string } | null;
+      if (!row || (before && Date.parse(row.created_at) >= before.getTime())) return null;
+      const earlier = await db.from('test_players').select('wallet', { count: 'exact', head: true }).lt('created_at', row.created_at);
+      if (earlier.error) throw new Error(earlier.error.message);
+      return (earlier.count ?? 0) + 1;
+    },
     async inviteIsFull(code) {
       const row = must(await db.from('test_invite_codes').select('uses, max_uses, active').eq('code', code).maybeSingle()) as { uses: number; max_uses: number; active: boolean } | null;
       return !!row && row.active && row.uses >= row.max_uses;

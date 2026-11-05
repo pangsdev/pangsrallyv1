@@ -120,6 +120,9 @@ export interface Streak {
   badge: number;
 }
 
+/** Given to every wallet that joins during the Beta season, with its place in sign-up order. Closed once the season ends. */
+export const SEASON_BADGE_NAME = 'Early Pangolin';
+
 const DAY_MS = 86_400_000;
 const dayNumber = (day: string) => Math.floor(Date.parse(`${day.slice(0, 10)}T00:00:00Z`) / DAY_MS);
 

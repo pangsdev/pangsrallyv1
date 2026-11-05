@@ -4,7 +4,7 @@ import { fetchBetaPasses, type BetaPassInfo } from '../testSeason/betaPass';
 import { BETA_RACER_ART, POINTS_BY_POSITION, USERNAME_MAX, checkUsername, shortWallet } from '../race/testSeason';
 import { RaceHistoryList } from './SeasonPages';
 import { FlagIcon } from './Icons';
-import { StreakCard } from './Badges';
+import { SeasonCard, StreakCard } from './Badges';
 import './profile.css';
 
 interface Props {
@@ -82,6 +82,7 @@ export default function Profile({ signedIn, signingIn, onSignIn, onReplay, onOpe
         <button className="btn btn-primary pf-race" onClick={onGoRace}>Race <FlagIcon size={16} /></button>
       </header>
 
+      {profile.racerNumber !== null && <SeasonCard number={profile.racerNumber} />}
       <StreakCard streak={profile.streak} resetsAt={profile.resetsAt} onGoRace={onGoRace} />
 
       <div className="pf-tiles">

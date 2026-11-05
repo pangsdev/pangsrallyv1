@@ -17,6 +17,8 @@ export interface PlayerStatus {
   /** Name picked on the Profile page; null → the short wallet is shown. */
   username: string | null;
   streak: Streak;
+  /** Place in sign-up order, shown on the Early Pangolin badge; null for wallets that joined after the season. */
+  racerNumber: number | null;
   racesToday: number;
   dailyLimit: number;
   racesLeft: number;

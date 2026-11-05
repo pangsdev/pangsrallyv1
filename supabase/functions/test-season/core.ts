@@ -58,6 +58,8 @@ export interface Store {
   joinWithInvite(wallet: string, code: string): Promise<'exists' | 'joined' | 'invalid'>;
   /** The UTC days each wallet raced on (one entry per race; streakFor counts a day once). */
   raceDays(wallets: string[]): Promise<Record<string, string[]>>;
+  /** The wallet's place in sign-up order (1 = first player); null when it joined at or after `before`. */
+  racerNumber(wallet: string, before: Date | null): Promise<number | null>;
   /** True when the code exists and is active but all its places are taken (so "full" can be told apart from "wrong"). */
   inviteIsFull(code: string): Promise<boolean>;
   /** Cached "this wallet minted its Beta pass" flag, so the chain is asked only until it is true. */
@@ -103,6 +105,8 @@ export interface Deps {
   inviteRequired: boolean;
   /** Beta pass gate: when set, racing needs the free Beta NFT (contracts/PangsRallyBeta.sol). */
   beta: BetaGate | null;
+  /** When the Beta season ends: wallets joining from then on get no Early Pangolin badge. Unset while it runs. */
+  betaSeasonEnd?: Date | null;
 }
 
 export interface BetaGate {
@@ -232,6 +236,7 @@ async function me(deps: Deps, wallet: string) {
     wallet,
     username,
     streak: streakFor(days, utcDay(now)),
+    racerNumber: await deps.store.racerNumber(wallet, deps.betaSeasonEnd ?? null),
     racesToday,
     dailyLimit: DAILY_RACE_LIMIT,
     racesLeft: unlimited ? DAILY_RACE_LIMIT : Math.max(0, DAILY_RACE_LIMIT - racesToday),

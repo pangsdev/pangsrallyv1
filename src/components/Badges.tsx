@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react';
-import { STREAK_BADGES, type Streak } from '../race/testSeason';
+import { SEASON_BADGE_NAME, STREAK_BADGES, type Streak } from '../race/testSeason';
 import './badges.css';
 
 type Tier = (typeof STREAK_BADGES)[number];
@@ -177,6 +177,125 @@ export function BadgeMedal({ days, size = 96, locked = false, compact = false }:
   );
 }
 
+/* Early Pangolin: the Beta racer at dawn on the track, inside a ring of its own scales. */
+const GOLD = { hi: '#fff3b8', mid: '#e8b12c', lo: '#7a4e06' };
+const SCALE_RING = 30;
+const BODY = ['#7a2fd0', '#b42ba8', '#c8323f', '#ef9a2e'];   // head to tail, as on the racer
+
+/** The racer's colour at this point of the ring, purple on the left to orange on the right. */
+function bodyTone(deg: number): string {
+  const t = (Math.cos(rad(deg)) + 1) / 2 * (BODY.length - 1);
+  const i = Math.min(BODY.length - 2, Math.floor(t));
+  return mix(BODY[i], BODY[i + 1], t - i);
+}
+
+/** One leaf scale of the ring: two faces, a midrib and veins, like the scales in the art. */
+function RingScale({ deg }: { deg: number }) {
+  const tone = bodyTone(deg);
+  const light = mix(tone, '#ffffff', 0.2);
+  const dark = mix(tone, '#14061f', 0.34);
+  const line = mix(tone, '#14061f', 0.62);
+  return (
+    <g transform={`translate(${at(58.5, deg)}) rotate(${deg + 90 + 34})`}>
+      <path d="M0 -13 C6 -8 8.6 -1 7 5 Q0 13 -7 5 C-8.6 -1 -6 -8 0 -13 Z" fill={light} stroke={line} strokeWidth="0.6" strokeLinejoin="round" />
+      <path d="M0 -13 C6 -8 8.6 -1 7 5 Q3.6 9.6 0 9.8 Z" fill={dark} />
+      <path d="M0 -11 L0 9 M0 -4 L3.8 -7 M0 -4 L-3.8 -7 M0 1 L4.6 -2.4 M0 1 L-4.6 -2.4" fill="none" stroke={line} strokeOpacity="0.7" strokeWidth="0.4" strokeLinecap="round" />
+    </g>
+  );
+}
+
+/** The Early Pangolin badge; `number` is the racer's place in sign-up order. */
+export function SeasonBadge({ number, size = 120 }: { number: number; size?: number }) {
+  const id = useId().replace(/[^a-zA-Z0-9]/g, '');
+  const edge = mix(GOLD.lo, '#000000', 0.5);
+  const scales = Array.from({ length: SCALE_RING }, (_, i) => 90 + i * (360 / SCALE_RING));   // the seam sits under the number
+  const kerbs = Array.from({ length: 12 }, (_, i) => i);
+  return (
+    <svg className="bdg-medal" width={size} height={size} viewBox="-12 -12 144 148" role="img" aria-label={`${SEASON_BADGE_NAME} badge, racer ${number}`}>
+      <defs>
+        <linearGradient id={`${id}r`} x1="0.1" y1="0" x2="0.9" y2="1">
+          <stop offset="0" stopColor={GOLD.hi} />
+          <stop offset="0.4" stopColor={GOLD.mid} />
+          <stop offset="0.72" stopColor={GOLD.lo} />
+          <stop offset="1" stopColor={GOLD.mid} />
+        </linearGradient>
+        <linearGradient id={`${id}s`} x1="0.5" y1="0" x2="0.5" y2="1">
+          <stop offset="0" stopColor="#1c0f52" />
+          <stop offset="0.24" stopColor="#6a1f96" />
+          <stop offset="0.42" stopColor="#d9463c" />
+          <stop offset="0.6" stopColor="#ffb54a" />
+        </linearGradient>
+        <radialGradient id={`${id}u`} cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#fff6c9" />
+          <stop offset="0.3" stopColor="#ffd166" />
+          <stop offset="0.62" stopColor="#ff9a2e" stopOpacity="0.55" />
+          <stop offset="1" stopColor="#ff9a2e" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id={`${id}g`} x1="0.5" y1="0" x2="0.5" y2="1">
+          <stop offset="0" stopColor="#3a2150" />
+          <stop offset="1" stopColor="#170c2a" />
+        </linearGradient>
+        <clipPath id={`${id}k`}><circle cx="60" cy="60" r="35" /></clipPath>
+        <path id={`${id}t`} d={`M${at(38.4, 180)} A38.4 38.4 0 0 1 ${at(38.4, 0)}`} />
+        <path id={`${id}b`} d={`M${at(44.6, 180)} A44.6 44.6 0 0 0 ${at(44.6, 0)}`} />
+        <filter id={`${id}d`} x="-20%" y="-20%" width="140%" height="150%">
+          <feDropShadow dx="0" dy="1.2" stdDeviation="1.3" floodColor="#0a0416" floodOpacity="0.75" />
+        </filter>
+      </defs>
+
+      {scales.map(deg => <RingScale key={deg} deg={deg} />)}
+
+      <circle cx="60" cy="60" r="49.4" fill={edge} />
+      <circle cx="60" cy="60" r="48.8" fill={`url(#${id}r)`} />
+      <circle cx="60" cy="60" r="46.2" fill="#100c2e" stroke={edge} strokeWidth="0.7" />
+      <circle cx="60" cy="60" r="36.9" fill={`url(#${id}r)`} stroke={edge} strokeWidth="0.6" />
+
+      <g clipPath={`url(#${id}k)`}>
+        <rect x="24" y="24" width="72" height="72" fill={`url(#${id}s)`} />
+        <g fill="#ffd166" opacity="0.2">
+          {Array.from({ length: 12 }, (_, i) => {
+            const deg = 180 + 7.5 + i * 15;
+            return <path key={i} d={`M60 70 L${at(50, deg - 3.4)} L${at(50, deg + 3.4)} Z`} transform="translate(2 -10)" />;
+          })}
+        </g>
+        <circle cx="62" cy="50" r="27" fill={`url(#${id}u)`} />
+        <path d="M24 70 Q33 60 43 67 T62 64 T82 66 T96 60 L96 96 L24 96 Z" fill="#4a1a5e" />
+        <rect x="24" y="82" width="72" height="16" fill={`url(#${id}g)`} />
+        <g>
+          {kerbs.map(i => <rect key={i} x={24 + i * 6} y="82" width="6" height="2.2" fill={i % 2 ? '#f4f0ff' : '#e0373f'} />)}
+        </g>
+      </g>
+
+      <g fill={GOLD.hi} fontFamily="Outfit, Inter, sans-serif" fontWeight="800" textAnchor="middle">
+        <text fontSize="7.4" letterSpacing="0.9"><textPath href={`#${id}t`} startOffset="50%">EARLY PANGOLIN</textPath></text>
+        <text fontSize="6.2" letterSpacing="1.1" fill={GOLD.mid}><textPath href={`#${id}b`} startOffset="50%">BETA SEASON</textPath></text>
+      </g>
+
+      <image href="/badges/early-pangolin.webp" x="18" y="44" width="84" height="48.5" filter={`url(#${id}d)`} preserveAspectRatio="xMidYMid meet" />
+
+      <g>
+        <rect x="37" y="110" width="46" height="21" rx="10.5" fill={`url(#${id}r)`} stroke={edge} strokeWidth="0.9" />
+        <rect x="39.6" y="112.6" width="40.8" height="15.8" rx="7.9" fill="#100e22" />
+        <text x="60" y="125" textAnchor="middle" fontSize="12.5" fontWeight="800" fill={GOLD.hi} fontFamily="Outfit, Inter, sans-serif">#{number}</text>
+      </g>
+    </svg>
+  );
+}
+
+/** Profile card for the Early Pangolin badge. */
+export function SeasonCard({ number }: { number: number }) {
+  return (
+    <article className="bdg-season">
+      <SeasonBadge number={number} size={132} />
+      <div>
+        <span className="bdg-eyebrow">Beta Season</span>
+        <h3>{SEASON_BADGE_NAME}</h3>
+        <p>You joined the Beta Season early. You are racer <b>#{number}</b>.</p>
+      </div>
+    </article>
+  );
+}
+
 function Flame({ state }: { state: 'lit' | 'risk' | 'out' }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   return (
@@ -303,6 +422,42 @@ export function BadgeUnlocked({ days, onClose }: { days: number; onClose: () => 
       </div>
     </div>
   );
+}
+
+/** The moment a racer first sees the Early Pangolin badge. */
+export function SeasonBadgeUnlocked({ number, onClose }: { number: number; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="bdg-unlock" role="dialog" aria-modal="true" aria-label={`${SEASON_BADGE_NAME} badge unlocked`} onClick={onClose}>
+      <div className="bdg-unlock-box" onClick={e => e.stopPropagation()}>
+        <div className="bdg-rays" aria-hidden="true" />
+        <div className="bdg-unlock-medal"><SeasonBadge number={number} size={230} /></div>
+        <span className="bdg-eyebrow">Badge unlocked</span>
+        <h2>{SEASON_BADGE_NAME}</h2>
+        <p>You joined the Beta Season early, so this badge is yours. You are racer #{number}.</p>
+        <button className="btn btn-primary" onClick={onClose} autoFocus>Keep rolling</button>
+      </div>
+    </div>
+  );
+}
+
+const seasonSeenKey = (wallet: string) => `pangsrally_early_pangolin_seen_${wallet}`;
+
+/** True when this browser has not shown the wallet its Early Pangolin badge yet. */
+export function seasonBadgeUnseen(wallet: string): boolean {
+  try {
+    return !localStorage.getItem(seasonSeenKey(wallet));
+  } catch {
+    return false;
+  }
+}
+
+export function markSeasonBadgeSeen(wallet: string) {
+  try { localStorage.setItem(seasonSeenKey(wallet), '1'); } catch { /* private mode */ }
 }
 
 const seenKey = (wallet: string) => `pangsrally_badge_seen_${wallet}`;

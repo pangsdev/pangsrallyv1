@@ -332,6 +332,15 @@ ok('login with a real wallet signature');
   const board = (await call('leaderboard', {})).body.players;
   assert.equal(board.every(p => typeof p.badge === 'number'), true);
   ok('the server reports the streak on the player and the badge on the leaderboard');
+
+  // Early Pangolin: everyone who joins during the season gets a number; nobody who joins after it does.
+  assert.ok(Number.isInteger(me.racerNumber) && me.racerNumber >= 1, 'she has a racer number');
+  deps.betaSeasonEnd = new Date(Date.now() + 86_400_000);
+  assert.equal((await call('me', {}, aliceToken)).body.racerNumber, me.racerNumber);
+  deps.betaSeasonEnd = new Date(0);
+  assert.equal((await call('me', {}, aliceToken)).body.racerNumber, null);
+  delete deps.betaSeasonEnd;
+  ok('the Early Pangolin number stays the same, and wallets joining after the season get none');
 }
 
 // --- fairness: identical stats → ~10% win rate per racer -------------------

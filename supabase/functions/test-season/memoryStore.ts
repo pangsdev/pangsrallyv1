@@ -46,6 +46,11 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
       for (const e of entries) if (wallets.includes(e.wallet)) (out[e.wallet] ??= []).push(e.day);
       return out;
     },
+    async racerNumber(wallet, before) {
+      const p = players.get(wallet);
+      if (!p || (before && Date.parse(p.created) >= before.getTime())) return null;
+      return [...players.keys()].indexOf(wallet) + 1;
+    },
     async inviteIsFull(code) {
       const c = codes.get(code);
       return !!c && c.uses >= c.max;
