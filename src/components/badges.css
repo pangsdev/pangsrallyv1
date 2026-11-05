@@ -51,7 +51,20 @@
 .bdg-season b { color: #ffd166; }
 
 /* Leaderboard and lobby */
-.bdg-inline { display: inline-block; vertical-align: -6px; margin-right: 6px; }
+/* Badges beside a name on the leaderboard, with a small card on hover or tap */
+.bdg-row { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.bdg-tip { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: help; transition: transform 0.15s ease, filter 0.15s ease; }
+.bdg-tip svg { display: block; width: 100%; height: 100%; }
+.bdg-tip:hover, .bdg-tip[aria-expanded="true"] { transform: scale(1.14); filter: brightness(1.1); }
+.bdg-tip:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.bdg-pop { position: fixed; z-index: 3000; display: flex; align-items: center; gap: 12px; width: max-content; max-width: min(280px, calc(100vw - 16px)); padding: 10px 16px 10px 10px; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 12px; background: #17112f; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55); pointer-events: none; animation: bdg-pop-in 0.14s ease-out; }
+.bdg-pop::after { content: ''; position: absolute; left: var(--arrow-x, 50%); bottom: -6px; width: 10px; height: 10px; margin-left: -5px; background: #17112f; border: solid rgba(255, 255, 255, 0.14); border-width: 0 1px 1px 0; transform: rotate(45deg); }
+.bdg-pop.below::after { bottom: auto; top: -6px; border-width: 1px 0 0 1px; }
+.bdg-pop-art { flex: none; display: grid; place-items: center; width: 56px; height: 56px; }
+.bdg-pop-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bdg-pop-text strong { font-family: 'Outfit', sans-serif; font-size: 0.98rem; font-weight: 700; color: #fff; }
+.bdg-pop-text span { font-family: 'Inter', sans-serif; font-size: 0.8rem; color: #ffcf6b; }
+@keyframes bdg-pop-in { from { opacity: 0; transform: translateY(3px); } }
 .bdg-chip { display: inline-flex; align-items: center; gap: 0.25rem; }
 .bdg-chip .bdg-flame { width: 12px; height: 15px; animation: none; }
 
@@ -82,6 +95,8 @@
   .bdg-week em { text-align: left; }
 }
 @media (max-width: 520px) {
+  .bdg-tip { width: 20px; height: 20px; }
+  .bdg-row { gap: 4px; }
   .bdg-card { padding: 1.1rem; }
   .bdg-season { gap: 0.8rem; padding: 0.9rem; }
   .bdg-season .bdg-medal { width: 96px; height: 96px; }
@@ -95,5 +110,6 @@
   .bdg-road small { font-size: 0.7rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .bdg-flame.lit, .bdg-flame.risk, .bdg-rays, .bdg-unlock-medal, .bdg-unlock { animation: none; }
+  .bdg-flame.lit, .bdg-flame.risk, .bdg-rays, .bdg-unlock-medal, .bdg-unlock, .bdg-pop { animation: none; }
+  .bdg-tip { transition: none; }
 }

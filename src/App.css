@@ -2087,7 +2087,8 @@
 .season-rules { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; margin: 1rem 0 0; }
 .season-board { margin-top: 1.5rem; }
 .season-grid { grid-template-columns: 70px minmax(0, 3fr) 1fr 1fr 1fr; }
-.season-name { font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.season-name { display: flex; align-items: center; gap: 10px; min-width: 0; font-family: monospace; }
+.season-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .season-me { background: rgba(255, 215, 0, 0.1); }
 .season-empty { padding: 2rem; text-align: center; color: var(--text-muted); }
 .season-empty.big { padding: 4rem 1rem; background: var(--bg-card); border-radius: 16px; margin-top: 2rem; }
@@ -2102,6 +2103,10 @@
 .season-race-btn { padding: 0.5rem 1rem; font-size: 0.85rem; white-space: nowrap; }
 @media (max-width: 640px) {
   .season-grid { grid-template-columns: 44px minmax(0, 1fr) 52px 44px 40px; font-size: 0.85rem; }
+  .season-board { padding: 0.5rem; }
+  .season-board .lb-list-row, .season-board .lb-list-header { grid-template-areas: none; grid-template-columns: 36px minmax(0, 1fr) 36px 26px 26px; gap: 0.35rem; padding: 0.8rem 0.5rem; }
+  .season-name { flex-wrap: wrap; gap: 4px 8px; }
+  .season-name-text { max-width: 100%; }
   .season-race { grid-template-columns: 44px 1fr auto; gap: 0.75rem; padding: 0.9rem 1rem; }
   .season-race-btn { grid-column: 1 / -1; width: 100%; }
 }

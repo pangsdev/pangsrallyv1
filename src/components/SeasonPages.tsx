@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { metamaskDeepLink, testSeason, type HistoryRow, type LeaderboardPlayer } from '../testSeason/api';
-import { DAILY_RACE_LIMIT, POINTS_BY_POSITION, SEASON_BADGE_NAME, STREAK_BADGES } from '../race/testSeason';
-import { BadgeMedal, SeasonBadge } from './Badges';
+import { DAILY_RACE_LIMIT, POINTS_BY_POSITION } from '../race/testSeason';
+import { LeaderboardBadges } from './Badges';
 
 /** Shown instead of a race page until the player has signed in with their wallet. */
 export function SignInGate({ signingIn, onSignIn }: { signingIn: boolean; onSignIn: () => void }) {
@@ -155,7 +155,10 @@ export function SeasonLeaderboard({ playerWallet }: { playerWallet: string | nul
           return (
             <div key={p.wallet} className={`lb-list-row season-grid ${me ? 'season-me' : ''}`} style={{ borderLeft: `4px solid ${podium ?? 'transparent'}` }}>
               <div style={{ fontWeight: 'bold', color: podium ?? 'var(--text-muted)' }}>#{p.rank}</div>
-              <div className="season-name">{p.racerNumber != null && <span className="bdg-inline" title={`${SEASON_BADGE_NAME} · Racer #${p.racerNumber}`}><SeasonBadge number={p.racerNumber} size={24} compact /></span>}{p.badge > 0 && <span className="bdg-inline" title={`${STREAK_BADGES.find(b => b.days === p.badge)?.name} · ${p.badge} day streak`}><BadgeMedal days={p.badge} size={24} compact /></span>}{p.name}{me ? ' (You)' : ''}</div>
+              <div className="season-name">
+                <span className="season-name-text">{p.name}{me ? ' (You)' : ''}</span>
+                <LeaderboardBadges racerNumber={p.racerNumber} streakDays={p.badge} />
+              </div>
               <div style={{ color: 'var(--pangs-orange)', fontWeight: 'bold' }}>{p.points}</div>
               <div>{p.races}</div>
               <div style={{ color: 'var(--color-success)' }}>{p.wins}</div>

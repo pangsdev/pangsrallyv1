@@ -1,4 +1,5 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { SEASON_BADGE_NAME, STREAK_BADGES, type Streak } from '../race/testSeason';
 import './badges.css';
 
@@ -477,4 +478,93 @@ export function unseenBadge(wallet: string, badge: number): number {
 
 export function markBadgeSeen(wallet: string, badge: number) {
   try { localStorage.setItem(seenKey(wallet), String(badge)); } catch { /* private mode */ }
+}
+
+/**
+ * A badge with a small card that names it: opens on hover, keyboard focus or tap. The card lives on
+ * <body> so the leaderboard's row and name clipping cannot cut it off.
+ */
+function BadgeTip({ label, detail, art, children }: { label: string; detail: string; art: ReactNode; children: ReactNode }) {
+  const anchor = useRef<HTMLButtonElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+  const touch = useRef(false);
+  const [open, setOpen] = useState(false);
+  const [place, setPlace] = useState<{ left: number; top: number; arrow: number; below: boolean } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open || !anchor.current || !pop.current) { setPlace(null); return; }
+    const a = anchor.current.getBoundingClientRect();
+    const p = pop.current.getBoundingClientRect();
+    const gap = 10;
+    const centre = a.left + a.width / 2;
+    const left = Math.max(8, Math.min(centre - p.width / 2, window.innerWidth - p.width - 8));
+    const below = a.top - p.height - gap < 8;
+    setPlace({ left, top: below ? a.bottom + gap : a.top - p.height - gap, arrow: centre - left, below });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const outside = (e: PointerEvent) => { if (!anchor.current?.contains(e.target as Node)) close(); };
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    document.addEventListener('pointerdown', outside);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+      document.removeEventListener('pointerdown', outside);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={anchor}
+        type="button"
+        className="bdg-tip"
+        aria-label={`${label}: ${detail}`}
+        aria-expanded={open}
+        onPointerDown={e => { touch.current = e.pointerType !== 'mouse'; }}
+        onPointerEnter={e => { if (e.pointerType === 'mouse') setOpen(true); }}
+        onPointerLeave={e => { if (e.pointerType === 'mouse') setOpen(false); }}
+        onFocus={e => { if (e.currentTarget.matches(':focus-visible')) setOpen(true); }}
+        onBlur={() => setOpen(false)}
+        onClick={() => { if (touch.current) setOpen(o => !o); }}
+      >
+        {children}
+      </button>
+      {open && createPortal(
+        <div
+          ref={pop}
+          role="tooltip"
+          className={`bdg-pop ${place?.below ? 'below' : ''}`}
+          style={{ left: place?.left ?? 0, top: place?.top ?? 0, visibility: place ? 'visible' : 'hidden', '--arrow-x': `${place?.arrow ?? 0}px` } as CSSProperties}
+        >
+          <div className="bdg-pop-art">{art}</div>
+          <div className="bdg-pop-text"><strong>{label}</strong><span>{detail}</span></div>
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+/** The badges shown after a racer's name on the leaderboard. */
+export function LeaderboardBadges({ racerNumber, streakDays }: { racerNumber: number | null; streakDays: number }) {
+  const tier = tierOf(streakDays);
+  if (racerNumber == null && !tier) return null;
+  return (
+    <span className="bdg-row">
+      {racerNumber != null && (
+        <BadgeTip label={SEASON_BADGE_NAME} detail={`Beta Season racer #${racerNumber}`} art={<SeasonBadge number={racerNumber} size={56} />}>
+          <SeasonBadge number={racerNumber} size={26} compact />
+        </BadgeTip>
+      )}
+      {tier && (
+        <BadgeTip label={tier.name} detail={`Raced ${tier.days} days in a row`} art={<BadgeMedal days={tier.days} size={56} />}>
+          <BadgeMedal days={tier.days} size={26} compact />
+        </BadgeTip>
+      )}
+    </span>
+  );
 }
