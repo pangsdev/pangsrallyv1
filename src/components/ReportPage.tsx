@@ -109,17 +109,19 @@ export default function ReportPage({ racer, fromPage, onSignIn }: { racer: strin
               </div>
             </fieldset>
 
-            <label className="rp-field">
-              <span className="rp-label">Tell us more</span>
-              <textarea rows={6} maxLength={MAX} value={message} onChange={e => setMessage(e.target.value)} placeholder={active.placeholder} />
-              <span className={`rp-count ${length > 0 && length < MIN ? 'low' : ''}`}>
-                {length > 0 && length < MIN ? `${MIN - length} more characters` : `${length} / ${MAX}`}
+            <label className="rp-field rp-grow">
+              <span className="rp-label rp-label-row">
+                Tell us more
+                <span className={`rp-count ${length > 0 && length < MIN ? 'low' : ''}`}>
+                  {length > 0 && length < MIN ? `${MIN - length} more characters` : `${length} / ${MAX}`}
+                </span>
               </span>
+              <textarea maxLength={MAX} value={message} onChange={e => setMessage(e.target.value)} placeholder={active.placeholder} />
             </label>
 
-            <label className="rp-field">
+            <label className="rp-field rp-contact">
               <span className="rp-label">X or Discord <em>optional, if you would like a reply</em></span>
-              <input type="text" maxLength={80} value={contact} onChange={e => setContact(e.target.value)} placeholder="@yourname" />
+              <input type="text" maxLength={80} value={contact} onChange={e => setContact(e.target.value)} placeholder="Your X or Discord name (optional)" />
             </label>
 
             {error && <div className="rp-error" role="alert">{error}</div>}
