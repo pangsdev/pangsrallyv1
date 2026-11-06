@@ -19,7 +19,7 @@ const TEASERS = Array.from({ length: 10 }, (_, i) => i + 1);
 const ordinal = (n: number) => `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`;
 
 const STEPS = [
-  { n: '01', title: 'Line up', text: `${FIELD_SIZE} pangolins take their lanes. Real players first, bots fill every empty spot, so a race never waits for long.` },
+  { n: '01', title: 'Line up', text: `${FIELD_SIZE} pangolins take their lanes. Bots line up at once for a quick race; an online room runs with real players only.` },
   { n: '02', title: 'Curl and roll', text: 'They sprint off the line, curl into armoured balls and roll for the finish. In the Beta season every racer runs on equal stats.' },
   { n: '03', title: 'Score points', text: `Every finish scores season points, ${POINTS_BY_POSITION[0]} for a win down to ${POINTS_BY_POSITION[POINTS_BY_POSITION.length - 1]} for ${ordinal(FIELD_SIZE)}. Climb the leaderboard one race at a time.` },
 ];

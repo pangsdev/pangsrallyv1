@@ -12,7 +12,7 @@ import { Wallet, verifyMessage } from 'ethers';
 import { handle, signInMessage } from '../supabase/functions/test-season/core.ts';
 import { createMemoryStore } from '../supabase/functions/test-season/memoryStore.ts';
 import { createBetaGate } from '../supabase/functions/test-season/beta.ts';
-import { runTestRace, DAILY_RACE_LIMIT, FIELD_SIZE, OPEN_ROOMS, ROOM_SLOT_MINUTES, POINTS_BY_POSITION } from '../supabase/functions/test-season/race/testSeason.ts';
+import { runTestRace, DAILY_RACE_LIMIT, FIELD_SIZE, ROOM_FULL_COUNTDOWN_SECONDS, POINTS_BY_POSITION } from '../supabase/functions/test-season/race/testSeason.ts';
 
 let clock = Date.parse('2026-11-02T12:00:00Z');
 const owner = Wallet.createRandom();
@@ -26,6 +26,7 @@ const deps = {
   unlimitedWallets: new Set([owner.address.toLowerCase()]),
   inviteRequired: true,
   beta: null,
+  predictions: true,
 };
 const call = (action, body = {}, token = null) => handle(deps, action, { action, ...body }, token);
 
@@ -127,82 +128,112 @@ ok('login with a real wallet signature');
 }
 
 // --- online rooms ---------------------------------------------------------
+/** Signs in enough new players to take every free seat of the waiting room. */
+const fillRoom = async (roomId, taken = 0) => {
+  const tokens = await Promise.all(Array.from({ length: FIELD_SIZE - taken }, () => signIn(Wallet.createRandom())));
+  let last;
+  for (const t of tokens) last = await call('online-join', { terrain: 'Forest', roomId }, t);
+  assert.equal(last.status, 200, JSON.stringify(last.body));
+  return { tokens, race: last.body.race };
+};
 {
   const players = [alice, Wallet.createRandom(), Wallet.createRandom()];
   const tokens = [aliceToken, await signIn(players[1]), await signIn(players[2])];
+  const before = (await call('me', {}, tokens[1])).body;
   const joins = [];
   for (const t of tokens) joins.push(await call('online-join', { terrain: 'Forest' }, t));
   const roomId = joins[0].body.race.id;
   assert.ok(joins.every(j => j.status === 200 && j.body.race.id === roomId), 'all three share one room');
   assert.equal(joins[2].body.race.players.length, 3);
   assert.equal(joins[2].body.race.seed, null, 'seed hidden while the room is open');
-  ok('three players land in the same open room; the seed stays hidden');
+  assert.equal(joins[2].body.race.closesAt, null, 'a waiting room has no start time');
+  ok('three players land in the same waiting room; the seed stays hidden');
 
   const again = await call('online-join', { terrain: 'Forest' }, tokens[1]);
   assert.equal(again.body.race.id, roomId);
-  assert.equal((await call('me', {}, tokens[1])).body.racesToday, 1, 'rejoining does not spend a race');
-  ok('re-joining returns to the same room without spending a race');
+  const held = (await call('me', {}, tokens[1])).body;
+  assert.equal(held.racesToday, before.racesToday, 'a seat is not a race yet');
+  assert.equal(held.racesLeft, before.racesLeft - 1, 'but it keeps one back');
+  assert.equal(held.bookedSeats[0], null);
+  ok('a seat keeps one race back and uses none; re-joining changes nothing');
 
-  clock = Date.parse(joins[0].body.race.closesAt) + 1000;
-  const status = await call('online-status', { raceId: roomId });
-  const race = status.body.race;
+  clock += 3 * 24 * 3_600_000;
+  const still = await call('online-status', { raceId: roomId });
+  assert.equal(still.body.race.status, 'open', 'days pass and the room keeps waiting');
+  const list = (await call('rooms', { terrain: 'Forest' }, tokens[0])).body.rooms;
+  assert.equal(list.length, 1);
+  assert.equal(list[0].startsAt, null);
+  assert.equal(list[0].names.length, 3);
+  ok('an unfilled room never runs and never gets bots');
+
+  const quitter = await call('online-leave', { raceId: roomId }, tokens[2]);
+  assert.equal(quitter.status, 200, JSON.stringify(quitter.body));
+  assert.equal(quitter.body.racesLeft, DAILY_RACE_LIMIT);
+  assert.equal(quitter.body.bookedSeats.length, 0);
+  assert.equal((await call('online-leave', { raceId: roomId }, tokens[2])).body.error, 'not_in_room');
+  ok('leaving a waiting room gives the seat back for free');
+
+  const { tokens: crowd, race: full } = await fillRoom(roomId, 2);
+  assert.equal(full.status, 'open');
+  assert.equal(Date.parse(full.closesAt), clock + ROOM_FULL_COUNTDOWN_SECONDS * 1000, 'starts after the countdown');
+  assert.equal(full.seed, null);
+  const after = (await call('rooms', { terrain: 'Forest' }, crowd[0])).body.rooms;
+  assert.equal(after.length, 2);
+  assert.equal(after[0].id, roomId);
+  assert.equal(after[1].players, 0, 'the next room opens at once');
+  assert.equal(after[1].startsAt, null);
+  ok('the last seat starts the countdown and the next room opens at once');
+
+  const late = await signIn(Wallet.createRandom());
+  assert.equal((await call('online-join', { terrain: 'Forest', roomId }, late)).body.error, 'room_full');
+  assert.equal((await call('online-leave', { raceId: roomId }, crowd[0])).body.error, 'room_locked');
+  assert.equal((await call('online-join', { terrain: 'Forest', roomId: after[1].id }, crowd[0])).body.error, 'seat_held');
+  ok('a full room takes nobody new, keeps its players, and a player holds one seat at a time');
+
+  clock = Date.parse(full.closesAt) - 1000;
+  assert.equal((await call('online-status', { raceId: roomId })).body.race.status, 'open');
+  clock += 2000;
+  const race = (await call('online-status', { raceId: roomId })).body.race;
   assert.equal(race.status, 'finished');
-  assert.equal(race.field.filter(f => f.wallet).length, 3);
+  assert.equal(race.field.filter(f => f.wallet).length, FIELD_SIZE, 'ten real players, no bots');
   assert.deepEqual(runTestRace(race.seed, race.field, race.terrain), race.results);
   for (const p of race.players) assert.equal(p.points, POINTS_BY_POSITION[p.position - 1]);
-  ok('room starts at its scheduled time, fills with bots, scores every player');
+  const charged = (await call('me', {}, tokens[1])).body;
+  assert.equal(charged.racesToday, 1, 'the race counts on the day it ran');
+  assert.equal(charged.racesLeft, DAILY_RACE_LIMIT - 1);
+  ok('the room runs after the countdown with ten real players and scores them all');
 
-  assert.equal((await call('history', {}, tokens[2])).body.races[0].status, 'live', 'still running on screen');
+  assert.equal((await call('history', {}, tokens[1])).body.races[0].status, 'live', 'still running on screen');
   clock = Date.parse(race.finishedAt) + 1;
-  const hist = (await call('history', {}, tokens[2])).body.races;
+  const hist = (await call('history', {}, tokens[1])).body.races;
   assert.equal(hist[0].raceId, roomId);
   assert.ok(hist[0].position >= 1);
   ok('the race shows up in My Races with its result once it has run');
 }
 
-// --- scheduled rooms ---------------------------------------------------------
+// --- a held seat counts against the daily limit -----------------------------
 {
-  const slotMs = ROOM_SLOT_MINUTES * 60_000;
-  const [r1, r2] = await Promise.all([call('rooms', { terrain: 'Forest' }), call('rooms', { terrain: 'Forest' })]);
-  const list = r1.body.rooms;
-  assert.equal(list.length, OPEN_ROOMS);
-  assert.deepEqual(r2.body.rooms.map(r => r.id).sort(), list.map(r => r.id).sort(), 'parallel calls make no duplicate rooms');
-  const starts = list.map(r => Date.parse(r.startsAt));
-  for (const t of starts) assert.equal(t % slotMs, 0, 'rooms start on the clock');
-  assert.ok(starts[0] - clock >= 120_000, 'never a room that is about to go');
-  for (let i = 1; i < starts.length; i++) assert.equal(starts[i] - starts[i - 1], slotMs);
-  ok(`${OPEN_ROOMS} rooms are always open, ${ROOM_SLOT_MINUTES} min apart, made by the game`);
-
-  // Ten players fill the last room: it starts at once and a new room takes its start time.
-  const last = list[list.length - 1];
-  const crowd = Array.from({ length: FIELD_SIZE }, () => Wallet.createRandom());
-  const tokens = [];
-  for (const w of crowd) tokens.push(await signIn(w));
-  let fin;
-  for (const t of tokens) fin = await call('online-join', { terrain: 'Forest', roomId: last.id }, t);
-  assert.equal(fin.body.race.status, 'finished', 'full room starts immediately');
-  assert.equal(fin.body.race.field.filter(f => f.wallet).length, FIELD_SIZE);
-  const after = (await call('rooms', { terrain: 'Forest' }, tokens[0])).body.rooms;
-  assert.equal(after.length, OPEN_ROOMS);
-  const same = after.find(r => r.startsAt === last.startsAt || Date.parse(r.startsAt) === Date.parse(last.startsAt));
-  assert.ok(same && same.id !== last.id && same.players === 0, 'a new room took the full one\'s start time');
-  ok('a full room starts at once and a fresh room replaces it');
-
-  const late = Wallet.createRandom();
-  const lt = await signIn(late);
-  assert.equal((await call('online-join', { terrain: 'Forest', roomId: last.id }, lt)).body.error, 'room_started');
-  const pick = await call('online-join', { terrain: 'Forest', roomId: after[1].id }, lt);
-  assert.equal(pick.body.race.id, after[1].id);
-  assert.equal((await call('rooms', { terrain: 'Forest' }, lt)).body.rooms.find(r => r.id === after[1].id).joined, true);
-  ok('players pick a room; a started room is refused; the list marks rooms you are in');
+  const t = await signIn(Wallet.createRandom());
+  const room = (await call('online-join', { terrain: 'Forest' }, t)).body.race;
+  for (let i = 0; i < DAILY_RACE_LIMIT - 1; i++) assert.equal((await call('bot-race', { terrain: 'Forest' }, t)).status, 200);
+  assert.equal((await call('bot-race', { terrain: 'Forest' }, t)).body.error, 'daily_limit');
+  await fillRoom(room.id, (await call('online-status', { raceId: room.id })).body.race.players.length);
+  clock += (ROOM_FULL_COUNTDOWN_SECONDS + 1) * 1000;
+  const after = (await call('online-status', { raceId: room.id })).body.race;
+  assert.equal(after.status, 'finished');
+  const me = (await call('me', {}, t)).body;
+  assert.equal(me.racesLeft, 0);
+  assert.equal(me.bookedSeats.length, 0);
+  clock = Date.parse(after.finishedAt) + 1;
+  ok('a held seat is always there when the room starts, even after a full day of bot races');
 }
 
-// --- a player who leaves still gets scored --------------------------------
+// --- a player who leaves the page still gets scored -------------------------
 {
-  const dave = Wallet.createRandom();
-  const t = await signIn(dave);
+  const t = await signIn(Wallet.createRandom());
   const join = await call('online-join', { terrain: 'Forest' }, t);
-  clock = Date.parse(join.body.race.closesAt) + 5000;
+  const { race } = await fillRoom(join.body.race.id, join.body.race.players.length);
+  clock = Date.parse(race.closesAt) + 5000;
   assert.equal((await call('history', {}, t)).body.races[0].status, 'live');
   clock += 120_000;
   const hist = (await call('history', {}, t)).body.races;
@@ -407,7 +438,7 @@ ok('login with a real wallet signature');
   const me = (await call('me', {}, t)).body;
   assert.equal(me.bookedSeats.length, 1);
   assert.equal(me.racesLeft, DAILY_RACE_LIMIT - 1);
-  ok('a waiting room shows as a booked seat and has used one race');
+  ok('a waiting room shows as a booked seat and keeps one race back');
 
   const good = { kind: 'bug', area: 'wallet', message: 'The nickname signs me out.', contact: '@ann', page: '/rally', agent: 'test' };
   assert.equal((await call('report', { ...good, message: 'short' }, t)).body.error, 'report_short');
@@ -417,6 +448,105 @@ ok('login with a real wallet signature');
   for (let i = 0; i < 5; i++) assert.equal((await call('report', good, t)).status, 200);
   assert.equal((await call('report', good, t)).body.error, 'report_limit');
   ok('reports are checked, work signed out, and stop at the daily limit');
+}
+
+{
+  // Predictions: free, final, scored by saddle number, hidden until the race ends
+  const pia = Wallet.createRandom(), sam = Wallet.createRandom(), racer = Wallet.createRandom();
+  const pt = await signIn(pia), st = await signIn(sam), rt = await signIn(racer);
+  clock += 3 * 3_600_000;
+  const list = (await call('rooms', { terrain: 'Forest' }, pt)).body.rooms;
+  const room = list[0];
+  assert.equal(room.myPick, null);
+
+  assert.equal((await call('predict', { raceId: room.id, pick: 4 })).status, 401);
+  assert.equal((await call('predict', { raceId: room.id, pick: 0 }, pt)).body.error, 'bad_pick');
+  assert.equal((await call('predict', { raceId: room.id, pick: 11 }, pt)).body.error, 'bad_pick');
+  assert.equal((await call('predict', { raceId: room.id, pick: '2.5' }, pt)).body.error, 'bad_pick');
+  ok('a pick needs a session and a number from 1 to 10');
+
+  const before = (await call('me', {}, pt)).body.racesLeft;
+  const made = await call('predict', { raceId: room.id, pick: 4 }, pt);
+  assert.equal(made.status, 200, JSON.stringify(made.body));
+  assert.equal(made.body.pick, 4);
+  assert.equal((await call('me', {}, pt)).body.racesLeft, before);
+  assert.equal((await call('predict', { raceId: room.id, pick: 5 }, pt)).body.error, 'already_picked');
+  const rush = await Promise.all([1, 2, 3].map(pick => call('predict', { raceId: room.id, pick }, st)));
+  assert.equal(rush.filter(r => r.status === 200).length, 1, 'parallel picks');
+  ok('a pick is free and final, even when sent in parallel');
+
+  const seen = (await call('rooms', { terrain: 'Forest' }, pt)).body.rooms.find(r => r.id === room.id);
+  assert.equal(seen.myPick, 4);
+  assert.equal(seen.crowd.reduce((a, b) => a + b, 0), 2);
+  assert.equal(JSON.stringify(seen).includes(sam.address.toLowerCase()), false);
+  ok('the room shows my pick and crowd counts, never who picked');
+
+  const hidden = (await call('online-status', { raceId: room.id })).body.race;
+  assert.equal(hidden.seed, null);
+  const stored = await deps.store.getRace(room.id);
+  assert.notEqual(stored.seed, `online-${room.id}`);
+  ok('a room seed cannot be worked out from its public id');
+
+  // Picks stay open through the countdown and close at the start.
+  const seats = (await call('online-status', { raceId: room.id })).body.race.players.length;
+  const { race: counting } = await fillRoom(room.id, seats);
+  assert.equal((await call('predict', { raceId: room.id, pick: 2 }, await signIn(Wallet.createRandom()))).status, 200);
+  clock = Date.parse(counting.closesAt);
+  assert.equal((await call('predict', { raceId: room.id, pick: 6 }, rt)).body.error, 'predictions_closed');
+  const race = (await call('online-status', { raceId: room.id })).body.race;
+  assert.equal(race.status, 'finished');
+  ok('picks stay open through the countdown and close at the start');
+
+  const live = (await call('prediction-board', {}, pt)).body;
+  assert.equal(live.mine.picks[0].status, 'live');
+  assert.equal(live.mine.picks[0].position, null);
+  assert.equal(live.players.some(p => p.wallet === pia.address.toLowerCase()), false);
+  ok('a running race keeps its pick result and points hidden');
+
+  clock = Date.parse(race.finishedAt) + 1000;
+  const expected = (n) => {
+    const pos = race.results.find(r => r.id === race.field[n - 1].id).position;
+    return { pos, pts: pos === 1 ? 10 : pos <= 3 ? 3 : 0 };
+  };
+  const board = (await call('prediction-board', {}, pt)).body;
+  const row = board.mine.picks[0];
+  assert.equal(row.position, expected(4).pos);
+  assert.equal(row.points, expected(4).pts);
+  assert.equal(board.roomsCounted >= 1, true);
+  const winner = race.results.find(r => r.position === 1);
+  assert.equal(board.recent[0].number, race.field.findIndex(f => f.id === winner.id) + 1);
+  const season = (await call('leaderboard')).body.players.find(p => p.wallet === pia.address.toLowerCase());
+  assert.equal(season, undefined);
+  ok('picks score 10 / 3 / 0 by saddle number and leave season points alone');
+
+  // Every number scores the same way when a player's room runs.
+  const next = (await call('rooms', { terrain: 'Forest' }, rt)).body.rooms[0];
+  const callers = await Promise.all(Array.from({ length: 10 }, () => signIn(Wallet.createRandom())));
+  for (let i = 0; i < 10; i++) assert.equal((await call('predict', { raceId: next.id, pick: i + 1 }, callers[i])).status, 200);
+  const { race: nextFull } = await fillRoom(next.id, next.players);
+  clock = Date.parse(nextFull.closesAt);
+  const full = (await call('online-status', { raceId: next.id })).body.race;
+  clock = Date.parse(full.finishedAt) + 1000;
+  const scored = await deps.store.listPredictions(next.id);
+  assert.equal(scored.filter(p => p.points === 10).length, 1);
+  assert.equal(scored.filter(p => p.points === 3).length, 2);
+  assert.equal(scored.filter(p => p.points === 0).length, 7);
+  ok('of all ten numbers exactly one scores 10 and two score 3');
+}
+
+// --- production: predictions are off ----------------------------------------
+{
+  deps.predictions = false;
+  const t = await signIn(Wallet.createRandom());
+  assert.equal((await call('prediction-board', {}, t)).status, 404);
+  assert.equal((await call('predict', { raceId: 'x', pick: 1 }, t)).status, 404);
+  const room = (await call('rooms', { terrain: 'Forest' }, t)).body.rooms.at(-1);
+  assert.equal(room.myPick, null);
+  const { race } = await fillRoom(room.id, room.players);
+  clock = Date.parse(race.closesAt) + 1;
+  assert.equal((await call('online-status', { raceId: room.id })).body.race.status, 'finished');
+  deps.predictions = true;
+  ok('with predictions off, rooms never touch the picks table and the actions do not exist');
 }
 
 console.log(`\n${checks} checks passed.`);

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import RaceRoom from './RaceRoom';
-import { testSeason, type PublicRace } from '../testSeason/api';
-import { FIELD_SIZE } from '../race/testSeason';
+import { PREDICTIONS_ON, testSeason, type PublicRace } from '../testSeason/api';
+import { FIELD_SIZE, ROOM_FULL_COUNTDOWN_SECONDS } from '../race/testSeason';
 import '../race/race.css';
 import { TrackBadge } from './Icons';
 import { startsIn } from './OnlineRooms';
+import { PickPanel } from './Predictions';
 
 interface Props {
   categoryInfo: any;
@@ -16,8 +17,8 @@ interface Props {
   onFinished?: () => void;
 }
 
-/** Poll fast near the start, slowly while the room waits (rooms can be an hour or more away). */
-const pollMs = (msLeft: number) => (msLeft < 90_000 ? 2000 : msLeft < 10 * 60_000 ? 5000 : 15_000);
+/** Poll fast near the start; a waiting room only needs to show seats filling up. */
+const pollMs = (msLeft: number | null) => (msLeft !== null && msLeft < 90_000 ? 2000 : 5000);
 const clock = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
@@ -25,9 +26,9 @@ const clock = (ms: number) => {
 };
 
 /**
- * Online test race: join (or resume) a room, wait while it fills, then replay
- * the server's result on the track. The room starts after its wait even if
- * the player leaves; the result and points stay in My Races.
+ * Online test race: join (or resume) a room, wait while real players fill it,
+ * then replay the server's result on the track. A full room starts even if the
+ * player leaves this page; the result and points stay in My Races.
  */
 export default function OnlineRoom({ categoryInfo, playerWallet, raceId, onBack, onFinished }: Props) {
   const terrain: string = categoryInfo?.terrain || 'Forest';
@@ -37,6 +38,14 @@ export default function OnlineRoom({ categoryInfo, playerWallet, raceId, onBack,
   /** server clock minus browser clock, so the countdown matches the server */
   const skew = useRef(0);
   const joined = useRef<Promise<{ race: PublicRace; serverTime: string }> | null>(null);
+  const [pick, setPick] = useState<{ pick: number | null; crowd: number[] } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [copyNote, setCopyNote] = useState<string | null>(null);
+  const roomId = room?.id;
+
+  useEffect(() => {
+    if (PREDICTIONS_ON && roomId) testSeason.prediction(roomId).then(setPick).catch(() => {});
+  }, [roomId]);
 
   useEffect(() => {
     let stopped = false;
@@ -49,7 +58,7 @@ export default function OnlineRoom({ categoryInfo, playerWallet, raceId, onBack,
       setRoom(res.race);
       return res.race;
     };
-    const left = (race: PublicRace) => (race.closesAt ? Date.parse(race.closesAt) - (Date.now() + skew.current) : 0);
+    const left = (race: PublicRace) => (race.closesAt ? Date.parse(race.closesAt) - (Date.now() + skew.current) : null);
     const poll = async (id: string) => {
       try {
         const race = apply(await testSeason.onlineStatus(id));
@@ -85,6 +94,48 @@ export default function OnlineRoom({ categoryInfo, playerWallet, raceId, onBack,
 
   const msLeft = room?.closesAt ? Math.max(0, Date.parse(room.closesAt) - (now + skew.current)) : null;
   const players = room?.players ?? [];
+  const waiting = !!room && !room.closesAt;
+  const seated = players.some(p => p.wallet === playerWallet);
+  const seatsLeft = FIELD_SIZE - players.length;
+
+  const takeSeat = async () => {
+    if (!room) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await testSeason.onlineJoin(terrain, room.id);
+      skew.current = Date.parse(res.serverTime) - Date.now();
+      setRoom(res.race);
+      onFinished?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not take this seat.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const giveBack = async () => {
+    if (!room) return;
+    setBusy(true);
+    try {
+      await testSeason.onlineLeave(room.id);
+      onBack();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not give your seat back.');
+      setBusy(false);
+    }
+  };
+
+  const copyLink = async () => {
+    if (!room) return;
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/room/${room.id}`);
+      setCopyNote('Link copied');
+    } catch {
+      setCopyNote('Could not copy');
+    }
+    setTimeout(() => setCopyNote(null), 2000);
+  };
 
   return (
     <div className="rr-root">
@@ -112,14 +163,16 @@ export default function OnlineRoom({ categoryInfo, playerWallet, raceId, onBack,
         ) : (
           <div className="or-card">
             <div className="or-count">
-              <div className="or-count-num">{msLeft === null ? '–' : clock(msLeft)}</div>
+              <div className="or-count-num">{waiting ? `${players.length}/${FIELD_SIZE}` : clock(msLeft ?? 0)}</div>
               <div className="or-count-label">
-                {players.length >= FIELD_SIZE ? 'Room full — starting' : msLeft === 0 ? 'Starting…'
-                  : `starts at ${new Date(Date.parse(room.closesAt!)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} · ${startsIn(msLeft ?? 0)}`}
+                {waiting ? `${seatsLeft} ${seatsLeft === 1 ? 'seat' : 'seats'} left` : msLeft === 0 ? 'Starting…'
+                  : `${players.length >= FIELD_SIZE ? 'Room full · ' : ''}starts at ${new Date(Date.parse(room.closesAt!)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} · ${startsIn(msLeft ?? 0)}`}
               </div>
             </div>
             <p className="or-note">
-              <strong>{players.length}</strong> of {FIELD_SIZE} players joined. The race starts at its time, or as soon as all {FIELD_SIZE} seats are taken. Empty lanes are filled with bots.
+              {waiting
+                ? <>No bots in this room. When the last seat is taken, the race starts {ROOM_FULL_COUNTDOWN_SECONDS / 60} minutes later.</>
+                : <>All seats are taken. Stay here to watch the race start.</>}
             </p>
             <div className="or-seats">
               {Array.from({ length: FIELD_SIZE }, (_, i) => {
@@ -133,8 +186,23 @@ export default function OnlineRoom({ categoryInfo, playerWallet, raceId, onBack,
                 );
               })}
             </div>
+            {waiting && (
+              <div className="or-actions">
+                {seated
+                  ? <button type="button" className="rr-btn" disabled={busy} onClick={giveBack}>Give back my seat</button>
+                  : <button type="button" className="rr-btn primary" disabled={busy} onClick={takeSeat}>{busy ? 'Taking your seat…' : 'Take a seat'}</button>}
+                <button type="button" className="rr-btn" onClick={copyLink}>{copyNote ?? 'Copy invite link'}</button>
+              </div>
+            )}
+            {pick && msLeft !== 0 && (
+              <div className="or-pick">
+                <PickPanel raceId={room.id} myPick={pick.pick} crowd={pick.crowd} onPicked={(p, crowd) => setPick({ pick: p, crowd })} />
+              </div>
+            )}
             <p className="or-leave">
-              You can leave this page: the race still runs, your points are saved, and you can watch the replay in <strong>My Races</strong>.
+              {waiting
+                ? <>Your seat uses one of today's races only when the race starts. You can leave this page and come back from <strong>My Races</strong>.</>
+                : <>You can leave this page: the race still runs, your points are saved, and you can watch the replay in <strong>My Races</strong>.</>}
             </p>
           </div>
         )}

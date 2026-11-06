@@ -6,7 +6,9 @@ import { getTheme } from '../race/themes';
 import { considerCall, createCommentaryState, type CommentaryCall } from '../race/commentary';
 import { isAnnouncerMuted, playStartBeep, setAnnouncerMuted, speakCall, stopAnnounce, warmCall } from '../race/announce';
 import { LINES } from '../race/announceClips';
-import type { PublicRace } from '../testSeason/api';
+import { PREDICTIONS_ON, testSeason, type PublicRace } from '../testSeason/api';
+import { predictionPointsFor } from '../race/testSeason';
+import { ordinal } from './Predictions';
 import '../race/race.css';
 import { TrackBadge } from './Icons';
 
@@ -179,6 +181,13 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
     }
   }, [tryCall]);
 
+  /** The viewer's prediction for this room: the number only, so nothing is given away before the finish. */
+  const [pick, setPick] = useState<number | null>(null);
+  const pickRace = PREDICTIONS_ON && loaded?.race.kind === 'online' && playerWallet ? loaded.race.id : null;
+  useEffect(() => {
+    if (pickRace) testSeason.prediction(pickRace).then(r => setPick(r.pick)).catch(() => {});
+  }, [pickRace]);
+
   const sortedRows = useMemo(() => [...standings].sort((a, b) => a.position - b.position), [standings]);
   const leader = sortedRows[0];
   const leaderMeters = leader ? Math.round(leader.progress * DEFAULT_RACE_DISTANCE) : 0;
@@ -197,6 +206,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
     if (local !== myResult.position) console.warn(`Replay finished ${local}, server says ${myResult.position}`);
   }, [phase, sim, myResult]);
 
+  const pickedRacer = pick ? sim?.racers.find(r => r.number === pick) ?? null : null;
   const medal = (pos: number) => pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : '🏁';
   const winner = sim?.standings()[0];
 
@@ -310,7 +320,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
             <h3><span>🏁 Live Standings</span><span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>{standings.filter(r => r.finished).length}/{standings.length} finished</span></h3>
             <div className="rr-standings">
               {sortedRows.map(r => (
-                <div key={r.id} className={`rr-row ${r.isPlayer ? 'me' : ''} ${r.position <= 3 ? `top${r.position}` : ''} ${r.finished ? 'finished' : ''}`}>
+                <div key={r.id} className={`rr-row ${r.isPlayer ? 'me' : ''} ${r.number === pick ? 'pick' : ''} ${r.position <= 3 ? `top${r.position}` : ''} ${r.finished ? 'finished' : ''}`}>
                   <span className="rr-pos">{r.position}</span>
                   <span className="rr-num" title={`Racer number ${r.number}`}>{r.number}</span>
                   <img className="rr-avatar" src={r.avatarUrl ?? BALL_SPRITES[r.body]} alt="" onError={(e) => { (e.currentTarget as HTMLImageElement).src = BALL_SPRITES[r.body]; }} />
@@ -363,9 +373,15 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
               </>
             )}
 
+            {pickedRacer && (
+              <p className={`rr-pickline ${predictionPointsFor(pickedRacer.position) > 0 ? 'hit' : ''}`}>
+                Your pick, <strong>Number {pickedRacer.number}</strong>, finished {ordinal(pickedRacer.position)} · +{predictionPointsFor(pickedRacer.position)} prediction pts
+              </p>
+            )}
+
             <div className="rr-final">
               {sim.standings().map((r: RacerSim) => (
-                <div key={r.id} className={`rr-row ${r.isPlayer ? 'me' : ''} ${r.position <= 3 ? `top${r.position}` : ''}`}>
+                <div key={r.id} className={`rr-row ${r.isPlayer ? 'me' : ''} ${r.number === pick ? 'pick' : ''} ${r.position <= 3 ? `top${r.position}` : ''}`}>
                   <span className="rr-pos">{r.position}</span>
                   <span className="rr-num">{r.number}</span>
                   <img className="rr-avatar" src={r.avatarUrl ?? BALL_SPRITES[r.body]} alt="" onError={(e) => { (e.currentTarget as HTMLImageElement).src = BALL_SPRITES[r.body]; }} />

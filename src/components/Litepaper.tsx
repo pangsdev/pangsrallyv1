@@ -38,7 +38,7 @@ const Litepaper: React.FC = () => {
             <h3>Beta Season (Live Now)</h3>
             <p>
               Before the mint, invited players can race: connect MetaMask, sign a free message, claim the free <strong>Beta pass</strong> NFT
-              (you only pay network gas on Robinhood Chain), and run up to <strong>3 races per day</strong> against bots or other players.
+              (you only pay network gas on Robinhood Chain), and run up to <strong>5 races per day</strong> against bots or other players.
               Every pangolin races on equal stats, so luck decides, and every finish earns
               <strong> season points</strong> on the Beta Season leaderboard. The Beta pass is a test pass: we make no promises about future rewards or value.
             </p>

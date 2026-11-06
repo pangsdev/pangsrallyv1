@@ -1,7 +1,7 @@
 /** Postgres-backed Store (tables from supabase/migrations/003_test_season.sql … 006_test_scheduled_rooms.sql). */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { EntryRow, LeaderRow, RaceRow, Store } from './core.ts';
-import { sortLeaderboard } from './memoryStore.ts';
+import type { EntryRow, LeaderRow, PredictionBoardRow, PredictionRow, RaceRow, Store } from './core.ts';
+import { sortLeaderboard, sortPredictionBoard } from './memoryStore.ts';
 
 const UNIQUE_VIOLATION = '23505';
 
@@ -38,7 +38,7 @@ export function createSupabaseStore(db: SupabaseClient): Store {
       if (!unique.length) return out;
       // The API returns at most 1000 rows per call, so read in pages; (wallet, day, slot) is unique, so the order is stable.
       for (let from = 0; ; from += 1000) {
-        const rows = must(await db.from('test_race_entries').select('wallet, day').in('wallet', unique)
+        const rows = must(await db.from('test_race_entries').select('wallet, day').in('wallet', unique).gt('slot', 0)
           .order('wallet').order('day').order('slot').range(from, from + 999)) as { wallet: string; day: string }[];
         for (const r of rows) (out[r.wallet] ??= []).push(r.day);
         if (rows.length < 1000) return out;
@@ -74,9 +74,20 @@ export function createSupabaseStore(db: SupabaseClient): Store {
       must(await db.from('test_players').update({ beta_minted_at: now.toISOString() }).eq('wallet', wallet));
     },
     async countEntriesOnDay(wallet, day) {
-      const res = await db.from('test_race_entries').select('race_id', { count: 'exact', head: true }).eq('wallet', wallet).eq('day', day);
+      const res = await db.from('test_race_entries').select('race_id', { count: 'exact', head: true }).eq('wallet', wallet).eq('day', day).gt('slot', 0);
       if (res.error) throw new Error(res.error.message);
       return res.count ?? 0;
+    },
+    async heldSeats(wallet) {
+      const rows = must(await db.from('test_race_entries').select('race_id, race:test_races!inner(status)')
+        .eq('wallet', wallet).eq('slot', 0).eq('race.status', 'open')) as unknown[];
+      return rows.length;
+    },
+    async chargeSeat(raceId, wallet, day, slot) {
+      const res = await db.from('test_race_entries').update({ day, slot }).eq('race_id', raceId).eq('wallet', wallet);
+      if (res.error?.code === UNIQUE_VIOLATION) return 'conflict';
+      if (res.error) throw new Error(res.error.message);
+      return 'ok';
     },
     async insertRace(race) {
       must(await db.from('test_races').insert(race));
@@ -109,6 +120,37 @@ export function createSupabaseStore(db: SupabaseClient): Store {
       if (res.error?.code === UNIQUE_VIOLATION) return 'conflict';
       if (res.error) throw new Error(res.error.message);
       return 'ok';
+    },
+    async startCountdown(id, closesAt) {
+      must(await db.from('test_races').update({ closes_at: closesAt }).eq('id', id).eq('status', 'open').is('closes_at', null));
+    },
+    async insertPrediction(row) {
+      const res = await db.from('test_predictions').insert(row);
+      if (res.error?.code === UNIQUE_VIOLATION) return 'conflict';
+      if (res.error) throw new Error(res.error.message);
+      return 'ok';
+    },
+    async deletePrediction(raceId, wallet) {
+      must(await db.from('test_predictions').delete().eq('race_id', raceId).eq('wallet', wallet));
+    },
+    async listPredictions(raceId) {
+      return must(await db.from('test_predictions').select('*').eq('race_id', raceId)) as PredictionRow[];
+    },
+    async setPredictionResult(raceId, pick, position, points) {
+      must(await db.from('test_predictions').update({ position, points }).eq('race_id', raceId).eq('pick', pick));
+    },
+    async predictionsFor(wallet, limit) {
+      return must(await db.from('test_predictions').select('*, race:test_races!inner(*)')
+        .eq('wallet', wallet).order('created_at', { ascending: false }).limit(limit)) as unknown as (PredictionRow & { race: RaceRow })[];
+    },
+    async predictionBoard(limit) {
+      const rows = must(await db.from('test_prediction_board').select('*')
+        .order('points', { ascending: false }).order('winners', { ascending: false }).limit(Math.max(limit, 1))) as PredictionBoardRow[];
+      return sortPredictionBoard(rows).slice(0, limit);
+    },
+    async recentRooms(limit, now) {
+      return must(await db.from('test_races').select('*').eq('kind', 'online').eq('status', 'finished')
+        .lte('finished_at', now.toISOString()).order('finished_at', { ascending: false }).limit(limit)) as RaceRow[];
     },
     async insertReport(report) { must(await db.from('test_reports').insert(report)); },
     async countReports(since, wallet) {

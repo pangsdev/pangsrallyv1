@@ -38,6 +38,7 @@ const deps: Deps = {
   randomHex: (bytes) => [...crypto.getRandomValues(new Uint8Array(bytes))].map(b => b.toString(16).padStart(2, '0')).join(''),
   uuid: () => crypto.randomUUID(),
   now: () => new Date(),
+  predictions: Deno.env.get('TEST_PREDICTIONS') === '1',
   unlimitedWallets: new Set((Deno.env.get('TEST_UNLIMITED_WALLETS') ?? '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean)),
   inviteRequired: Deno.env.get('TEST_OPEN_SIGNUP') !== '1',
   beta: createBetaGate((name) => Deno.env.get(name)),

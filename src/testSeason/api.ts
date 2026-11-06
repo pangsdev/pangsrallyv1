@@ -12,6 +12,9 @@ const BASE: string = import.meta.env.VITE_TEST_SEASON_API
 const UNAVAILABLE = 'The race server is not available right now. Please try again in a few minutes.';
 const SESSION_KEY = 'pangsrally_test_session';
 
+/** The free prediction game is still in the works: it shows on the dev server only, never in a production build. */
+export const PREDICTIONS_ON = import.meta.env.DEV;
+
 export interface PlayerStatus {
   wallet: string;
   /** Name picked on the Profile page; null → the short wallet is shown. */
@@ -23,7 +26,8 @@ export interface PlayerStatus {
   dailyLimit: number;
   racesLeft: number;
   /** start times of rooms the player holds a seat in; each seat already used one of today's races */
-  bookedSeats: string[];
+  /** start times of the rooms the player has a seat in; null while a room waits for players */
+  bookedSeats: (string | null)[];
   unlimited: boolean;
   points: number;
   races: number;
@@ -64,14 +68,52 @@ export interface PublicRace {
   maxPlayers: number;
 }
 
-/** An online room in the schedule (the game makes them; see ROOM_SLOT_MINUTES). */
+/** An online room. It has no start time until all its seats are taken. */
 export interface RoomSummary {
   id: string;
-  startsAt: string;
+  startsAt: string | null;
   players: number;
+  /** who took a seat, first come first */
+  names: string[];
   maxPlayers: number;
   /** the signed-in player already has a seat */
   joined: boolean;
+  /** the signed-in player's locked number, if any */
+  myPick: number | null;
+  /** picks per saddle number, 1 to 10 */
+  crowd: number[];
+}
+
+export interface PredictionPlayer {
+  rank: number;
+  wallet: string;
+  name: string;
+  points: number;
+  picks: number;
+  /** picks that named the winner */
+  winners: number;
+  /** picks that finished 2nd or 3rd */
+  podiums: number;
+}
+
+export interface MyPick {
+  raceId: string;
+  terrain: string;
+  pick: number;
+  startsAt: string | null;
+  /** 'live': resolved but still running on screen, so the result stays hidden */
+  status: 'open' | 'live' | 'finished';
+  position: number | null;
+  points: number;
+}
+
+export interface PredictionBoard {
+  players: PredictionPlayer[];
+  recent: { raceId: string; number: number; name: string; terrain: string; finishedAt: string | null }[];
+  /** wins per saddle number over the rooms counted */
+  numberWins: number[];
+  roomsCounted: number;
+  mine: { summary: PredictionPlayer | null; picks: MyPick[] } | null;
 }
 
 export interface LeaderboardPlayer {
@@ -275,7 +317,8 @@ export function seatNote(player: Pick<PlayerStatus, 'bookedSeats'>): string {
   const seats = player.bookedSeats ?? [];
   if (!seats.length) return '';
   if (seats.length > 1) return ` · ${seats.length} seats booked`;
-  return ` · 1 seat booked for ${new Date(seats[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+  const start = seats[0];
+  return start ? ` · 1 seat booked for ${new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ' · 1 held for your room';
 }
 
 export type ReportKind = 'bug' | 'idea' | 'other';
@@ -287,11 +330,16 @@ export const testSeason = {
   rooms: (terrain: string) => call<{ rooms: RoomSummary[]; serverTime: string }>('rooms', { terrain }),
   /** Takes a seat (one of the day's races). No roomId → the soonest room with a free seat. */
   onlineJoin: (terrain: string, roomId?: string) => call<{ race: PublicRace; serverTime: string }>('online-join', { terrain, ...(roomId ? { roomId } : {}) }),
+  onlineLeave: (raceId: string) => call<PlayerStatus>('online-leave', { raceId }),
   onlineStatus: (raceId: string) => call<{ race: PublicRace; serverTime: string }>('online-status', { raceId }),
   race: (raceId: string) => call<{ race: PublicRace }>('race', { raceId }),
   history: () => call<{ races: HistoryRow[] }>('history'),
   profile: () => call<ProfileStatus>('profile'),
   leaderboard: () => call<{ players: LeaderboardPlayer[] }>('leaderboard'),
+  /** Locks the player's number for a room. Free; a pick cannot be changed. */
+  predict: (raceId: string, pick: number) => call<{ pick: number | null; crowd: number[] }>('predict', { raceId, pick }),
+  prediction: (raceId: string) => call<{ pick: number | null; crowd: number[] }>('prediction', { raceId }),
+  predictionBoard: () => call<PredictionBoard>('prediction-board'),
   report: (r: { kind: ReportKind; area: ReportArea; message: string; contact: string; page: string; agent: string }) => call<{ sent: boolean }>('report', r),
   setUsername: (username: string) => call<PlayerStatus>('set-username', { username }),
 };

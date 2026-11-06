@@ -259,6 +259,7 @@
   flex-shrink: 0;
 }
 .rr-row.me .rr-num { background: #ffd700; }
+.rr-row.pick .rr-num { box-shadow: 0 0 0 2px #ffd166; }
 .rr-avatar {
   width: 30px; height: 30px; border-radius: 8px; object-fit: contain;
   background: rgba(255, 255, 255, 0.06);
@@ -402,6 +403,12 @@
 .or-seat-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.2); flex-shrink: 0; }
 .or-seat.taken .or-seat-dot { background: #00c8ff; box-shadow: 0 0 8px rgba(0,200,255,0.8); }
 .or-seat.me .or-seat-dot { background: #ffd700; box-shadow: 0 0 8px rgba(255,215,0,0.8); }
+.or-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6rem; margin-top: 1rem; }
+.or-pick { margin-top: 1.25rem; padding-top: 1.1rem; border-top: 1px solid rgba(255,255,255,0.1); }
+.rr-pickline { margin: 0 0 0.75rem; padding: 0.55rem 0.8rem; border: 1px solid rgba(255,255,255,0.14); border-radius: 10px; font-size: 0.9rem; color: rgba(255,255,255,0.75); }
+.rr-pickline strong { color: #fff; }
+.rr-pickline.hit { border-color: rgba(255,209,102,0.6); color: #ffd166; background: rgba(255,209,102,0.1); }
+.rr-pickline.hit strong { color: #ffd166; }
 .or-leave { color: rgba(255,255,255,0.45); font-size: 0.8rem; margin: 1.25rem 0 0; line-height: 1.5; }
 
 /* Short desktop windows: tighten the sidebar so all 10 standings rows and the call log fit without scrolling. */

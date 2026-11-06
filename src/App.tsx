@@ -14,8 +14,9 @@ import Landing from './components/Landing';
 import { BadgeUnlocked, SeasonBadgeUnlocked, markBadgeSeen, markSeasonBadgeSeen, seasonBadgeUnseen, unseenBadge } from './components/Badges';
 import WalletMenu from './components/WalletMenu';
 import ReportPage from './components/ReportPage';
+import { PredictionBoard } from './components/Predictions';
 import { SeasonLeaderboard, SignInGate, NoWalletModal, InviteCodeModal, BetaMintModal } from './components/SeasonPages';
-import { clearSession, getSession, hasWallet, mintBetaPass, signInWithWallet, testSeason, type PlayerStatus } from './testSeason/api';
+import { clearSession, getSession, hasWallet, mintBetaPass, PREDICTIONS_ON, signInWithWallet, testSeason, type PlayerStatus } from './testSeason/api';
 import { shortWallet } from './race/testSeason';
 
 // Heavy, rarely-visited views are split out of the initial bundle (the race rooms pull in PixiJS).
@@ -129,7 +130,7 @@ function App() {
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [selectedNFTDetails, setSelectedNFTDetails] = useState<any | null>(null);
   const [renameInput, setRenameInput] = useState('');
-  const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'race-lobby' | 'bot-race' | 'online-rooms' | 'online-race' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral' | 'replay' | 'report'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'race-lobby' | 'bot-race' | 'online-rooms' | 'online-race' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral' | 'replay' | 'report' | 'predictions'>('landing');
 
   const [parentA, setParentA] = useState<any>(null);
   const [parentB, setParentB] = useState<any>(null);
@@ -165,6 +166,7 @@ function App() {
   /** online room to resume from My Races (null → join a new one) */
   const [onlineRaceId, setOnlineRaceId] = useState<string | null>(null);
   const [replayRaceId, setReplayRaceId] = useState<string | null>(null);
+  const replayBack = useRef<'my-races' | 'predictions'>('my-races');
 
   const applyPlayer = (status: PlayerStatus) => {
     const { wallet, username, streak, racerNumber, racesToday, dailyLimit, racesLeft, bookedSeats, unlimited, points, races, wins, podiums, rank, resetsAt, beta } = status;
@@ -810,7 +812,7 @@ function App() {
   /* ---------------------------------------------------------------- */
   const SIMPLE_PATHS: Partial<Record<typeof currentView, string>> = {
     landing: '/', 'how-to-play': '/vision', rally: '/rally', leaderboard: '/leaderboard', 'my-races': '/profile',
-    inventory: '/inventory', marketplace: '/marketplace', laboratory: '/lab', report: '/report',
+    inventory: '/inventory', marketplace: '/marketplace', laboratory: '/lab', report: '/report', ...(PREDICTIONS_ON ? { predictions: '/predictions' } : {}),
   };
   const pathForView = (): string | null => {
     const track = `/rally/${String(activeCategoryInfo?.terrain ?? 'forest').toLowerCase()}`;
@@ -1422,7 +1424,7 @@ function App() {
               Marketplace
             </a>
             <a 
-              className={currentView === 'leaderboard' ? 'active' : ''} 
+              className={currentView === 'leaderboard' || currentView === 'predictions' ? 'active' : ''} 
               onClick={() => setCurrentView('leaderboard')}
               style={{cursor: 'pointer'}}
             >
@@ -1565,6 +1567,7 @@ function App() {
               onOpenRoom={(id) => { unlockAnnounce(); setOnlineRaceId(id); setRaceKey(k => k + 1); setCurrentView('online-race'); }}
               onJoined={refreshPlayer}
               onBack={() => setCurrentView('race-lobby')}
+              onPredictions={() => setCurrentView('predictions')}
             />
           ) : (
             <SignInGate signingIn={signingIn} onSignIn={signIn} />
@@ -1589,8 +1592,8 @@ function App() {
             title="Replay"
             playerWallet={player?.wallet ?? null}
             loadRace={() => testSeason.race(replayRaceId)}
-            onBack={() => setCurrentView('my-races')}
-            backLabel="← Back to Profile"
+            onBack={() => setCurrentView(replayBack.current)}
+            backLabel={replayBack.current === 'predictions' ? '← Back to Predictions' : '← Back to Profile'}
           />
         )}
 
@@ -2083,7 +2086,17 @@ function App() {
         )}
 
         {currentView === 'leaderboard' && (
-          <SeasonLeaderboard playerWallet={player?.wallet ?? null} />
+          <SeasonLeaderboard playerWallet={player?.wallet ?? null} onTab={t => setCurrentView(t === 'season' ? 'leaderboard' : 'predictions')} />
+        )}
+
+        {PREDICTIONS_ON && currentView === 'predictions' && (
+          <PredictionBoard
+            playerWallet={player?.wallet ?? null}
+            onTab={t => setCurrentView(t === 'season' ? 'leaderboard' : 'predictions')}
+            onMakePick={() => { setActiveCategoryInfo(mockCategories[0]); setCurrentView('online-rooms'); }}
+            onSignIn={signIn}
+            onWatch={(id) => { unlockAnnounce(); replayBack.current = 'predictions'; setReplayRaceId(id); setCurrentView('replay'); }}
+          />
         )}
 
         {currentView === 'report' && (
@@ -2100,7 +2113,7 @@ function App() {
             signingIn={signingIn}
             onSignIn={signIn}
             onMintBeta={() => setBetaOpen(true)}
-            onReplay={(id) => { unlockAnnounce(); setReplayRaceId(id); setCurrentView('replay'); }}
+            onReplay={(id) => { unlockAnnounce(); replayBack.current = 'my-races'; setReplayRaceId(id); setCurrentView('replay'); }}
             onOpenRoom={(id) => {
               unlockAnnounce();
               setActiveCategoryInfo(mockCategories[0]);

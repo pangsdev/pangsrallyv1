@@ -15,16 +15,12 @@ import { CALL_NAMES, callNameForToken } from './callNames.ts';
 import type { BodyColor } from './sprites.ts';
 
 export const FIELD_SIZE = 10;
-export const DAILY_RACE_LIMIT = 3;
+export const DAILY_RACE_LIMIT = 5;
 /** Season points by finishing position (1st … 10th). */
 export const POINTS_BY_POSITION = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
-/** Online rooms are made by the game, not by players: OPEN_ROOMS rooms per track are always open,
- *  starting on the clock every ROOM_SLOT_MINUTES (e.g. :00 and :30), so the furthest starts in at most
- *  OPEN_ROOMS × ROOM_SLOT_MINUTES. A room that fills up starts at once and a new one takes its start time. */
-export const ROOM_SLOT_MINUTES = 30;
-export const OPEN_ROOMS = 3;
-/** A room is not created for a start time closer than this, so nobody joins a room that is about to go. */
-export const ROOM_MIN_LEAD_SECONDS = 120;
+/** Online rooms are made by the game and hold real players only: one room per track waits until all
+ *  FIELD_SIZE seats are taken, then starts this long later so the players can gather. The next room opens at once. */
+export const ROOM_FULL_COUNTDOWN_SECONDS = 300;
 /** Tracks open during the Beta season. */
 export const TEST_TERRAINS = ['Forest'];
 const TEST_STATS: RacerStats = { speed: 50, burst: 50, endurance: 50 };
@@ -71,6 +67,14 @@ export function signInMessage(address: string, issuedAt: string, title = 'Pangs 
 
 export function pointsFor(position: number): number {
   return POINTS_BY_POSITION[position - 1] ?? 0;
+}
+
+/** Free prediction game: call the saddle number that wins an online room. Separate from season points, no value. */
+export const PREDICTION_WINNER_POINTS = 10;
+export const PREDICTION_PODIUM_POINTS = 3;
+
+export function predictionPointsFor(position: number): number {
+  return position === 1 ? PREDICTION_WINNER_POINTS : position <= 3 ? PREDICTION_PODIUM_POINTS : 0;
 }
 
 export function shortWallet(wallet: string): string {

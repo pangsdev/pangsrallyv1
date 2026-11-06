@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { metamaskDeepLink, testSeason, type HistoryRow, type LeaderboardPlayer } from '../testSeason/api';
+import { metamaskDeepLink, PREDICTIONS_ON, testSeason, type HistoryRow, type LeaderboardPlayer } from '../testSeason/api';
 import { DAILY_RACE_LIMIT, POINTS_BY_POSITION } from '../race/testSeason';
 import { LeaderboardBadges } from './Badges';
+import { BoardTabs } from './Predictions';
 
 /** Shown instead of a race page until the player has signed in with their wallet. */
 export function SignInGate({ signingIn, onSignIn }: { signingIn: boolean; onSignIn: () => void }) {
@@ -107,7 +108,7 @@ const medal = (pos: number | null) => pos === 1 ? '🥇' : pos === 2 ? '🥈' : 
 const raceNote = (r: HistoryRow) => r.status === 'finished' ? `+${r.points} pts` : r.status === 'live' ? 'Racing now' : 'Waiting';
 
 /** Test-season leaderboard (points from every finish). */
-export function SeasonLeaderboard({ playerWallet }: { playerWallet: string | null }) {
+export function SeasonLeaderboard({ playerWallet, onTab }: { playerWallet: string | null; onTab: (tab: 'season' | 'predictions') => void }) {
   const [players, setPlayers] = useState<LeaderboardPlayer[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,6 +124,7 @@ export function SeasonLeaderboard({ playerWallet }: { playerWallet: string | nul
 
   return (
     <section className="inventory-page animated-enter season-page">
+      {PREDICTIONS_ON && <BoardTabs active="season" onChange={onTab} />}
       <div className="inventory-header-bar">
         <h2>Beta Season Leaderboard</h2>
         <div className="inventory-stats">

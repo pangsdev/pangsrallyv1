@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { seatNote, testSeason, type PlayerStatus, type RoomSummary } from '../testSeason/api';
 import './lobby.css';
-import { BETA_RACER_ART, FIELD_SIZE, POINTS_BY_POSITION, ROOM_SLOT_MINUTES, shortWallet } from '../race/testSeason';
+import { BETA_RACER_ART, FIELD_SIZE, POINTS_BY_POSITION, ROOM_FULL_COUNTDOWN_SECONDS, shortWallet } from '../race/testSeason';
 import { BALL_SPRITES } from '../race/sprites';
 import { ClockIcon, FlagIcon, TrackBadge } from './Icons';
 import HeroRunner from './HeroRunner';
@@ -19,7 +19,7 @@ const clock = (ms: number) => {
   return `${h ? `${h}:` : ''}${String(m).padStart(h ? 2 : 1, '0')}:${String(sec).padStart(2, '0')}`;
 };
 
-/** Live board for the next online room: its start time, a ticking countdown and the 10 seats filling up. */
+/** Live board for the online room: the 10 seats filling up, then a ticking countdown once it is full. */
 function NextRoomBoard({ terrain }: { terrain: string }) {
   const [room, setRoom] = useState<RoomSummary | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -31,7 +31,7 @@ function NextRoomBoard({ terrain }: { terrain: string }) {
       .then(r => {
         if (!live) return;
         skew.current = Date.parse(r.serverTime) - Date.now();
-        setRoom(r.rooms.find(x => x.players < x.maxPlayers) ?? r.rooms[0] ?? null);
+        setRoom(r.rooms[0] ?? null);
       })
       .catch(() => {});
     load();
@@ -40,15 +40,17 @@ function NextRoomBoard({ terrain }: { terrain: string }) {
     return () => { live = false; clearInterval(poll); clearInterval(tick); };
   }, [terrain]);
 
-  const left = room ? Date.parse(room.startsAt) - (now + skew.current) : 0;
+  const start = room?.startsAt ? Date.parse(room.startsAt) : null;
+  const left = start ? start - (now + skew.current) : 0;
   const taken = room?.players ?? 0;
+  const open = FIELD_SIZE - taken;
   return (
     <div className="lobby-board" aria-hidden="true">
       <div className="lobby-board-top">
-        <span className="lobby-board-live"><i /> Next room</span>
-        <strong>{room ? new Date(room.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'}</strong>
+        <span className="lobby-board-live"><i /> {start ? 'Room full' : 'Open room'}</span>
+        <strong>{start ? new Date(start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : `${taken}/${FIELD_SIZE}`}</strong>
       </div>
-      <div className="lobby-board-clock">{room ? (left > 0 ? clock(left) : 'Starting') : '…'}</div>
+      <div className={`lobby-board-clock ${start ? '' : 'seats'}`}>{!room ? '…' : !start ? `${open} ${open === 1 ? 'seat' : 'seats'} left` : left > 0 ? clock(left) : 'Starting'}</div>
       <div className="lobby-board-seats">
         {Array.from({ length: FIELD_SIZE }, (_, i) => (
           <span key={i} className={i < taken ? 'on' : ''}>{i < taken && <img src={BETA_RACER_ART} alt="" />}</span>
@@ -126,9 +128,9 @@ export default function RaceLobby({ categoryInfo, player, onSelectMode, onBack }
                 <HeroRunner art="/landing/runner-beta.webp" ball={BALL_SPRITES.Beta} className="lobby-runner-canvas" />
               </div>
               <h3>Online Race</h3>
-              <p>Pick a room and race other players. A new room starts every {ROOM_SLOT_MINUTES} minutes; empty lanes get bots. Taking a seat uses one of today's races.</p>
+              <p>Race real players, no bots. When all {FIELD_SIZE} seats are taken, the race starts {ROOM_FULL_COUNTDOWN_SECONDS / 60} minutes later. A seat uses one of today's races when the race starts.</p>
               <NextRoomBoard terrain={terrain} />
-              <div className="lobby-chips"><span>Real players</span><span>Up to 10</span><span>Up to {POINTS_BY_POSITION[0]} pts</span></div>
+              <div className="lobby-chips"><span>Real players</span><span>No bots</span><span>Up to {POINTS_BY_POSITION[0]} pts</span></div>
               <span className="lobby-cta">{canRace ? 'See Rooms' : 'Limit Reached'}</span>
             </button>
           </div>

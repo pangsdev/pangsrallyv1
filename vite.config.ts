@@ -111,6 +111,7 @@ function testSeasonDevPlugin(env: Record<string, string>) {
     randomHex: (n) => randomBytes(n).toString('hex'),
     uuid: () => randomUUID(),
     now: () => new Date(),
+    predictions: true,
     unlimitedWallets: new Set((env.TEST_UNLIMITED_WALLETS || '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean)),
     inviteRequired: env.TEST_OPEN_SIGNUP !== '1',
     // .env carries the live BETA_* values for the scripts; dev only enforces the Beta pass with DEV_BETA_GATE=1

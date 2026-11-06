@@ -3,7 +3,7 @@
  * supabase/migrations/003_test_season.sql and 004_test_invites.sql so limits behave like production.
  * Data is lost when the dev server restarts.
  */
-import { raceOver, type EntryRow, type LeaderRow, type RaceRow, type ReportRow, type Store } from './core.ts';
+import { raceOver, type EntryRow, type LeaderRow, type PredictionBoardRow, type PredictionRow, type RaceRow, type ReportRow, type Store } from './core.ts';
 
 /** `invites`: code → places, e.g. { 'DEV-RALLY': 1000 } so dev sign-in works. */
 export function createMemoryStore(invites: Record<string, number> = {}): Store {
@@ -15,6 +15,7 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
   const races = new Map<string, RaceRow>();
   let entries: EntryRow[] = [];
   const reports: ReportRow[] = [];
+  let predictions: PredictionRow[] = [];
 
   const clone = <T>(v: T): T => (v === null || v === undefined ? v : JSON.parse(JSON.stringify(v)));
 
@@ -44,7 +45,7 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
     },
     async raceDays(wallets) {
       const out: Record<string, string[]> = {};
-      for (const e of entries) if (wallets.includes(e.wallet)) (out[e.wallet] ??= []).push(e.day);
+      for (const e of entries) if (e.slot > 0 && wallets.includes(e.wallet)) (out[e.wallet] ??= []).push(e.day);
       return out;
     },
     async racerNumber(wallet, before) {
@@ -70,7 +71,15 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
       betaMinted.add(wallet);
     },
     async countEntriesOnDay(wallet, day) {
-      return entries.filter(e => e.wallet === wallet && e.day === day).length;
+      return entries.filter(e => e.wallet === wallet && e.day === day && e.slot > 0).length;
+    },
+    async heldSeats(wallet) {
+      return entries.filter(e => e.wallet === wallet && e.slot === 0 && races.get(e.race_id)?.status === 'open').length;
+    },
+    async chargeSeat(raceId, wallet, day, slot) {
+      if (entries.some(e => e.wallet === wallet && e.day === day && e.slot === slot)) return 'conflict';
+      entries = entries.map(e => (e.race_id === raceId && e.wallet === wallet ? { ...e, day, slot } : e));
+      return 'ok';
     },
     async insertRace(race) {
       races.set(race.id, clone(race));
@@ -78,6 +87,7 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
     async deleteRace(id) {
       races.delete(id);
       entries = entries.filter(e => e.race_id !== id);
+      predictions = predictions.filter(p => p.race_id !== id);
     },
     async insertEntry(entry) {
       const clash = entries.some(e =>
@@ -102,11 +112,57 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
         .sort((a, b) => (a.closes_at ?? '').localeCompare(b.closes_at ?? '')));
     },
     async insertOpenRoom(room) {
-      // Mirrors the partial unique index of 006: one open room per track and start time.
-      const clash = [...races.values()].some(r => r.kind === 'online' && r.status === 'open' && r.terrain === room.terrain && r.closes_at === room.closes_at);
+      // Mirrors the partial unique index of 012: one waiting room per track.
+      const clash = [...races.values()].some(r => r.kind === 'online' && r.status === 'open' && r.terrain === room.terrain && r.closes_at === null);
       if (clash) return 'conflict';
       races.set(room.id, clone(room));
       return 'ok';
+    },
+    async startCountdown(id, closesAt) {
+      const r = races.get(id);
+      if (r && r.status === 'open' && r.closes_at === null) races.set(id, { ...r, closes_at: closesAt });
+    },
+    async insertPrediction(row) {
+      if (predictions.some(p => p.race_id === row.race_id && p.wallet === row.wallet)) return 'conflict';
+      predictions.push(clone(row));
+      return 'ok';
+    },
+    async deletePrediction(raceId, wallet) {
+      predictions = predictions.filter(p => !(p.race_id === raceId && p.wallet === wallet));
+    },
+    async listPredictions(raceId) {
+      return clone(predictions.filter(p => p.race_id === raceId));
+    },
+    async setPredictionResult(raceId, pick, position, points) {
+      for (const p of predictions) if (p.race_id === raceId && p.pick === pick) { p.position = position; p.points = points; }
+    },
+    async predictionsFor(wallet, limit) {
+      return predictions
+        .filter(p => p.wallet === wallet && races.has(p.race_id))
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .slice(0, limit)
+        .map(p => ({ ...clone(p), race: clone(races.get(p.race_id)!) }));
+    },
+    async predictionBoard(limit, now) {
+      const by = new Map<string, PredictionBoardRow>();
+      for (const p of predictions) {
+        const race = races.get(p.race_id);
+        if (!race || !raceOver(race, now) || p.position === null) continue;
+        const row = by.get(p.wallet) ?? { wallet: p.wallet, picks: 0, points: 0, winners: 0, podiums: 0, last_pick: null };
+        row.picks++;
+        row.points += p.points;
+        if (p.position === 1) row.winners++;
+        else if (p.position <= 3) row.podiums++;
+        if (!row.last_pick || p.created_at > row.last_pick) row.last_pick = p.created_at;
+        by.set(p.wallet, row);
+      }
+      return sortPredictionBoard([...by.values()]).slice(0, limit);
+    },
+    async recentRooms(limit, now) {
+      return clone([...races.values()]
+        .filter(r => r.kind === 'online' && raceOver(r, now))
+        .sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? ''))
+        .slice(0, limit));
     },
     async insertReport(report) { reports.push(clone(report)); },
     async countReports(since, wallet) { return reports.filter(r => r.created_at >= since && r.wallet === wallet).length; },
@@ -157,6 +213,13 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
         .map(e => ({ ...clone(e), race: clone(races.get(e.race_id)!) }));
     },
   };
+}
+
+/** Points, then called winners, then fewer picks, then whoever got there first. Shared with the Postgres store. */
+export function sortPredictionBoard(rows: PredictionBoardRow[]): PredictionBoardRow[] {
+  return rows
+    .filter(r => r.picks > 0)
+    .sort((a, b) => b.points - a.points || b.winners - a.winners || a.picks - b.picks || (a.last_pick ?? '').localeCompare(b.last_pick ?? ''));
 }
 
 /** Points, then wins, then whoever got there first. Shared with the Postgres store. */

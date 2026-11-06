@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { seatNote, testSeason, type RoomSummary } from '../testSeason/api';
-import { OPEN_ROOMS, ROOM_SLOT_MINUTES } from '../race/testSeason';
+import { PREDICTIONS_ON, seatNote, testSeason, type RoomSummary } from '../testSeason/api';
+import { FIELD_SIZE, ROOM_FULL_COUNTDOWN_SECONDS } from '../race/testSeason';
 import type { PlayerStatus } from '../testSeason/api';
 import { ClockIcon, TrackBadge } from './Icons';
+import { PickPanel } from './Predictions';
 import './lobby.css';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
   onOpenRoom: (roomId: string) => void;
   onBack: () => void;
   onJoined: () => void;
+  onPredictions: () => void;
 }
 
 const REFRESH_MS = 10_000;
@@ -27,15 +29,16 @@ export function startsIn(ms: number): string {
 }
 
 /**
- * Online rooms made by the game: the next few start times, seats taken, and a Join button.
- * Joining spends one of the day's races; the player can then leave and come back for the replay.
+ * Online rooms made by the game: the room filling up, and any full room counting down to its start.
+ * A seat keeps one of the day's races back and uses it when the race starts.
  */
-export default function OnlineRooms({ categoryInfo, player, onOpenRoom, onBack, onJoined }: Props) {
+export default function OnlineRooms({ categoryInfo, player, onOpenRoom, onBack, onJoined, onPredictions }: Props) {
   const terrain: string = categoryInfo?.terrain || 'Forest';
   const [rooms, setRooms] = useState<RoomSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [joining, setJoining] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [picking, setPicking] = useState<string | null>(null);
   const skew = useRef(0);
   const canRace = player.unlimited || player.racesLeft > 0;
 
@@ -74,7 +77,7 @@ export default function OnlineRooms({ categoryInfo, player, onOpenRoom, onBack, 
             <TrackBadge terrain={terrain} size={40} />
             <div>
               <h2>Online Rooms</h2>
-              <span>{terrain} Track · a new room every {ROOM_SLOT_MINUTES} minutes</span>
+              <span>{terrain} Track · real players only</span>
             </div>
           </div>
           <div className={`lobby-pill ${canRace ? 'ok' : 'out'}`}>
@@ -84,8 +87,9 @@ export default function OnlineRooms({ categoryInfo, player, onOpenRoom, onBack, 
         </header>
 
         <p className="rooms-intro">
-          The game keeps {OPEN_ROOMS} rooms open. Each starts at its time, or as soon as all 10 seats are taken; empty lanes get bots.
-          Joining uses one of your daily races. You can leave after joining: the race still runs and the replay waits in <strong>My Races</strong>.
+          No bots here. A room waits until all {FIELD_SIZE} seats are taken, then the race starts {ROOM_FULL_COUNTDOWN_SECONDS / 60} minutes later and a new room opens.
+          Your seat uses one of today's races only when the race starts, and you can give it back until the room is full.
+          {PREDICTIONS_ON && <>{' '}Predicting who wins is free, even if you do not race: <button type="button" className="rooms-link" onClick={onPredictions}>see the Prediction League</button>.</>}
         </p>
         {error && <div className="rooms-error">{error}</div>}
 
@@ -93,26 +97,46 @@ export default function OnlineRooms({ categoryInfo, player, onOpenRoom, onBack, 
           {!rooms ? (
             <div className="rooms-loading"><div className="rr-spinner" /></div>
           ) : rooms.map(room => {
-            const start = Date.parse(room.startsAt);
-            const left = start - (now + skew.current);
-            const full = room.players >= room.maxPlayers;
+            const start = room.startsAt ? Date.parse(room.startsAt) : null;
+            const left = start ? start - (now + skew.current) : 0;
+            const full = start !== null || room.players >= room.maxPlayers;
+            const open = room.maxPlayers - room.players;
             return (
               <article key={room.id} className={`rooms-card ${room.joined ? 'in' : ''}`}>
                 <div className="rooms-time">
-                  <strong>{new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</strong>
-                  <span>{startsIn(left)}</span>
+                  <strong>{start ? new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : `${open} ${open === 1 ? 'seat' : 'seats'} left`}</strong>
+                  <span>{start ? startsIn(left) : 'Waiting for players'}</span>
                 </div>
                 <div className="rooms-seats">
                   <div className="rooms-bar"><span style={{ width: `${(room.players / room.maxPlayers) * 100}%` }} /></div>
                   <span>{room.players} of {room.maxPlayers} players</span>
+                  {room.names.length > 0 && <span className="rooms-names">{room.names.join(' · ')}</span>}
                 </div>
                 <button
                   className={`rooms-join ${room.joined ? 'in' : ''}`}
                   disabled={joining !== null || (!room.joined && (full || !canRace))}
                   onClick={() => join(room)}
                 >
-                  {room.joined ? "You're in · Open" : joining === room.id ? 'Joining…' : full ? 'Full' : canRace ? 'Join' : 'Limit reached'}
+                  {room.joined ? "You're in · Open" : joining === room.id ? 'Joining…' : full ? 'Full' : canRace ? 'Take a seat' : 'Limit reached'}
                 </button>
+                {PREDICTIONS_ON && <button
+                  type="button"
+                  className={`rooms-predict ${room.myPick ? 'done' : ''}`}
+                  aria-expanded={picking === room.id}
+                  onClick={() => setPicking(picking === room.id ? null : room.id)}
+                >
+                  {room.myPick ? `Your pick: Number ${room.myPick}` : 'Predict the winner'}
+                </button>}
+                {PREDICTIONS_ON && picking === room.id && (
+                  <div className="rooms-pick">
+                    <PickPanel
+                      raceId={room.id}
+                      myPick={room.myPick}
+                      crowd={room.crowd}
+                      onPicked={(pick, crowd) => setRooms(list => list?.map(r => r.id === room.id ? { ...r, myPick: pick, crowd } : r) ?? null)}
+                    />
+                  </div>
+                )}
               </article>
             );
           })}
