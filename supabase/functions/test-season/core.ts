@@ -357,7 +357,9 @@ async function ensureRooms(deps: Deps, terrain: string): Promise<RaceRow[]> {
     if (open.some(r => r.closes_at && Date.parse(r.closes_at) === start)) continue;
     const id = deps.uuid();
     const room: RaceRow = {
-      id, kind: 'online', terrain, seed: `online-${id}`, status: 'open',
+      // Secret, not derived from the id: the id is public and the race code ships to every browser,
+      // so a seed built from it would let anyone work out the result before the start.
+      id, kind: 'online', terrain, seed: `online-${deps.randomHex(16)}`, status: 'open',
       created_at: now.toISOString(), closes_at: new Date(start).toISOString(),
       finished_at: null, field: null, results: null,
     };
