@@ -32,6 +32,6 @@ echo; echo '3/4 Scheduling it every minute…'
 "$SB" db query --linked -f supabase/migrations/014_cup_autopilot.sql
 
 echo; echo '4/4 Handing PangsCup to the Cup operator…'
-node scripts/cup-admin.mjs operator --contract "$CONTRACT" --send
+node scripts/cup-admin.mjs operator --contract "$CONTRACT" --eth 0.0008 --send
 
 echo; echo 'Autopilot is on.'
