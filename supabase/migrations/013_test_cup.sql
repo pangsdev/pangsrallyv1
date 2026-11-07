@@ -18,7 +18,7 @@ create table if not exists test_cups (
   round_minutes int not null default 15 check (round_minutes >= 2),
   qualifying_rounds int not null default 4 check (qualifying_rounds between 1 and 10),
   final_gap_minutes int not null default 30 check (final_gap_minutes >= 2),
-  seats int not null default 30 check (seats between 2 and 200),
+  seats int not null default 50 check (seats between 2 and 200),
   register_close_minutes int not null default 30 check (register_close_minutes >= 0),
   eligible_before timestamptz,
   -- Secret until the Grand Final has run; its SHA-256 is public from the start.

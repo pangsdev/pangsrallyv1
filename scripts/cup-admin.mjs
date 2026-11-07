@@ -46,7 +46,9 @@ const rest = async (path, init = {}) => {
     headers: { apikey: env.SUPABASE_SECRET_KEY, Authorization: `Bearer ${env.SUPABASE_SECRET_KEY}`, 'Content-Type': 'application/json', ...(init.headers ?? {}) },
   });
   if (!res.ok) fail(`Database request failed (${res.status}): ${await res.text()}`);
-  return res.status === 204 ? null : res.json();
+  // return=minimal answers 201/204 with no body.
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
 };
 const game = async (action, body = {}) => {
   const res = await fetch(`${url}/functions/v1/test-season`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, ...body }) });
