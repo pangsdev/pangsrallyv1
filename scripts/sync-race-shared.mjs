@@ -29,4 +29,9 @@ for (const file of ['simulation', 'testSeason', 'callNames']) {
 // The server only needs the BodyColor type from sprites.ts, not its browser helpers.
 writeFileSync(join(out, 'sprites.ts'), `${HEADER}export type BodyColor = string;\n`);
 
+// The Cup publisher builds the Participant badge's Merkle root with the same code as the Cup page.
+const cupOut = join(root, 'supabase/functions/cup-publish');
+mkdirSync(cupOut, { recursive: true });
+writeFileSync(join(cupOut, 'cupMerkle.ts'), HEADER.replace('src/race', 'src/testSeason') + readFileSync(join(root, 'src/testSeason/cupMerkle.ts'), 'utf8'));
+
 console.log(`Synced race modules → ${out.replace(root + '/', '')}`);

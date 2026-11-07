@@ -10,13 +10,16 @@
  *   npm run cup -- uris    --contract 0x… --cid <IPFS CID of the metadata folder> --id 1 [--send]
  *   npm run cup -- fund    --contract 0x… --usdg 30 [--send]       sends USDG from the dev wallet
  *   npm run cup -- publish --id 1 --contract 0x… [--send]           writes the final results and the racers' Participant root on chain
+ *   npm run cup -- operator --contract 0x… [--eth 0.0003] [--send]  hands PangsCup to the Cup operator wallet (CUP_OPERATOR_KEY in
+ *                                                       .env and in the cup-publish function's secrets) and sends it gas, so the
+ *                                                       cup-publish function can write results on its own after every final
  *
  * .env: VITE_SUPABASE_URL, SUPABASE_SECRET_KEY (create/publish), DEV_WALLET_PRIVATE_KEY (chain).
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash, randomBytes } from 'node:crypto';
 import { participantRoot } from '../src/testSeason/cupMerkle.ts';
-import { Contract, ContractFactory, JsonRpcProvider, Wallet, formatEther, formatUnits, getAddress, isAddress, parseUnits } from 'ethers';
+import { Contract, ContractFactory, JsonRpcProvider, Wallet, formatEther, formatUnits, getAddress, isAddress, parseEther, parseUnits } from 'ethers';
 
 const RPC = 'https://rpc.mainnet.chain.robinhood.com';
 const CHAIN_ID = 4663;
@@ -38,6 +41,15 @@ const provider = new JsonRpcProvider(RPC, CHAIN_ID, { staticNetwork: true });
 const wallet = () => {
   if (!env.DEV_WALLET_PRIVATE_KEY) fail('DEV_WALLET_PRIVATE_KEY missing in .env');
   return new Wallet(env.DEV_WALLET_PRIVATE_KEY, provider);
+};
+/** The key that owns this PangsCup: the dev wallet until `operator --send`, the Cup operator after. */
+const ownerWallet = async (address) => {
+  const owner = getAddress(await cupContract(address, provider).owner());
+  for (const key of [env.DEV_WALLET_PRIVATE_KEY, env.CUP_OPERATOR_KEY].filter(Boolean)) {
+    const w = new Wallet(key, provider);
+    if (w.address === owner) return w;
+  }
+  fail(`No key in .env owns this contract (owner ${owner}).`);
 };
 const rest = async (path, init = {}) => {
   if (!env.SUPABASE_SECRET_KEY) fail('SUPABASE_SECRET_KEY missing in .env');
@@ -143,7 +155,7 @@ switch (command) {
   case 'uris': {
     const address = arg('contract'), cid = arg('cid');
     if (!isAddress(address ?? '') || !cid || !(id > 0)) fail('Usage: uris --contract 0x… --cid <CID> --id 1');
-    const c = cupContract(address, wallet());
+    const c = cupContract(address, await ownerWallet(address));
     for (const tier of [1, 2, 3, 4, 5]) {
       const tokenId = id * 10 + tier;
       const uri = `ipfs://${cid}/${tokenId}.json`;
@@ -182,7 +194,7 @@ switch (command) {
     const amounts = d.result.map(p => parseUnits(String(d.cup.prizes.find(x => x.tier === p.tier)?.usdg ?? 0), decimals));
     const total = amounts.reduce((a, b) => a + b, 0n);
     d.result.forEach((p, i) => console.log(`  ${p.place}. ${p.name.padEnd(16)} ${wallets[i]} tier ${tiers[i]} ${formatUnits(amounts[i], decimals)} USDG`));
-    const w = wallet();
+    const w = await ownerWallet(address);
     const c = cupContract(address, w);
     const [balance, owed] = await Promise.all([usdg(provider).balanceOf(address), c.totalOwed()]);
     console.log(`Contract holds ${formatUnits(balance, decimals)} USDG, ${formatUnits(owed, decimals)} already promised; this Cup needs ${formatUnits(total, decimals)}.`);
@@ -209,6 +221,36 @@ switch (command) {
     console.log('Results and the Participant root are on chain; the Claim buttons are live on the Cup page.');
     break;
   }
+  case 'operator': {
+    const address = arg('contract');
+    if (!isAddress(address ?? '')) fail('Usage: operator --contract 0x… [--eth 0.0003]');
+    if (!env.CUP_OPERATOR_KEY) fail('CUP_OPERATOR_KEY missing in .env');
+    const operator = new Wallet(env.CUP_OPERATOR_KEY).address;
+    const eth = parseEther(arg('eth', '0.0003'));
+    const w = wallet();
+    const c = cupContract(address, w);
+    const owner = getAddress(await c.owner());
+    const [has, gas] = await Promise.all([provider.getBalance(operator), provider.getBalance(w.address)]);
+    console.log(`Contract owner now: ${owner}\nCup operator:       ${operator} (holds ${formatEther(has)} ETH)`);
+    const needGas = has < eth;
+    if (needGas) console.log(`Send ${formatEther(eth)} ETH of gas from the dev wallet (holds ${formatEther(gas)} ETH).`);
+    if (owner === operator) console.log('The operator already owns the contract.');
+    else if (owner !== w.address) fail('The dev wallet does not own this contract.');
+    else console.log('Hand the contract to the operator (transferOwnership).');
+    if (!send) { console.log('\nPreview only. Add --send to do it.'); break; }
+    if (needGas) {
+      const tx = await w.sendTransaction({ to: operator, value: eth - has });
+      console.log(`Gas sent: ${tx.hash}`);
+      await tx.wait();
+    }
+    if (owner === w.address) {
+      const tx = await c.transferOwnership(operator);
+      console.log(`Ownership sent: ${tx.hash}`);
+      await tx.wait();
+    }
+    console.log('Done: the cup-publish function now writes the results on chain after the Grand Final.');
+    break;
+  }
   default:
-    fail('Commands: create, update, status, deploy, uris, fund, publish (see the top of scripts/cup-admin.mjs).');
+    fail('Commands: create, update, status, deploy, uris, fund, publish, operator (see the top of scripts/cup-admin.mjs).');
 }

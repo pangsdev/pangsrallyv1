@@ -66,8 +66,7 @@ export default function RicoHost({ line, log, className = '' }: { line?: string;
   return (
     <div className={`rico ${className}`} ref={root}>
       <div className="rico-head">
-        <span className="rico-onair"><i />ON AIR</span>
-        <div className="rico-name"><b>Rico Scales</b><span>Pangs Radio · Race caller</span></div>
+        <div className="rico-name"><b>Rico Scales</b><span>Race caller · Pangs Radio</span></div>
         <div className="rico-eq" aria-hidden="true">{[0.7, 1, 0.55, 0.9, 0.65].map((k, i) => <span key={i} style={{ '--k': k } as React.CSSProperties} />)}</div>
       </div>
       <div className="rico-cam">
@@ -78,6 +77,7 @@ export default function RicoHost({ line, log, className = '' }: { line?: string;
           </div>
         </div>
         <span className="rico-camtag"><i />CAM 1 · BOOTH</span>
+        <span className="rico-onair">ON AIR</span>
       </div>
       {log ? (
         log.length ? (

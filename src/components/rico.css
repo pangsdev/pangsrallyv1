@@ -7,10 +7,11 @@
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
 }
 .rico-head { display: flex; align-items: center; gap: 12px; }
-.rico-onair { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px; border-radius: 8px; font: 800 13px var(--font-heading); letter-spacing: 0.1em; background: #ff5c6c; }
-.rico-onair i { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: rico-pulse 1.4s ease-in-out infinite; }
-.rico-name b { display: block; font: 900 22px/1.1 var(--font-heading); }
-.rico-name span { font: 600 13px var(--font-body); color: #ffd166; }
+.rico-name { min-width: 0; }
+.rico-name b { display: block; font: 900 22px/1.1 var(--font-heading); white-space: nowrap; }
+.rico-name span { display: block; margin-top: 2px; font: 600 13px/1.2 var(--font-body); color: #ffd166; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* ON AIR sits on the camera, like a broadcast bug, so the header stays one clean line */
+.rico-onair { position: absolute; right: 10px; top: 10px; padding: 3px 8px; border-radius: 6px; font: 800 11px var(--font-heading); letter-spacing: 0.12em; color: #fff; background: #ff3b4f; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25), 0 4px 14px rgba(255, 59, 79, 0.45); animation: rico-onair 2.4s ease-in-out infinite; }
 .rico-eq { display: flex; align-items: flex-end; gap: 4px; height: 30px; margin-left: auto; }
 .rico-eq span { width: 6px; border-radius: 3px; background: linear-gradient(0deg, #ffb938, #ffe08f); height: calc(5px + var(--lv) * var(--k) * 25px); transition: height 70ms linear; }
 .rico-cam { position: relative; margin-top: 12px; aspect-ratio: 580 / 371; overflow: hidden; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.14); background: #1a1226; }
@@ -32,18 +33,25 @@
 @keyframes rico-punch { 35% { transform: scale(1.05); } }
 @keyframes rico-line-in { from { opacity: 0; transform: translateY(6px); } }
 @keyframes rico-pulse { 50% { opacity: 0.35; } }
+@keyframes rico-onair { 50% { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25), 0 4px 22px rgba(255, 59, 79, 0.8); } }
 /* calls list under the camera (race views) */
 .rico-log { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .rico-log li { padding-left: 10px; border-left: 2px solid rgba(255, 209, 102, 0.3); font: 600 0.8rem/1.35 var(--font-body, Inter, sans-serif); color: rgba(255, 255, 255, 0.6); }
 .rico-log li:first-child { border-left-color: #ffd166; color: #fff; font-weight: 700; font-size: 0.88rem; animation: rico-line-in 0.35s ease-out; }
 .rico-log-empty { margin: 10px 0 0; font-size: 0.8rem; color: rgba(255, 255, 255, 0.45); }
 
-/* in the race room side column */
-.rico.rr-rico { width: auto; padding: 0.9rem 0.95rem 0.95rem; border-radius: 18px; box-shadow: none; flex-shrink: 0; }
-.rr-rico .rico-head { gap: 8px; }
-.rr-rico .rico-onair { padding: 3px 7px; font-size: 10px; }
-.rr-rico .rico-name b { font-size: 1rem; }
-.rr-rico .rico-name span { font-size: 0.7rem; }
-.rr-rico .rico-eq { height: 20px; gap: 3px; }
-.rr-rico .rico-eq span { width: 4px; height: calc(4px + var(--lv) * var(--k) * 16px); }
-.rr-rico .rico-cam { margin-top: 10px; }
+/* in the race room side column: one card under Live Standings. It shrinks with the window
+   (the camera gives up height first, then older calls), so the column never needs a scroll. */
+.rico.rr-rico { width: auto; padding: 0.75rem 0.8rem 0.8rem; border-radius: 18px; box-shadow: none; display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; }
+.rr-rico .rico-head { gap: 8px; flex-shrink: 0; }
+.rr-rico .rico-name b { font-size: 0.98rem; }
+.rr-rico .rico-name span { font-size: 0.68rem; margin-top: 1px; }
+.rr-rico .rico-eq { height: 18px; gap: 3px; }
+.rr-rico .rico-eq span { width: 4px; height: calc(4px + var(--lv) * var(--k) * 14px); }
+.rr-rico .rico-cam { margin-top: 8px; flex: 0 1 auto; min-height: 92px; border-radius: 12px; --rico-pos: 50% 42%; }
+.rr-rico .rico-camtag, .rr-rico .rico-onair { top: 7px; padding: 2px 6px; font-size: 9px; }
+.rr-rico .rico-camtag { left: 7px; }
+.rr-rico .rico-onair { right: 7px; }
+.rr-rico .rico-log { margin-top: 8px; gap: 4px; flex-shrink: 0; }
+.rr-rico .rico-log li { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex-shrink: 0; }
+.rr-rico .rico-log-empty { margin-top: 8px; flex-shrink: 0; }
