@@ -55,7 +55,9 @@ export interface RacePlayer {
 
 export interface PublicRace {
   id: string;
-  kind: 'bot' | 'online';
+  kind: 'bot' | 'online' | 'cup';
+  /** Pangs Cup races only: which round, and whether it is the Grand Final */
+  cup?: { round: number; final: boolean } | null;
   terrain: string;
   status: 'open' | 'finished';
   createdAt: string;
@@ -271,7 +273,7 @@ export async function signInWithWallet(askInvite: (reason: string) => Promise<st
 }
 
 /** Switch MetaMask to the Beta pass chain, adding it first if the wallet does not know it. */
-async function useChain(eth: { request(a: { method: string; params?: unknown[] }): Promise<unknown> }, chainId: number) {
+async function switchChain(eth: { request(a: { method: string; params?: unknown[] }): Promise<unknown> }, chainId: number) {
   const hex = `0x${chainId.toString(16)}`;
   try {
     await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hex }] });
@@ -289,7 +291,7 @@ export async function mintBetaPass(onStep: (step: 'voucher' | 'chain' | 'confirm
   const { contract, chainId, voucher } = await call<{ contract: string; chainId: number; voucher: string }>('beta-voucher');
   onStep('chain');
   try {
-    await useChain(eth, chainId);
+    await switchChain(eth, chainId);
   } catch {
     throw new ApiError(0, 'wrong_chain', 'Switch your wallet to Robinhood Chain to mint the Beta pass.');
   }
@@ -321,6 +323,169 @@ export function seatNote(player: Pick<PlayerStatus, 'bookedSeats'>): string {
   return start ? ` · 1 seat booked for ${new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ' · 1 held for your room';
 }
 
+/* ------------------------------------------------------------------ */
+/* Pangs Cup                                                           */
+/* ------------------------------------------------------------------ */
+
+export interface CupPrize { tier: number; usdg: number; label: string }
+
+export interface CupRoom {
+  room: number;
+  raceId: string;
+  finishedAt: string | null;
+  /** racer names in this room (players only) */
+  names: string[];
+  /** the signed-in player races in this room */
+  mine: boolean;
+}
+
+export interface CupRound {
+  round: number;
+  final: boolean;
+  at: string;
+  /** 'live': the races are running on screen now */
+  state: 'upcoming' | 'live' | 'done';
+  rooms: CupRoom[];
+}
+
+export interface CupStanding {
+  rank: number;
+  wallet: string;
+  name: string;
+  total: number;
+  /** points per qualifying round, null until that round has crossed the line */
+  rounds: (number | null)[];
+  wins: number;
+}
+
+export interface CupPlacing { place: number; wallet: string; name: string; tier: number; prize: string }
+
+export interface CupStatus {
+  cup: {
+    id: number;
+    title: string;
+    terrain: string;
+    startsAt: string;
+    finalAt: string;
+    registerClosesAt: string;
+    qualifyingRounds: number;
+    seats: number;
+    registered: number;
+    prizes: CupPrize[];
+    /** postponed: Round 1 came with fewer than `minRacers` registered; nothing runs until it is rescheduled */
+    state: 'upcoming' | 'live' | 'finished' | 'postponed';
+    minRacers: number;
+    /** SHA-256 of the Cup secret, public from the start */
+    seedCommit: string;
+    /** the secret itself, once the Grand Final has run */
+    seedSecret: string | null;
+    /** PangsCup contract that pays this Cup, once set */
+    claimContract: string | null;
+  };
+  rounds: CupRound[];
+  standings: CupStanding[];
+  entrants: string[];
+  /** after the final: the wallets that raced (they can claim the Participant badge) */
+  participants: string[] | null;
+  result: CupPlacing[] | null;
+  me: { registered: boolean; canRegister: boolean; problem: string | null; inFinal: boolean; raced: boolean; award: CupPlacing | null } | null;
+  serverTime: string;
+}
+
+const CUP_ABI = [
+  'function awardOf(uint256 cupId, address wallet) view returns (uint8 tier, uint256 amount, bool claimed)',
+  'function claimDeadline(uint256 cupId) view returns (uint256)',
+  'function claim(uint256 cupId)',
+  'function participantRoot(uint256 cupId) view returns (bytes32)',
+  'function participantClaimed(uint256 cupId, address wallet) view returns (bool)',
+  'function claimParticipant(uint256 cupId, bytes32[] proof)',
+];
+/** USDG has 6 decimals. */
+const USDG_DECIMALS = 6;
+
+export interface OnChainAward {
+  /** results are written on chain for this Cup */
+  published: boolean;
+  tier: number;
+  usdg: number;
+  claimed: boolean;
+  deadline: number | null;
+}
+
+/** Reads a wallet's Cup award from the PangsCup contract over the public RPC (no wallet needed). */
+export async function readCupAward(contract: string, cupId: number, wallet: string): Promise<OnChainAward> {
+  const { JsonRpcProvider } = await import('ethers');
+  const provider = new JsonRpcProvider(BETA_CHAIN.rpcUrls[0], CUP_CHAIN_ID, { staticNetwork: true });
+  const c = new Contract(contract, CUP_ABI, provider);
+  const [award, deadline] = await Promise.all([c.awardOf(cupId, wallet), c.claimDeadline(cupId)]);
+  return {
+    published: Number(deadline) > 0,
+    tier: Number(award[0]),
+    usdg: Number(award[1]) / 10 ** USDG_DECIMALS,
+    claimed: Boolean(award[2]),
+    deadline: Number(deadline) > 0 ? Number(deadline) * 1000 : null,
+  };
+}
+
+/** Whether the Participant badges of a Cup are open on chain, and whether this wallet took one. */
+export async function readCupParticipant(contract: string, cupId: number, wallet: string): Promise<{ published: boolean; claimed: boolean }> {
+  const { JsonRpcProvider, ZeroHash } = await import('ethers');
+  const provider = new JsonRpcProvider(BETA_CHAIN.rpcUrls[0], CUP_CHAIN_ID, { staticNetwork: true });
+  const c = new Contract(contract, CUP_ABI, provider);
+  const [root, claimed] = await Promise.all([c.participantRoot(cupId), c.participantClaimed(cupId, wallet)]);
+  return { published: root !== ZeroHash, claimed: Boolean(claimed) };
+}
+
+/** Robinhood Chain id, where the Beta pass and the Cup contract live. */
+export const CUP_CHAIN_ID = 4663;
+
+/** Sends the claim from the player's own wallet: the badge is minted and any USDG prize is paid. */
+export function claimCupPrize(contract: string, cupId: number, onStep: (step: 'chain' | 'confirm' | 'pending') => void): Promise<string> {
+  return sendCupClaim(contract, onStep, c => c.claim(cupId));
+}
+
+/** Claims the Participant badge with this wallet's Merkle proof (cupMerkle.ts). */
+export async function claimCupParticipant(contract: string, cupId: number, racers: string[], wallet: string, onStep: (step: 'chain' | 'confirm' | 'pending') => void): Promise<string> {
+  const { participantProof } = await import('./cupMerkle');
+  const proof = participantProof(racers, cupId, wallet);
+  if (!proof) throw new ApiError(0, 'not_participant', 'This wallet did not race in this Cup. Switch to the wallet you raced with.');
+  return sendCupClaim(contract, onStep, c => c.claimParticipant(cupId, proof));
+}
+
+async function sendCupClaim(
+  contract: string,
+  onStep: (step: 'chain' | 'confirm' | 'pending') => void,
+  send: (c: Contract) => Promise<{ hash: string; wait(): Promise<unknown> }>,
+): Promise<string> {
+  const eth = (window as unknown as { ethereum?: { request(a: { method: string; params?: unknown[] }): Promise<unknown> } }).ethereum;
+  if (!eth) throw new ApiError(0, 'no_wallet', 'No wallet found. Open this page in MetaMask to claim.');
+  onStep('chain');
+  try {
+    await switchChain(eth, CUP_CHAIN_ID);
+  } catch {
+    throw new ApiError(0, 'wrong_chain', 'Switch your wallet to Robinhood Chain to claim.');
+  }
+  const signer = await new BrowserProvider(eth as never).getSigner();
+  const c = new Contract(contract, CUP_ABI, signer);
+  onStep('confirm');
+  let tx: { hash: string; wait(): Promise<unknown> };
+  try {
+    tx = await send(c);
+  } catch (e) {
+    const err = e as { code?: string; shortMessage?: string; reason?: string; revert?: { name?: string } };
+    if (err.code === 'ACTION_REJECTED') throw new ApiError(0, 'claim_rejected', 'Claim cancelled. You can claim any time.');
+    if (err.code === 'INSUFFICIENT_FUNDS') throw new ApiError(0, 'no_gas', 'You need a little ETH on Robinhood Chain to pay the gas.');
+    const name = err.revert?.name;
+    if (name === 'NotAFinalist') throw new ApiError(0, 'not_finalist', 'This wallet has no prize in this Cup. Switch to the wallet you raced with.');
+    if (name === 'NotAParticipant') throw new ApiError(0, 'not_participant', 'This wallet did not race in this Cup. Switch to the wallet you raced with.');
+    if (name === 'AlreadyClaimed') throw new ApiError(0, 'already_claimed', 'This wallet has already claimed this badge.');
+    throw new ApiError(0, 'claim_failed', err.shortMessage || 'The claim did not go through. Please try again.');
+  }
+  onStep('pending');
+  await tx.wait();
+  return tx.hash;
+}
+
 export type ReportKind = 'bug' | 'idea' | 'other';
 export type ReportArea = 'racing' | 'rooms' | 'wallet' | 'leaderboard' | 'profile' | 'other';
 
@@ -342,4 +507,7 @@ export const testSeason = {
   predictionBoard: () => call<PredictionBoard>('prediction-board'),
   report: (r: { kind: ReportKind; area: ReportArea; message: string; contact: string; page: string; agent: string }) => call<{ sent: boolean }>('report', r),
   setUsername: (username: string) => call<PlayerStatus>('set-username', { username }),
+  cup: (cupId?: number) => call<CupStatus>('cup', cupId ? { cupId } : {}),
+  cupRegister: (cupId: number) => call<CupStatus>('cup-register', { cupId }),
+  cupLeave: (cupId: number) => call<CupStatus>('cup-leave', { cupId }),
 };

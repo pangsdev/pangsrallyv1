@@ -1,0 +1,49 @@
+/* Rico Scales, the race caller (RicoHost.tsx). --lv is the caller's voice level, 0 to 1. */
+.rico {
+  --lv: 0;
+  width: 420px; padding: 16px 18px 18px; border-radius: 22px; color: #f8f6ff;
+  border: 1px solid rgba(255, 209, 102, 0.45);
+  background: radial-gradient(360px 200px at 70% 40%, rgba(255, 185, 56, 0.16), transparent 70%), rgba(16, 9, 31, 0.94);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+}
+.rico-head { display: flex; align-items: center; gap: 12px; }
+.rico-onair { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px; border-radius: 8px; font: 800 13px var(--font-heading); letter-spacing: 0.1em; background: #ff5c6c; }
+.rico-onair i { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: rico-pulse 1.4s ease-in-out infinite; }
+.rico-name b { display: block; font: 900 22px/1.1 var(--font-heading); }
+.rico-name span { font: 600 13px var(--font-body); color: #ffd166; }
+.rico-eq { display: flex; align-items: flex-end; gap: 4px; height: 30px; margin-left: auto; }
+.rico-eq span { width: 6px; border-radius: 3px; background: linear-gradient(0deg, #ffb938, #ffe08f); height: calc(5px + var(--lv) * var(--k) * 25px); transition: height 70ms linear; }
+.rico-cam { position: relative; margin-top: 12px; aspect-ratio: 580 / 371; overflow: hidden; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.14); background: #1a1226; }
+.rico-cam::after { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.35); }
+.rico-drift { position: absolute; inset: 0; animation: rico-drift 16s ease-in-out infinite alternate; transform-origin: 31% 55%; }
+/* the shot: the shut-mouth frame, the open-mouth layer on top (lip flap from RicoHost) */
+.rico-shot { position: absolute; inset: 0; transform-origin: 31% 52%; }
+.rico-shot.punch { animation: rico-punch 0.9s ease-out; }
+.rico-shot img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: var(--rico-pos, 50% 50%); }
+.rico-mouth { opacity: 0; }
+/* whole-frame poses (RicoHost): a short cross-fade reads as a quick camera cut, not a ghost */
+.rico-pose { opacity: 0; transition: opacity 140ms ease-out; }
+.rico[data-pose='watch'] .rico-pose-watch,
+.rico[data-pose='cheer'] .rico-pose-cheer { opacity: 1; }
+.rico-camtag { position: absolute; left: 10px; top: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 6px; font: 800 11px var(--font-heading); letter-spacing: 0.12em; color: #fff; background: rgba(0, 0, 0, 0.55); }
+.rico-camtag i { width: 7px; height: 7px; border-radius: 50%; background: #ff5c6c; animation: rico-pulse 1.4s ease-in-out infinite; }
+.rico-line { margin: 6px 0 0; padding: 12px 14px; border-radius: 14px; font: 700 20px/1.3 var(--font-heading); background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); animation: rico-line-in 0.35s ease-out; }
+@keyframes rico-drift { from { transform: scale(1.02) translate(0, 0); } to { transform: scale(1.07) translate(1.2%, -0.8%); } }
+@keyframes rico-punch { 35% { transform: scale(1.05); } }
+@keyframes rico-line-in { from { opacity: 0; transform: translateY(6px); } }
+@keyframes rico-pulse { 50% { opacity: 0.35; } }
+/* calls list under the camera (race views) */
+.rico-log { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.rico-log li { padding-left: 10px; border-left: 2px solid rgba(255, 209, 102, 0.3); font: 600 0.8rem/1.35 var(--font-body, Inter, sans-serif); color: rgba(255, 255, 255, 0.6); }
+.rico-log li:first-child { border-left-color: #ffd166; color: #fff; font-weight: 700; font-size: 0.88rem; animation: rico-line-in 0.35s ease-out; }
+.rico-log-empty { margin: 10px 0 0; font-size: 0.8rem; color: rgba(255, 255, 255, 0.45); }
+
+/* in the race room side column */
+.rico.rr-rico { width: auto; padding: 0.9rem 0.95rem 0.95rem; border-radius: 18px; box-shadow: none; flex-shrink: 0; }
+.rr-rico .rico-head { gap: 8px; }
+.rr-rico .rico-onair { padding: 3px 7px; font-size: 10px; }
+.rr-rico .rico-name b { font-size: 1rem; }
+.rr-rico .rico-name span { font-size: 0.7rem; }
+.rr-rico .rico-eq { height: 20px; gap: 3px; }
+.rr-rico .rico-eq span { width: 4px; height: calc(4px + var(--lv) * var(--k) * 16px); }
+.rr-rico .rico-cam { margin-top: 10px; }

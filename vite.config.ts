@@ -6,6 +6,7 @@ import { verifyMessage } from 'ethers'
 import { handle, type Deps } from './supabase/functions/test-season/core.ts'
 import { createMemoryStore } from './supabase/functions/test-season/memoryStore.ts'
 import { createBetaGate } from './supabase/functions/test-season/beta.ts'
+import { newCup } from './supabase/functions/test-season/cup.ts'
 
 const MAX_CHARS = 160
 
@@ -101,7 +102,7 @@ function announcePlugin(env: Record<string, string>) {
  * (supabase/functions/test-season/core.ts) on an in-memory store, so sign-in,
  * races and the leaderboard work under `npm run dev` without Supabase.
  * Restarting the dev server wipes it. Set VITE_TEST_SEASON_API to hit the real function instead.
- * Invite code in dev: DEV-RALLY (or TEST_DEV_INVITE from .env).
+ * Invite codes in dev: off unless DEV_INVITE_GATE=1, then DEV-RALLY (or TEST_DEV_INVITE from .env).
  */
 function testSeasonDevPlugin(env: Record<string, string>) {
   const deps: Deps = {
@@ -113,10 +114,36 @@ function testSeasonDevPlugin(env: Record<string, string>) {
     now: () => new Date(),
     predictions: true,
     unlimitedWallets: new Set((env.TEST_UNLIMITED_WALLETS || '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean)),
-    inviteRequired: env.TEST_OPEN_SIGNUP !== '1',
+    // Local testing: any wallet signs in without a code (the live invite codes only exist in the live
+    // database). DEV_INVITE_GATE=1 brings the invite step back, with the code DEV-RALLY.
+    inviteRequired: env.DEV_INVITE_GATE === '1' && env.TEST_OPEN_SIGNUP !== '1',
     // .env carries the live BETA_* values for the scripts; dev only enforces the Beta pass with DEV_BETA_GATE=1
     // (point BETA_RPC_URL / BETA_CHAIN_ID / BETA_CONTRACT at a local chain to rehearse a mint).
     beta: env.DEV_BETA_GATE === '1' ? createBetaGate((name) => env[name]) : null,
+    cupTeamWallets: new Set((env.CUP_TEAM_WALLETS || '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean)),
+  }
+  // A dev Cup to rehearse on, with 12 named demo racers already in: registration open for
+  // DEV_CUP_MINUTES (default 6), 2-minute rounds. Three minutes after a Grand Final has run on
+  // screen the next one opens on its own, so /cup/live can be watched at any time.
+  const DEMO_RACERS = ['Mossback', 'Kiro_77', 'Nightroll', 'TurboScale', 'Lunar', 'ZeroDrag', 'Pinecone', 'RollingJoe', 'Emberfoot', 'Slate', 'Quill', 'Ironpaw']
+  const rehearse = async (id: number, minutes: number) => {
+    const cup = await newCup(deps, { id, starts_at: new Date(Date.now() + minutes * 60_000).toISOString(), round_minutes: 2, final_gap_minutes: 3, register_close_minutes: 1 })
+    await deps.store.insertCup(cup)
+    for (const name of DEMO_RACERS) {
+      const wallet = '0x' + createHash('sha256').update(`dev-racer:${name}`).digest('hex').slice(0, 40)
+      await deps.store.upsertPlayer(wallet, new Date(0))
+      await deps.store.setUsername(wallet, name)
+      await deps.store.insertCupEntry({ cup_id: id, wallet, registered_at: new Date().toISOString() })
+    }
+  }
+  let rehearsing = rehearse(1, Number(env.DEV_CUP_MINUTES || 6))
+  const nextRehearsal = async () => {
+    await rehearsing
+    const cup = await deps.store.latestCup()
+    if (!cup) return
+    const final = (await deps.store.cupRaces(cup.id)).find(r => r.cup_round === cup.qualifying_rounds + 1)
+    if (final && Date.parse(final.finished_at ?? '') + 3 * 60_000 < Date.now()) rehearsing = rehearse(cup.id + 1, 2)
+    await rehearsing
   }
 
   const handler = async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
@@ -129,6 +156,7 @@ function testSeasonDevPlugin(env: Record<string, string>) {
     let body: Record<string, unknown> = {}
     try { body = JSON.parse((await readBody(req)) || '{}') } catch { /* empty body → unknown action */ }
     const token = req.headers['x-session']
+    if (body.action === 'cup') await nextRehearsal()
     const reply = await handle(deps, String(body.action ?? ''), body, typeof token === 'string' ? token : null)
     res.statusCode = reply.status
     res.setHeader('Content-Type', 'application/json')

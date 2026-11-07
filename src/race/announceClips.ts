@@ -49,6 +49,20 @@ export const LINES = {
   /** The player's own lines say "you", so one set of clips fits every lane (the player's lane is random). */
   comesHome: (place: number) => `You come home ${ORDINAL_WORDS[place]}.`,
   chargesUp: (place: number) => `You charge up to ${ORDINAL_WORDS[place]}!`,
+
+  /* Pangs Cup. Still saddle numbers only, and no round numbers: one set of clips fits a Cup of any length. */
+  cupLineUp: (first: boolean) => first
+    ? "The Pangs Cup is underway! They're lining up."
+    : "Welcome back to the Pangs Cup! A new round, and they're lining up.",
+  cupFinalLineUp: () => "This is it, the Grand Final of the Pangs Cup! They're lining up.",
+  cupWins: (n: number) => `${call(n)} wins this round of the Pangs Cup!`,
+  cupChampion: (n: number) => `${call(n)} wins the Grand Final, and the Pangs Cup!`,
+  /* Between races, on the broadcast board (CupBroadcast.tsx). */
+  cupWelcome: () => 'Welcome to the Pangs Cup! The top ten go through, and one Grand Final decides it.',
+  cupAfterRound: () => 'Another round in the books! Watch the cut line: only the top ten go through.',
+  cupFinalTen: () => 'Qualifying is done! Here are your Grand Final ten. Points reset, and one race decides the Cup!',
+  cupOver: () => "And that's the Pangs Cup! Congratulations to our champion, and thanks for watching.",
+  cupPostponed: () => 'The Pangs Cup needs at least ten racers, so this one is postponed. A new date is coming soon!',
 };
 
 export type ClipPart = { kind: 'clip'; id: string };
@@ -73,6 +87,9 @@ export function bakeVocabulary(): BakeEntry[] {
   lines.push(LINES.youBurst(0), LINES.youBurst(1));
   for (let p = 2; p <= MAX_NUMBER; p++) lines.push(LINES.comesHome(p));
   for (let p = 1; p <= 3; p++) lines.push(LINES.chargesUp(p));
+  lines.push(LINES.cupLineUp(true), LINES.cupLineUp(false), LINES.cupFinalLineUp());
+  lines.push(LINES.cupWelcome(), LINES.cupAfterRound(), LINES.cupFinalTen(), LINES.cupOver(), LINES.cupPostponed());
+  for (let n = 1; n <= MAX_NUMBER; n++) lines.push(LINES.cupWins(n), LINES.cupChampion(n));
   return lines.map(text => ({ id: lineClipId(text), text: spokenText(text) }));
 }
 

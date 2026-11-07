@@ -136,7 +136,7 @@
   background: radial-gradient(circle at 30% 30%, #3a2a12, #1a1208);
   border: 1px solid rgba(255, 215, 0, 0.35);
 }
-.rr-booth-mic { font-size: 1.25rem; line-height: 1; }
+.rr-booth-face img { width: 100%; height: 100%; border-radius: 11px; object-fit: cover; display: block; }
 .rr-booth-pulse {
   position: absolute; inset: -3px;
   border-radius: 14px;
@@ -420,5 +420,10 @@
   .rr-avatar { width: 24px; height: 24px; }
   .rr-pos { width: 22px; height: 22px; }
   .rr-num { width: 20px; height: 20px; }
-  .rr-call-log ul { max-height: 96px; gap: 5px; padding-bottom: 0.3rem; }
+  .rr-rico .rico-log li:nth-child(n + 2) { display: none; }
+}
+
+/* Rico's booth camera below the track on tablets and phones: keep it a camera, not a poster. */
+@media (max-width: 980px) {
+  .rr-rico .rico-cam { aspect-ratio: auto; height: min(56vw, 260px); --rico-pos: 50% 40%; }
 }

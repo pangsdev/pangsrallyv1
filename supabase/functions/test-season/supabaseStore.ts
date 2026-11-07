@@ -1,5 +1,6 @@
 /** Postgres-backed Store (tables from supabase/migrations/003_test_season.sql … 006_test_scheduled_rooms.sql). */
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { CupEntryRow, CupRow } from './cup.ts';
 import type { EntryRow, LeaderRow, PredictionBoardRow, PredictionRow, RaceRow, Store } from './core.ts';
 import { sortLeaderboard, sortPredictionBoard } from './memoryStore.ts';
 
@@ -158,6 +159,38 @@ export function createSupabaseStore(db: SupabaseClient): Store {
       const { count, error } = await (wallet ? q.eq('wallet', wallet) : q.is('wallet', null));
       if (error) throw new Error(error.message);
       return count ?? 0;
+    },
+    async playerJoinedAt(wallet) {
+      const row = must(await db.from('test_players').select('created_at').eq('wallet', wallet).maybeSingle()) as { created_at: string } | null;
+      return row?.created_at ?? null;
+    },
+    async getCup(id) {
+      return must(await db.from('test_cups').select('*').eq('id', id).maybeSingle()) as CupRow | null;
+    },
+    async latestCup() {
+      return must(await db.from('test_cups').select('*').order('id', { ascending: false }).limit(1).maybeSingle()) as CupRow | null;
+    },
+    async insertCup(cup) {
+      must(await db.from('test_cups').insert(cup));
+    },
+    async cupEntries(cupId) {
+      return must(await db.from('test_cup_entries').select('*').eq('cup_id', cupId).order('registered_at')) as CupEntryRow[];
+    },
+    async insertCupEntry(entry) {
+      const res = await db.from('test_cup_entries').insert(entry);
+      if (res.error && res.error.code !== UNIQUE_VIOLATION) throw new Error(res.error.message);
+    },
+    async deleteCupEntry(cupId, wallet) {
+      must(await db.from('test_cup_entries').delete().eq('cup_id', cupId).eq('wallet', wallet));
+    },
+    async cupRaces(cupId) {
+      return must(await db.from('test_races').select('*').eq('cup_id', cupId)) as RaceRow[];
+    },
+    async insertCupRace(race) {
+      const res = await db.from('test_races').insert(race);
+      if (res.error?.code === UNIQUE_VIOLATION) return 'conflict';
+      if (res.error) throw new Error(res.error.message);
+      return 'ok';
     },
     async openRoomsFor(wallet) {
       const rows = must(await db.from('test_race_entries').select('race:test_races!inner(*)')

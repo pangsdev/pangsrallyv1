@@ -549,4 +549,158 @@ const fillRoom = async (roomId, taken = 0) => {
   ok('with predictions off, rooms never touch the picks table and the actions do not exist');
 }
 
+// --- Pangs Cup ----------------------------------------------------------------
+{
+  const { newCup, roomSeed } = await import('../supabase/functions/test-season/cup.ts');
+  const start = clock + 2 * 3_600_000;
+  const team = Wallet.createRandom();
+  deps.cupTeamWallets = new Set([team.address.toLowerCase()]);
+  await deps.store.insertCup(await newCup(deps, { id: 7, starts_at: new Date(start).toISOString(), seats: 23 }));
+
+  const signedOut = await call('cup');
+  assert.equal(signedOut.status, 200);
+  assert.equal(signedOut.body.cup.id, 7, 'the latest Cup is the default');
+  assert.equal(signedOut.body.cup.seedSecret, null, 'the secret stays hidden');
+  assert.equal(signedOut.body.cup.seedCommit.length, 64);
+  ok('the Cup page works signed out and shows only the seed commitment');
+
+  const racers = [];
+  for (let i = 0; i < 23; i++) {
+    const w = Wallet.createRandom();
+    const t = await signIn(w);
+    const res = await call('cup-register', { cupId: 7 }, t);
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    racers.push({ w, t, wallet: w.address.toLowerCase() });
+  }
+  const late = await signIn(Wallet.createRandom());
+  assert.equal((await call('cup-register', { cupId: 7 }, late)).body.error, 'cup_closed', 'the 24th racer finds it full');
+  assert.equal((await call('cup-register', { cupId: 7 }, await signIn(team))).body.error, 'cup_closed', 'team wallets cannot enter');
+  const before = await call('me', {}, racers[0].t);
+  assert.equal(before.body.racesToday, 0);
+  ok('23 racers take the 23 seats; the next one and team wallets are refused');
+
+  // Leave and come back before registration closes, then the seats lock.
+  assert.equal((await call('cup-leave', { cupId: 7 }, racers[0].t)).body.me.registered, false);
+  assert.equal((await call('cup-register', { cupId: 7 }, racers[0].t)).body.me.registered, true);
+  clock = start - 29 * 60_000;
+  assert.equal((await call('cup-leave', { cupId: 7 }, racers[0].t)).body.error, 'cup_locked');
+  ok('a racer can give the seat back until registration closes, then it is locked');
+
+  // Round 1 runs at its start time: 23 racers → three rooms of 8, 8 and 7 (bots fill the rest, scoring nothing).
+  clock = start + 1000;
+  let cup = (await call('cup', { cupId: 7 }, racers[0].t)).body;
+  assert.equal(cup.cup.state, 'live');
+  const r1 = cup.rounds[0];
+  assert.equal(r1.rooms.length, 3);
+  assert.deepEqual(r1.rooms.map(r => r.names.length).sort(), [7, 8, 8]);
+  assert.equal(new Set(r1.rooms.flatMap(r => r.names)).size, 23, 'everyone races once');
+  assert.equal(r1.state, 'live');
+  assert.ok(cup.standings.every(s => s.total === 0), 'no points until the races cross the line');
+  ok('round 1 draws 23 racers into rooms of 8, 8 and 7 and runs them');
+
+  // A request that stopped half way through a round: the missing room runs on the next call.
+  const lost = (await deps.store.cupRaces(7)).find(r => r.cup_room === 2);
+  await deps.store.deleteRace(lost.id);
+  await call('cup', { cupId: 7 });
+  const again = (await deps.store.cupRaces(7)).find(r => r.cup_room === 2);
+  assert.equal(again.seed, lost.seed);
+  assert.deepEqual(again.results, lost.results, 'the same seed and field give the same result');
+  ok('a round that stopped half way finishes its missing rooms, with the same result');
+
+  const parallel = await Promise.all([call('cup', { cupId: 7 }), call('cup', { cupId: 7 })]);
+  assert.ok(parallel.every(r => r.status === 200));
+  assert.equal((await deps.store.cupRaces(7)).length, 3, 'parallel requests do not run a round twice');
+  ok('parallel requests never run a round twice');
+
+  // Run all four qualifying rounds and check the table.
+  for (let round = 2; round <= 4; round++) {
+    clock = start + (round - 1) * 15 * 60_000 + 1000;
+    await call('cup', { cupId: 7 });
+  }
+  clock = start + 3 * 15 * 60_000 + 5 * 60_000;
+  cup = (await call('cup', { cupId: 7 })).body;
+  assert.equal(cup.rounds.slice(0, 4).every(r => r.state === 'done'), true);
+  const all = await deps.store.cupRaces(7);
+  const expected = new Map(racers.map(r => [r.wallet, 0]));
+  for (const race of all) {
+    for (const racer of race.field.filter(f => f.wallet)) {
+      const pos = race.results.find(x => x.id === racer.id).position;
+      expected.set(racer.wallet, expected.get(racer.wallet) + POINTS_BY_POSITION[pos - 1]);
+    }
+    assert.equal(race.kind, 'cup');
+    assert.deepEqual(runTestRace(race.seed, race.field, race.terrain).map(r => r.position), race.results.map(r => r.position), 'replays match');
+  }
+  for (const row of cup.standings) assert.equal(row.total, expected.get(row.wallet));
+  for (let i = 1; i < cup.standings.length; i++) assert.ok(cup.standings[i - 1].total >= cup.standings[i].total);
+  ok('four rounds score 25/18/15… per room and the table adds them up, best first');
+
+  assert.equal((await call('me', {}, racers[0].t)).body.racesToday, 0, 'Cup races use no daily race');
+  assert.ok(!(await call('leaderboard')).body.players.some(p => expected.has(p.wallet)), 'and give no season points');
+  ok('Cup races use no daily race and give no season points');
+
+  // Grand Final: the top 10 only, in one room.
+  const top10 = cup.standings.slice(0, 10).map(s => s.wallet);
+  clock = start + 3 * 15 * 60_000 + 30 * 60_000 + 1000;
+  cup = (await call('cup', { cupId: 7 })).body;
+  const fin = cup.rounds[4];
+  assert.equal(fin.final, true);
+  assert.equal(fin.rooms.length, 1);
+  const finalRace = (await deps.store.cupRaces(7)).find(r => r.cup_round === 5);
+  assert.deepEqual(finalRace.field.filter(f => f.wallet).map(f => f.wallet).sort(), [...top10].sort());
+  assert.equal(cup.result, null, 'the result stays hidden while the final runs on screen');
+  assert.equal(cup.cup.seedSecret, null);
+  ok('the Grand Final holds exactly the top 10');
+
+  clock = Date.parse(finalRace.finished_at) + 1;
+  const champ = finalRace.results.find(r => r.position === 1);
+  const winner = finalRace.field.find(f => f.id === champ.id).wallet;
+  const winnerToken = racers.find(r => r.wallet === winner).t;
+  cup = (await call('cup', { cupId: 7 }, winnerToken)).body;
+  assert.equal(cup.cup.state, 'finished');
+  assert.equal(cup.result[0].wallet, winner);
+  assert.deepEqual(cup.result.map(r => r.tier), [1, 2, 3, 4, 4, 4, 4, 4, 4, 4]);
+  assert.equal(cup.result[0].prize, '15 USDG + Genesis whitelist');
+  assert.equal(cup.me.award.tier, 1);
+  assert.equal(cup.participants.length, 23, 'after the final every racer is listed for the Participant badge');
+  assert.equal(cup.me.raced, true);
+  const { participantProof, participantRoot } = await import('../src/testSeason/cupMerkle.ts');
+  const root = participantRoot(cup.participants, 7);
+  assert.equal(participantRoot([...cup.participants].reverse(), 7), root, 'the root does not depend on order');
+  assert.ok(participantProof(cup.participants, 7, racers[5].wallet).length > 0);
+  assert.equal(participantProof(cup.participants, 7, team.address), null);
+  ok('the final result sets the tiers: champion, second, third, seven finalists');
+
+  // Anyone can now check every seed against the commitment.
+  const secret = cup.cup.seedSecret;
+  assert.equal(await deps.sha256Hex(secret), cup.cup.seedCommit);
+  for (const race of await deps.store.cupRaces(7)) assert.equal(race.seed, await roomSeed(deps, secret, race.cup_round, race.cup_room));
+  ok('after the final the secret is public and every seed checks out against the commitment');
+}
+
+// --- Pangs Cup: too few racers ---------------------------------------------
+{
+  const { newCup } = await import('../supabase/functions/test-season/cup.ts');
+  const start = clock + 3_600_000;
+  await deps.store.insertCup(await newCup(deps, { id: 8, starts_at: new Date(start).toISOString() }));
+  assert.equal((await call('cup', { cupId: 8 })).body.cup.seats, 50, 'a new Cup has 50 seats');
+  for (let i = 0; i < 9; i++) assert.equal((await call('cup-register', { cupId: 8 }, await signIn(Wallet.createRandom()))).status, 200);
+  clock = start + 60_000;
+  let cup = (await call('cup', { cupId: 8 })).body;
+  assert.equal(cup.cup.state, 'postponed');
+  assert.equal(cup.rounds.every(r => r.state === 'upcoming' && r.rooms.length === 0), true, 'no round runs');
+  assert.equal((await deps.store.cupRaces(8)).length, 0);
+  // A new date (npm run cup -- update) reopens registration, and the nine keep their seats.
+  const row = await deps.store.getCup(8);
+  await deps.store.insertCup({ ...row, starts_at: new Date(clock + 2 * 3_600_000).toISOString() });
+  cup = (await call('cup', { cupId: 8 })).body;
+  assert.equal(cup.cup.state, 'upcoming');
+  assert.equal(cup.cup.registered, 9);
+  assert.equal((await call('cup-register', { cupId: 8 }, await signIn(Wallet.createRandom()))).status, 200, 'the tenth racer can join');
+  clock = Date.parse(cup.cup.startsAt) + 60_000;
+  cup = (await call('cup', { cupId: 8 })).body;
+  assert.equal(cup.cup.state, 'live');
+  assert.equal(cup.rounds[0].rooms.length, 1, 'with ten racers Round 1 runs');
+  ok('with fewer than 10 racers the Cup is postponed and runs nothing; a new date brings it back');
+}
+
 console.log(`\n${checks} checks passed.`);

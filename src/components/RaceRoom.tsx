@@ -3,9 +3,10 @@ import PixiRaceTrack from '../race/PixiRaceTrack';
 import { RaceSimulation, DEFAULT_RACE_DISTANCE, type RacerSim } from '../race/simulation';
 import { BALL_SPRITES, type BodyColor } from '../race/sprites';
 import { getTheme } from '../race/themes';
-import { considerCall, createCommentaryState, type CommentaryCall } from '../race/commentary';
+import { considerCall, createCommentaryState, lineUpLine, type CommentaryCall } from '../race/commentary';
 import { isAnnouncerMuted, playStartBeep, setAnnouncerMuted, speakCall, stopAnnounce, warmCall } from '../race/announce';
 import { LINES } from '../race/announceClips';
+import RicoHost from './RicoHost';
 import { PREDICTIONS_ON, testSeason, type PublicRace } from '../testSeason/api';
 import { predictionPointsFor } from '../race/testSeason';
 import { ordinal } from './Predictions';
@@ -112,7 +113,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
   const pushCall = useCallback((next: CommentaryCall) => {
     setCall(next);
     setCallLog(prev => [next, ...prev].slice(0, 6));
-    speakCall(next.text, next.priority);
+    speakCall(next.text, next.priority, next.fallback);
   }, []);
 
   const tryCall = useCallback((s: RaceSimulation, uiPhase: Phase, count: number) => {
@@ -123,6 +124,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
       countdown: count,
       seed: loaded?.race.seed ?? '',
       terrain,
+      cup: loaded?.race.cup ?? null,
     });
     if (next) pushCall(next);
   }, [pushCall, loaded, terrain]);
@@ -131,7 +133,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
   useEffect(() => {
     if (phase !== 'countdown' || !sim) return;
     setCountdown(3);
-    warmCall(LINES.lineUp(terrain));
+    warmCall(lineUpLine(terrain, loaded?.race.cup));
     warmCall(LINES.off());
     tryCall(sim, 'countdown', 3);
     playStartBeep('tick');
@@ -148,7 +150,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
       }
     }, 1000);
     return () => clearInterval(id);
-  }, [phase, sim, tryCall, terrain]);
+  }, [phase, sim, tryCall, terrain, loaded]);
 
   useEffect(() => {
     if (phase === 'loading' && sim && sceneReady) tryCall(sim, 'loading', 3);
@@ -216,7 +218,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
         <button className="rr-btn" onClick={onBack}>{backLabel}</button>
         <div style={{ textAlign: 'center' }}>
           <h2 className="rr-title" style={{ color: theme.hudAccent }}><TrackBadge terrain={terrain} size={26} style={{ marginRight: 8, verticalAlign: '-5px' }} />{terrain} Track · {title}</h2>
-          <p className="rr-sub">Beta Season · Season points for every finish · {DEFAULT_RACE_DISTANCE}m</p>
+          <p className="rr-sub">{loaded?.race.kind === 'cup' ? 'Pangs Cup · Equal stats for everyone · luck decides' : 'Beta Season · Season points for every finish'} · {DEFAULT_RACE_DISTANCE}m</p>
         </div>
         <div className="rr-header-spacer" />
       </div>
@@ -288,7 +290,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
           {(phase !== 'loading' || sceneReady) && (
             <div className={`rr-booth ${call ? 'live' : ''}`} aria-live="polite">
               <div className="rr-booth-face">
-                <span className="rr-booth-mic" aria-hidden>🎙️</span>
+                <img src="/cup/rico-face.webp" alt="" />
                 <span className="rr-booth-pulse" />
               </div>
               <div className="rr-booth-copy">
@@ -331,18 +333,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
               ))}
             </div>
           </div>
-          <div className="rr-panel rr-call-log">
-            <h3><span>🎙️ Rally Call</span><span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>Rico Scales</span></h3>
-            {callLog.length === 0 ? (
-              <p className="rr-call-empty">Calls appear when the lead changes.</p>
-            ) : (
-              <ul>
-                {callLog.map(c => (
-                  <li key={c.id}>{c.text}</li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <RicoHost className="rr-rico" log={callLog.map(c => c.text)} />
         </aside>
       </div>
       )}

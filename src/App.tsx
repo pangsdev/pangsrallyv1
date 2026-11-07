@@ -23,6 +23,8 @@ import { shortWallet } from './race/testSeason';
 const Litepaper = lazy(() => import('./components/Litepaper'));
 const RaceRoom = lazy(() => import('./components/RaceRoom'));
 const OnlineRoom = lazy(() => import('./components/OnlineRoom'));
+const CupPage = lazy(() => import('./components/CupPage'));
+const CupBroadcast = lazy(() => import('./components/CupBroadcast'));
 
 const ViewLoader = () => (
   <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center', paddingTop: '120px', color: 'var(--text-secondary, #888)' }}>
@@ -130,7 +132,7 @@ function App() {
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [selectedNFTDetails, setSelectedNFTDetails] = useState<any | null>(null);
   const [renameInput, setRenameInput] = useState('');
-  const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'race-lobby' | 'bot-race' | 'online-rooms' | 'online-race' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral' | 'replay' | 'report' | 'predictions'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'race-lobby' | 'bot-race' | 'online-rooms' | 'online-race' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral' | 'replay' | 'report' | 'predictions' | 'cup' | 'cup-live'>('landing');
 
   const [parentA, setParentA] = useState<any>(null);
   const [parentB, setParentB] = useState<any>(null);
@@ -166,7 +168,10 @@ function App() {
   /** online room to resume from My Races (null → join a new one) */
   const [onlineRaceId, setOnlineRaceId] = useState<string | null>(null);
   const [replayRaceId, setReplayRaceId] = useState<string | null>(null);
-  const replayBack = useRef<'my-races' | 'predictions'>('my-races');
+  const replayBack = useRef<'my-races' | 'predictions' | 'cup'>('my-races');
+  /** a Pangs Cup exists (shows the Cup link in the header) */
+  const [hasCup, setHasCup] = useState(false);
+  useEffect(() => { testSeason.cup().then(() => setHasCup(true)).catch(() => setHasCup(false)); }, []);
 
   const applyPlayer = (status: PlayerStatus) => {
     const { wallet, username, streak, racerNumber, racesToday, dailyLimit, racesLeft, bookedSeats, unlimited, points, races, wins, podiums, rank, resetsAt, beta } = status;
@@ -812,7 +817,7 @@ function App() {
   /* ---------------------------------------------------------------- */
   const SIMPLE_PATHS: Partial<Record<typeof currentView, string>> = {
     landing: '/', 'how-to-play': '/vision', rally: '/rally', leaderboard: '/leaderboard', 'my-races': '/profile',
-    inventory: '/inventory', marketplace: '/marketplace', laboratory: '/lab', report: '/report', ...(PREDICTIONS_ON ? { predictions: '/predictions' } : {}),
+    inventory: '/inventory', marketplace: '/marketplace', laboratory: '/lab', report: '/report', cup: '/cup', ...(PREDICTIONS_ON ? { predictions: '/predictions' } : {}),
   };
   const pathForView = (): string | null => {
     const track = `/rally/${String(activeCategoryInfo?.terrain ?? 'forest').toLowerCase()}`;
@@ -823,6 +828,7 @@ function App() {
       case 'online-rooms': return `${track}/rooms`;
       case 'online-race': return onlineRaceId ? `/room/${onlineRaceId}` : `${track}/online`;
       case 'replay': return replayRaceId ? `/race/${replayRaceId}` : null;
+      case 'cup-live': return '/cup/live';
       default: return SIMPLE_PATHS[currentView] ?? null;
     }
   };
@@ -841,6 +847,7 @@ function App() {
       setCurrentView('rally'); return;
     }
     if (parts[0] === 'races') { setCurrentView('my-races'); return; } // old address of My Races
+    if (parts[0] === 'cup' && parts[1] === 'live') { setCurrentView('cup-live'); return; }
     if (parts[0] === 'race' && parts[1]) { setReplayRaceId(parts[1]); setCurrentView('replay'); return; }
     if (parts[0] === 'room' && parts[1]) { setActiveCategoryInfo(mockCategories[0]); setOnlineRaceId(parts[1]); setCurrentView('online-race'); return; }
     if (!byPath) window.history.replaceState(null, '', '/' + window.location.search); // unknown address → home
@@ -1423,6 +1430,11 @@ function App() {
             >
               Marketplace
             </a>
+            {hasCup && (
+              <a className={`nav-cup ${currentView === 'cup' ? 'active' : ''}`} onClick={() => setCurrentView('cup')} style={{cursor: 'pointer'}}>
+                Pangs Cup
+              </a>
+            )}
             <a 
               className={currentView === 'leaderboard' || currentView === 'predictions' ? 'active' : ''} 
               onClick={() => setCurrentView('leaderboard')}
@@ -1589,11 +1601,11 @@ function App() {
           <RaceRoom
             key={`replay-${replayRaceId}`}
             categoryInfo={mockCategories[0]}
-            title="Replay"
+            title={replayBack.current === 'cup' ? 'Pangs Cup' : 'Replay'}
             playerWallet={player?.wallet ?? null}
             loadRace={() => testSeason.race(replayRaceId)}
             onBack={() => setCurrentView(replayBack.current)}
-            backLabel={replayBack.current === 'predictions' ? '← Back to Predictions' : '← Back to Profile'}
+            backLabel={replayBack.current === 'predictions' ? '← Back to Predictions' : replayBack.current === 'cup' ? '← Back to the Cup' : '← Back to Profile'}
           />
         )}
 
@@ -2084,6 +2096,16 @@ function App() {
             )}
           </section>
         )}
+
+        {currentView === 'cup' && (
+          <CupPage
+            player={player}
+            onSignIn={signIn}
+            onWatch={(id) => { unlockAnnounce(); replayBack.current = 'cup'; setReplayRaceId(id); setCurrentView('replay'); }}
+          />
+        )}
+
+        {currentView === 'cup-live' && <CupBroadcast />}
 
         {currentView === 'leaderboard' && (
           <SeasonLeaderboard playerWallet={player?.wallet ?? null} onTab={t => setCurrentView(t === 'season' ? 'leaderboard' : 'predictions')} />

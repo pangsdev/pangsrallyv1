@@ -15,6 +15,8 @@ export interface CommentaryCall {
   text: string;
   priority: number;
   at: number;
+  /** a plain line whose clip may be played when this one has not been recorded */
+  fallback?: string;
 }
 
 export interface CommentaryState {
@@ -48,6 +50,20 @@ export interface CommentaryContext {
   countdown: number;
   seed: string;
   terrain: string;
+  /** A Pangs Cup race: the line-up and the winner's call name the round. */
+  cup?: CupCallInfo | null;
+}
+
+export interface CupCallInfo {
+  round: number;
+  final: boolean;
+}
+
+/** The pre-race line (also warmed before the countdown, so it plays on time). */
+export function lineUpLine(terrain: string, cup?: CupCallInfo | null): string {
+  if (cup?.final) return LINES.cupFinalLineUp();
+  if (cup) return LINES.cupLineUp(cup.round === 1);
+  return LINES.lineUp(terrainName(terrain));
 }
 
 const COOLDOWN = 3.2;
@@ -62,12 +78,12 @@ const BURST_MIN_LEFT = 0.6;
 const BURST_MAX_POSITION = 5;
 
 export function considerCall(state: CommentaryState, ctx: CommentaryContext): CommentaryCall | null {
-  const { sim, uiPhase, terrain } = ctx;
+  const { sim, uiPhase, terrain, cup } = ctx;
   const t = sim.started ? sim.time : 0;
 
   // Pre-race: one line. The 3-2-1 on screen already does the rest.
   if (uiPhase === 'countdown' && !state.flags.has('set')) {
-    return emit(state, 'set', 5, t, LINES.lineUp(terrainName(terrain)));
+    return emit(state, 'set', 5, t, lineUpLine(terrain, cup), cup ? LINES.lineUp(terrainName(terrain)) : undefined);
   }
   if (uiPhase !== 'running' && uiPhase !== 'finished') return null;
 
@@ -87,7 +103,10 @@ export function considerCall(state: CommentaryState, ctx: CommentaryContext): Co
   const firstHome = sorted.find(r => r.finishTime !== null);
   if (firstHome && !state.flags.has('winner')) {
     const photo = second?.finishTime !== null && Math.abs((firstHome.finishTime ?? 0) - (second?.finishTime ?? 0)) < 0.18;
-    return emit(state, 'winner', 10, t, photo ? LINES.winsByNose(firstHome.number) : LINES.wins(firstHome.number));
+    const line = cup?.final ? LINES.cupChampion(firstHome.number)
+      : cup ? LINES.cupWins(firstHome.number)
+      : photo ? LINES.winsByNose(firstHome.number) : LINES.wins(firstHome.number);
+    return emit(state, 'winner', 10, t, line, cup ? LINES.wins(firstHome.number) : undefined);
   }
 
   if (player && player.finishTime !== null && player.position > 1 && !state.flags.has('youhome')) {
@@ -163,8 +182,8 @@ function canSpeak(state: CommentaryState, t: number, priority: number): boolean 
   return t - state.lastAt >= (priority >= 7 ? 1.8 : COOLDOWN);
 }
 
-function emit(state: CommentaryState, flag: string, priority: number, at: number, text: string): CommentaryCall {
+function emit(state: CommentaryState, flag: string, priority: number, at: number, text: string, fallback?: string): CommentaryCall {
   state.flags.add(flag);
   state.lastAt = at;
-  return { id: `${flag}-${Math.round(at * 100)}`, text, priority, at };
+  return { id: `${flag}-${Math.round(at * 100)}`, text, priority, at, fallback };
 }

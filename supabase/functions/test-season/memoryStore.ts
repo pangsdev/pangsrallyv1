@@ -3,6 +3,7 @@
  * supabase/migrations/003_test_season.sql and 004_test_invites.sql so limits behave like production.
  * Data is lost when the dev server restarts.
  */
+import type { CupEntryRow, CupRow } from './cup.ts';
 import { raceOver, type EntryRow, type LeaderRow, type PredictionBoardRow, type PredictionRow, type RaceRow, type ReportRow, type Store } from './core.ts';
 
 /** `invites`: code → places, e.g. { 'DEV-RALLY': 1000 } so dev sign-in works. */
@@ -16,6 +17,8 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
   let entries: EntryRow[] = [];
   const reports: ReportRow[] = [];
   let predictions: PredictionRow[] = [];
+  const cups = new Map<number, CupRow>();
+  let cupEntries: CupEntryRow[] = [];
 
   const clone = <T>(v: T): T => (v === null || v === undefined ? v : JSON.parse(JSON.stringify(v)));
 
@@ -166,6 +169,37 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
     },
     async insertReport(report) { reports.push(clone(report)); },
     async countReports(since, wallet) { return reports.filter(r => r.created_at >= since && r.wallet === wallet).length; },
+    async playerJoinedAt(wallet) {
+      return players.get(wallet)?.created ?? null;
+    },
+    async getCup(id) {
+      return clone(cups.get(id) ?? null);
+    },
+    async latestCup() {
+      const top = Math.max(0, ...cups.keys());
+      return clone(cups.get(top) ?? null);
+    },
+    async insertCup(cup) {
+      cups.set(cup.id, clone(cup));
+    },
+    async cupEntries(cupId) {
+      return clone(cupEntries.filter(e => e.cup_id === cupId));
+    },
+    async insertCupEntry(entry) {
+      if (!cupEntries.some(e => e.cup_id === entry.cup_id && e.wallet === entry.wallet)) cupEntries.push(clone(entry));
+    },
+    async deleteCupEntry(cupId, wallet) {
+      cupEntries = cupEntries.filter(e => !(e.cup_id === cupId && e.wallet === wallet));
+    },
+    async cupRaces(cupId) {
+      return clone([...races.values()].filter(r => r.cup_id === cupId));
+    },
+    async insertCupRace(race) {
+      // Mirrors the unique index of 013: one race per Cup round and room.
+      if ([...races.values()].some(r => r.cup_id === race.cup_id && r.cup_round === race.cup_round && r.cup_room === race.cup_room)) return 'conflict';
+      races.set(race.id, clone(race));
+      return 'ok';
+    },
     async openRoomsFor(wallet) {
       const ids = new Set(entries.filter(e => e.wallet === wallet).map(e => e.race_id));
       return clone([...races.values()].filter(r => ids.has(r.id) && r.kind === 'online' && r.status === 'open'));

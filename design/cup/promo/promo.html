@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Pangs Cup promo</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#ffd166;--gold2:#ffb938;--muted:#b9b1d9;--h:'Outfit',sans-serif}
+*{box-sizing:border-box}html,body{margin:0;background:#0b0614;color:#f8f6ff;font-family:Inter,sans-serif}
+.f{display:none;position:relative;overflow:hidden;isolation:isolate}
+body[data-f=announce] #announce,body[data-f=square] #square,body[data-f=prizes] #prizes,body[data-f=howto] #howto,body[data-f=rico] #rico,body[data-f=poster] #poster{display:block}
+.bg::before{content:"";position:absolute;inset:0;z-index:-2;background:url(../../track-images/forest-finish.jpg) 75% 0/cover no-repeat}
+.bg::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#0b0614 18%,rgba(11,6,20,.88) 50%,rgba(11,6,20,.55)),linear-gradient(0deg,#0b0614 4%,transparent 45%)}
+.logo{height:64px;mix-blend-mode:lighten}
+.eb{font:800 22px var(--h);letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+h1{margin:0;font:900 150px/.9 var(--h);letter-spacing:-.02em}
+h1 em{font-style:normal;background:linear-gradient(135deg,#ffefbf,var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.chip{display:inline-flex;align-items:center;gap:10px;padding:12px 22px;border-radius:999px;font:800 24px var(--h);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14)}
+.chip.gold{color:#241700;background:linear-gradient(135deg,#ffe08f,var(--gold2));border:0}
+.facts{display:flex;gap:44px}.facts b{display:block;font:800 40px var(--h)}.facts span{font:600 20px Inter;color:var(--muted)}
+.trophy{position:absolute;filter:drop-shadow(0 24px 40px rgba(0,0,0,.6))}
+.url{font:800 28px var(--h);color:var(--gold)}
+/* 1600x900 announcement */
+#announce{width:1600px;height:900px;padding:70px 80px}
+#announce .trophy{right:30px;top:120px;width:620px;mask-image:radial-gradient(ellipse 50% 45% at 50% 44%,#000 78%,transparent 100%);-webkit-mask-image:radial-gradient(ellipse 50% 45% at 50% 44%,#000 78%,transparent 100%)}
+#announce h1{margin:22px 0 18px;font-size:132px}
+#announce .sub{max-width:760px;font:600 30px/1.35 Inter;color:#e4def7}
+#announce .facts{margin:40px 0 44px}
+#announce .bottom{display:flex;align-items:center;gap:18px}
+/* 1080 square */
+#square{width:1080px;height:1080px;padding:64px;text-align:center}
+#square::after{background:linear-gradient(180deg,rgba(11,6,20,.9) 0%,rgba(11,6,20,.72) 30%,rgba(11,6,20,.86) 55%,#0b0614 70%)}
+#square .trophy{position:static;width:560px;margin:0 auto -40px;display:block;mask-image:radial-gradient(ellipse 50% 45% at 50% 44%,#000 78%,transparent 100%);-webkit-mask-image:radial-gradient(ellipse 50% 45% at 50% 44%,#000 78%,transparent 100%)}
+#square h1{font-size:120px}
+#square .facts{justify-content:center;margin:26px 0 30px}
+#square .facts b{font-size:34px}
+/* prizes 1600x900 */
+#prizes{width:1600px;height:900px;padding:64px 80px;background:radial-gradient(900px 500px at 50% 0,rgba(255,185,56,.22),transparent 70%),radial-gradient(1200px 600px at 50% 120%,rgba(84,50,211,.55),transparent 70%),#0b0614}
+#prizes .head{display:flex;justify-content:space-between;align-items:center}
+#prizes h2{margin:26px 0 6px;font:900 84px/1 var(--h);text-align:center}
+#prizes h2 em{font-style:normal;color:var(--gold)}
+#prizes .lead{text-align:center;font:600 26px Inter;color:var(--muted)}
+.row{display:grid;grid-template-columns:repeat(5,1fr);gap:22px;margin-top:40px}
+.p{text-align:center}.p img{width:100%;border-radius:28px;box-shadow:0 18px 40px rgba(0,0,0,.5)}
+.p b{display:block;margin-top:18px;font:900 30px var(--h)}.p span{display:block;margin-top:4px;font:700 19px Inter;color:var(--gold)}.p i{font-style:normal;font:600 18px Inter;color:var(--muted)}
+#prizes .note{position:absolute;left:0;right:0;bottom:42px;text-align:center;font:600 20px Inter;color:var(--muted)}
+/* how it works 1600x900 */
+#howto{width:1600px;height:900px;padding:64px 80px;background:radial-gradient(1000px 600px at 90% 0,rgba(255,185,56,.16),transparent 70%),radial-gradient(1100px 700px at 0 110%,rgba(84,50,211,.5),transparent 70%),#0b0614}
+#howto h2{margin:24px 0 36px;font:900 80px/1 var(--h)}#howto h2 em{font-style:normal;color:var(--gold)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:26px}
+.s{min-height:340px;padding:40px;border:1px solid rgba(255,255,255,.12);border-radius:28px;background:rgba(22,13,41,.85)}
+.s .n{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;font:900 32px var(--h);color:#241700;background:linear-gradient(135deg,#ffe08f,var(--gold2))}
+.s h3{margin:26px 0 12px;font:800 42px/1.1 var(--h)}.s p{margin:0;font:500 27px/1.45 Inter;color:#d6cff0}
+.path{display:flex;gap:12px;margin-top:40px}.path div{flex:1;padding:22px 18px;border-radius:18px;text-align:center;font:800 24px var(--h);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}.path .fin{flex:1.6;color:var(--gold);border-color:rgba(255,209,102,.5);background:rgba(255,185,56,.12)}.path span{display:block;font:600 18px Inter;color:var(--muted)}
+/* meet Rico 1600x900 */
+#rico{width:1600px;height:900px;padding:64px 80px;background:radial-gradient(900px 600px at 78% 40%,rgba(255,185,56,.2),transparent 70%),radial-gradient(1100px 700px at 0 110%,rgba(84,50,211,.5),transparent 70%),#0b0614}
+#rico .cam{position:absolute;right:80px;top:150px;width:820px;height:525px;border-radius:30px;overflow:hidden;border:2px solid rgba(255,209,102,.5);box-shadow:0 30px 70px rgba(0,0,0,.6)}
+#rico .cam img{width:100%;height:100%;object-fit:cover;display:block}
+#rico .tag{position:absolute;left:18px;top:18px;padding:8px 14px;border-radius:10px;font:800 18px var(--h);letter-spacing:.12em;background:rgba(0,0,0,.6)}
+#rico .tag i{display:inline-block;width:12px;height:12px;margin-right:8px;border-radius:50%;background:#ff5c6c}
+#rico h2{margin:60px 0 18px;font:900 92px/1 var(--h);max-width:620px}#rico h2 em{font-style:normal;color:var(--gold)}
+#rico .lead{max-width:600px;font:600 28px/1.4 Inter;color:#e4def7}
+#rico .quote{position:absolute;right:80px;bottom:70px;width:820px;padding:22px 28px;border-radius:20px;font:800 30px/1.3 var(--h);background:rgba(22,13,41,.92);border:1px solid rgba(255,255,255,.14)}
+#rico .quote small{display:block;margin-bottom:6px;font:700 18px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+/* one poster with everything, 1080x1350 (4:5: X shows it full size on phones) */
+#poster{width:1080px;height:1350px;padding:54px 56px 0}
+#poster::before{content:"";position:absolute;inset:0 0 auto 0;height:640px;z-index:-2;background:url(../../track-images/forest-finish.jpg) 70% 0/cover no-repeat}
+#poster::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(11,6,20,.55) 0,rgba(11,6,20,.93) 140px,#0b0614 560px),radial-gradient(700px 500px at 82% 26%,rgba(255,185,56,.28),transparent 70%),radial-gradient(900px 600px at 0 105%,rgba(84,50,211,.5),transparent 70%)}
+#poster .top{display:flex;justify-content:space-between;align-items:center}
+#poster .top .logo{height:58px}
+#poster .free{padding:10px 18px;border-radius:999px;font:800 20px var(--h);letter-spacing:.12em;color:#241700;background:linear-gradient(135deg,#ffe08f,var(--gold2))}
+#poster .hero{position:relative;height:380px;margin-top:12px}
+#poster .hero .trophy{right:-30px;top:-14px;width:430px;mask-image:radial-gradient(ellipse 50% 46% at 50% 45%,#000 76%,transparent 100%);-webkit-mask-image:radial-gradient(ellipse 50% 46% at 50% 45%,#000 76%,transparent 100%)}
+#poster .eb{margin-top:40px;font-size:21px}
+#poster h1{margin:10px 0 12px;font-size:112px;line-height:.92}
+#poster .sub{max-width:540px;font:600 26px/1.35 Inter;color:#e9e3fb}
+#poster .facts{display:grid;grid-template-columns:1fr 1.2fr 1fr .62fr;gap:0;margin:6px 0 0;border:1px solid rgba(255,209,102,.4);border-radius:22px;background:rgba(22,13,41,.88);overflow:hidden}
+#poster .facts div{padding:18px 18px 16px;border-left:1px solid rgba(255,255,255,.1)}#poster .facts div:first-child{border-left:0}
+#poster .facts b{font-size:32px;line-height:1.05;white-space:nowrap}#poster .facts span{font-size:18px}
+#poster .facts .gold b{color:var(--gold)}
+#poster h3{margin:34px 0 14px;font:800 20px var(--h);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+#poster .prz{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+#poster .prz div{text-align:center}
+#poster .prz img{width:150px;border-radius:16px;box-shadow:0 12px 26px rgba(0,0,0,.5)}
+#poster .prz b{display:block;margin-top:6px;font:900 21px var(--h)}
+#poster .prz span{display:block;font:700 18px/1.25 Inter;color:var(--gold)}
+#poster .steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+#poster .st{display:flex;gap:12px;align-items:flex-start;padding:16px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+#poster .st i{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;font:900 22px var(--h);font-style:normal;color:#241700;background:linear-gradient(135deg,#ffe08f,var(--gold2))}
+#poster .st b{display:block;font:800 23px/1.15 var(--h)}#poster .st span{display:block;margin-top:4px;font:600 18px/1.3 Inter;color:#cfc7ea}
+#poster .foot{margin-top:34px;display:grid;grid-template-columns:262px 1fr;gap:24px;align-items:center}
+#poster .cam{position:relative;height:164px;border-radius:18px;overflow:hidden;border:2px solid rgba(255,209,102,.45)}
+#poster .cam img{width:100%;height:100%;object-fit:cover;object-position:50% 40%;display:block}
+#poster .cam span{position:absolute;left:10px;top:10px;padding:4px 9px;border-radius:7px;font:800 13px var(--h);letter-spacing:.12em;background:rgba(0,0,0,.6)}
+#poster .cam span i{display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:50%;background:#ff5c6c}
+#poster .cta b{display:block;font:800 25px/1.25 var(--h)}#poster .cta b em{font-style:normal;color:var(--gold)}
+#poster .cta .row2{display:flex;align-items:center;gap:14px;margin-top:14px}
+#poster .cta .chip.gold{padding:12px 22px;font-size:24px}
+#poster .cta .url{font-size:28px}
+#poster .cta small{display:block;margin-top:12px;font:600 19px/1.35 Inter;color:var(--muted)}
+</style></head><body>
+<section class="f bg" id="announce">
+  <img class="logo" src="../../../public/dark-logo.webp" alt="">
+  <img class="trophy" src="../badges/trophy-gold.png" alt="">
+  <div style="margin-top:78px" class="eb">Beta Season special · Free entry</div>
+  <h1>Pangs <em>Cup</em> #1</h1>
+  <div class="sub">Up to 50 racers. 4 qualifying rounds. The top 10 meet in one Grand Final. Free entry, real prizes.</div>
+  <div class="facts"><div><b data-date>Sat, Nov 21</b><span>Date</span></div><div><b data-time>8:00 PM UTC</b><span>Round 1</span></div><div><b>30 USDG</b><span>Prize pool</span></div></div>
+  <div class="bottom"><span class="chip gold">Claim your seat</span><span class="url">pangsrally.com/cup</span></div>
+</section>
+<section class="f bg" id="square">
+  <img class="logo" src="../../../public/dark-logo.webp" alt="">
+  <img class="trophy" src="../badges/trophy-gold.png" alt="">
+  <div class="eb">Beta Season special · Free entry</div>
+  <h1>Pangs <em>Cup</em> #1</h1>
+  <div class="facts"><div><b data-date>Sat, Nov 21</b><span>Date</span></div><div><b data-time>8:00 PM UTC</b><span>Round 1</span></div><div><b>50 seats</b><span>First come</span></div></div>
+  <span class="chip gold">pangsrally.com/cup</span>
+</section>
+<section class="f" id="prizes">
+  <div class="head"><img class="logo" src="../../../public/dark-logo.webp" alt=""><span class="chip">Pangs Cup #1</span></div>
+  <h2>What's on the <em>line</em></h2>
+  <div class="lead">30 USDG prize pool · Genesis whitelist for the podium · a soulbound badge for every racer</div>
+  <div class="row">
+    <div class="p"><img src="../badges/trophy-gold.png" alt=""><b>Champion</b><span>15 USDG + Genesis WL</span></div>
+    <div class="p"><img src="../badges/trophy-silver.png" alt=""><b>2nd Place</b><span>10 USDG + Genesis WL</span></div>
+    <div class="p"><img src="../badges/trophy-bronze.png" alt=""><b>3rd Place</b><span>5 USDG + Genesis WL</span></div>
+    <div class="p"><img src="../badges/trophy-violet.png" alt=""><b>Finalists</b><span>Finalist badge</span><i>4th to 10th</i></div>
+    <div class="p"><img src="../badges/trophy-steel.png" alt=""><b>Every racer</b><span>Participant badge</span><i>everyone who races</i></div>
+  </div>
+  <div class="note">Free to enter with the Beta pass. Badges are soulbound NFTs on Robinhood Chain. Every racer runs on equal stats: luck decides each race.</div>
+</section>
+<section class="f" id="howto">
+  <div style="display:flex;justify-content:space-between;align-items:center"><img class="logo" src="../../../public/dark-logo.webp" alt=""><span class="chip">pangsrally.com/cup</span></div>
+  <h2>How the <em>Cup</em> works</h2>
+  <div class="steps">
+    <div class="s"><div class="n">1</div><h3>Claim your seat</h3><p>Free for Beta pass holders. Up to 50 seats, first come. It uses none of your daily races.</p></div>
+    <div class="s"><div class="n">2</div><h3>Race 4 rounds</h3><p>A new room of 10 every round. Season-style points: 25, 18, 15… on a live Cup table.</p></div>
+    <div class="s"><div class="n">3</div><h3>Make the Grand Final</h3><p>The top 10 go through, points reset, and one race decides the Cup. Rico calls it live.</p></div>
+  </div>
+  <div class="path"><div>Round 1<span data-at="0">8:00 PM</span></div><div>Round 2<span data-at="15">8:15 PM</span></div><div>Round 3<span data-at="30">8:30 PM</span></div><div>Round 4<span data-at="45">8:45 PM</span></div><div class="fin">Grand Final<span data-at="75" data-utc>9:15 PM UTC</span></div></div>
+</section>
+<section class="f" id="rico">
+  <img class="logo" src="../../../public/dark-logo.webp" alt="">
+  <div class="cam"><img src="../../../public/cup/rico.webp" alt=""><span class="tag"><i></i>ON AIR · BOOTH</span></div>
+  <div class="eb" style="margin-top:70px">Pangs Cup #1 · Your race caller</div>
+  <h2>Meet <em>Rico Scales</em></h2>
+  <div class="lead">Rico calls every Pangs Cup race, from the first line-up to the Grand Final. Watch your room on pangsrally.com and hear him call it.</div>
+  <div class="quote"><small>Rico Scales</small>"This is it, the Grand Final of the Pangs Cup! They're lining up."</div>
+</section>
+<section class="f" id="poster">
+  <div class="top"><img class="logo" src="../../../public/dark-logo.webp" alt=""><span class="free">FREE ENTRY</span></div>
+  <div class="hero">
+    <img class="trophy" src="../badges/trophy-gold.png" alt="">
+    <div class="eb">Beta Season tournament</div>
+    <h1>Pangs<br><em>Cup</em> #1</h1>
+    <div class="sub">4 qualifying rounds. The top 10 race one Grand Final for the Cup.</div>
+  </div>
+  <div class="facts">
+    <div><b data-date>Sun, Nov 8</b><span>Date</span></div>
+    <div><b data-time>8:00 PM UTC</b><span>Round 1</span></div>
+    <div class="gold"><b>30 USDG</b><span>Prize pool</span></div>
+    <div><b>50</b><span>Seats</span></div>
+  </div>
+  <h3>Prizes</h3>
+  <div class="prz">
+    <div><img src="../badges/trophy-gold.png" alt=""><b>1st</b><span>15 USDG<br>+ Genesis WL</span></div>
+    <div><img src="../badges/trophy-silver.png" alt=""><b>2nd</b><span>10 USDG<br>+ Genesis WL</span></div>
+    <div><img src="../badges/trophy-bronze.png" alt=""><b>3rd</b><span>5 USDG<br>+ Genesis WL</span></div>
+    <div><img src="../badges/trophy-violet.png" alt=""><b>4th-10th</b><span>Finalist<br>badge</span></div>
+    <div><img src="../badges/trophy-steel.png" alt=""><b>Everyone</b><span>Participant<br>badge</span></div>
+  </div>
+  <h3>How it works</h3>
+  <div class="steps">
+    <div class="st"><i>1</i><div><b>Claim a seat</b><span>Free with the Beta pass. First come.</span></div></div>
+    <div class="st"><i>2</i><div><b>Race 4 rounds</b><span>A new room of 10 each round. Equal stats.</span></div></div>
+    <div class="st"><i>3</i><div><b>Top 10 final</b><span>Points reset. One race decides the Cup.</span></div></div>
+  </div>
+  <div class="foot">
+    <div class="cam"><img src="../../../public/cup/rico.webp" alt=""><span><i></i>ON AIR</span></div>
+    <div class="cta">
+      <b>Every race called live by <em>Rico Scales</em>.</b>
+      <div class="row2"><span class="chip gold">Claim your seat</span><span class="url">pangsrally.com/cup</span></div>
+      <small>No Beta pass yet? DM us for an invite.<br>Badges are soulbound NFTs on Robinhood Chain.</small>
+    </div>
+  </div>
+</section>
+<script>
+// ?f=announce|square|prizes|howto|rico  &start=2026-11-21T20:00:00Z (Round 1, UTC): every date and time follows it.
+const q=new URLSearchParams(location.search);
+document.body.dataset.f=q.get('f')||'announce';
+const start=new Date(q.get('start')||'2026-11-21T20:00:00Z');
+const opt={timeZone:'UTC'};
+const t=(d)=>d.toLocaleTimeString('en-US',{...opt,hour:'numeric',minute:'2-digit'});
+document.querySelectorAll('[data-date]').forEach(e=>e.textContent=start.toLocaleDateString('en-US',{...opt,weekday:'short',month:'short',day:'numeric'}));
+document.querySelectorAll('[data-time]').forEach(e=>e.textContent=t(start)+' UTC');
+document.querySelectorAll('[data-at]').forEach(e=>e.textContent=t(new Date(start.getTime()+Number(e.dataset.at)*60000))+(e.hasAttribute('data-utc')?' UTC':''));
+</script>
+</body></html>

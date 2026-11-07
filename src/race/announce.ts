@@ -23,6 +23,10 @@ let disabled = false;
 let ctx: AudioContext | null = null;
 let current: AudioBufferSourceNode[] = [];
 let playingUntil = 0;
+/** Sits between the caller's voice and the speakers so the broadcast host can follow the voice (passive). */
+let analyser: AnalyserNode | null = null;
+let levelData: Float32Array<ArrayBuffer> | null = null;
+const listeners = new Set<(text: string) => void>();
 let manifest: Promise<Set<string>> | null = null;
 const inflight = new Map<string, Promise<ArrayBuffer | null>>();
 const decoded = new Map<string, Promise<AudioBuffer | null>>();
@@ -134,23 +138,55 @@ export function warmCall(text: string): void {
   void resolveLine(text);
 }
 
-export function speakCall(text: string, priority = 5): void {
+/**
+ * `fallback`: a line whose recorded clip may stand in when `text` has none yet (the Pangs Cup
+ * calls fall back to the plain ones until all their clips are recorded). The screen keeps `text`.
+ */
+export function speakCall(text: string, priority = 5, fallback?: string): void {
   if (isAnnouncerMuted() || !text) return;
 
   void (async () => {
-    const buffers = await resolveLine(text);
+    const buffers = await resolveLine(text, fallback);
     if (!buffers || isAnnouncerMuted()) return;
     if (priority < 9 && isPlaying()) return;
     playBuffers(buffers);
+    for (const fn of listeners) fn(text);
   })();
 }
 
+/** Called with each line as the caller starts saying it (the Pangs Cup broadcast host uses it). */
+export function onAnnounce(fn: (text: string) => void): () => void {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+}
+
+/** How loud the caller is right now, 0 (silent) to 1. */
+export function announcerLevel(): number {
+  if (!analyser || !levelData || !isPlaying()) return 0;
+  analyser.getFloatTimeDomainData(levelData);
+  let sq = 0;
+  for (let i = 0; i < levelData.length; i++) sq += levelData[i] * levelData[i];
+  return Math.min(1, Math.sqrt(sq / levelData.length) * 5);
+}
+
+function voiceOut(ac: AudioContext): AudioNode {
+  if (!analyser) {
+    analyser = ac.createAnalyser();
+    analyser.fftSize = 1024;
+    levelData = new Float32Array(analyser.fftSize);
+    analyser.connect(ac.destination);
+  }
+  return analyser;
+}
+
 /** Baked clips when every part is available, otherwise the whole line live. */
-async function resolveLine(text: string): Promise<AudioBuffer[] | null> {
-  const plan = planClips(text);
-  if (plan && (await loadManifest()).size > 0) {
-    const parts = await Promise.all(plan.map(resolvePart));
-    if (parts.every((b): b is AudioBuffer => b !== null)) return parts;
+async function resolveLine(text: string, fallback?: string): Promise<AudioBuffer[] | null> {
+  for (const line of fallback ? [text, fallback] : [text]) {
+    const plan = planClips(line);
+    if (plan && (await loadManifest()).size > 0) {
+      const parts = await Promise.all(plan.map(resolvePart));
+      if (parts.every((b): b is AudioBuffer => b !== null)) return parts;
+    }
   }
   const spoken = spokenForm(text);
   if (!spoken) return null;
@@ -273,7 +309,7 @@ function playBuffers(buffers: AudioBuffer[]) {
   const sources = buffers.map((buf, i) => {
     const src = ac.createBufferSource();
     src.buffer = buf;
-    src.connect(ac.destination);
+    src.connect(voiceOut(ac));
     src.start(at);
     at += buf.duration + (i < buffers.length - 1 ? CLIP_GAP : 0);
     return src;

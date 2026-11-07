@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pangs Cup mock</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0614;--panel:#160d29;--panel2:#1e1336;--line:rgba(255,255,255,.09);--text:#f8f6ff;--muted:#a59dc6;--primary:#5432d3;--violet:#b6a4ff;--gold:#ffd166;--gold2:#ffb938;--live:#4cc9ff;--red:#ff5c6c;--h:'Outfit',sans-serif}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,sans-serif}
+button{font:inherit;color:inherit;border:0;background:none}h1,h2,h3,p{margin:0}
+.frame{display:none}body[data-f=cup] #cup,body[data-f=live] #live,body[data-f=final] #final,body[data-f=phone] #phone,body[data-f=broadcast] #broadcast,body[data-f=break] #break{display:block}
+#cup,#live,#final{width:1280px;margin:0 auto;padding:24px 32px 28px}
+.eyebrow{font:700 12px var(--h);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+.gold{color:var(--gold)}.mut{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 24px;border-radius:12px;font-weight:800;color:#241700;background:linear-gradient(135deg,#ffe08f,#ffb938);box-shadow:0 8px 26px rgba(255,185,56,.24)}
+.btn.ghost{color:var(--text);background:rgba(255,255,255,.05);border:1px solid var(--line);box-shadow:none}
+.btn.sm{padding:7px 14px;border-radius:9px;font-size:13px}
+.card{border:1px solid var(--line);border-radius:18px;background:var(--panel)}
+/* hero */
+.hero{position:relative;overflow:hidden;min-height:348px;padding:34px 36px;border:1px solid rgba(255,209,102,.28);border-radius:22px;display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:32px;align-items:center;isolation:isolate}
+.hero::before{content:"";position:absolute;inset:0;z-index:-2;background:url(../track-images/forest-finish.jpg) 92% 6%/165% auto no-repeat}
+.hero::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#0b0614 12%,rgba(11,6,20,.86) 48%,rgba(11,6,20,.62) 100%),linear-gradient(0deg,#0b0614,transparent 60%)}
+.hero h1{margin:10px 0 8px;font:900 74px/.96 var(--h);letter-spacing:-.02em}
+.hero h1 em{font-style:normal;background:linear-gradient(135deg,#ffe9ae,#ffb938);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{max-width:520px;font-size:16px;color:#d9d3ee}
+.when{display:flex;gap:26px;margin:18px 0 20px}.when b{display:block;font:800 19px var(--h)}.when span{font-size:12.5px;color:var(--muted)}
+.ctas{display:flex;align-items:center;gap:14px}.ctas small{font-size:12.5px;color:var(--muted)}
+.seats{margin-top:0}
+.prizes{padding:16px;border:1px solid rgba(255,209,102,.34);border-radius:18px;background:rgba(16,9,31,.84);backdrop-filter:blur(8px)}
+.prizes h3{margin-bottom:10px;font:700 12px var(--h);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.prize{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}.prize:first-of-type{border-top:0}
+.prize .medal{font:900 16px var(--h);color:#1a1205}.prize .medal.f{color:var(--violet);font-size:12px}.prize strong{display:block;font:800 17px var(--h)}.prize span{font-size:12.5px;color:var(--muted)}
+.medal{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;font:900 16px var(--h);color:#1a1205;background:linear-gradient(135deg,#ffe9ae,#ffb938)}.medal.s{background:linear-gradient(135deg,#eef1f6,#aab2c2)}.medal.t{background:linear-gradient(135deg,#efbe90,#c07f47)}.medal.f{color:var(--violet);background:rgba(182,164,255,.13);border:1px solid rgba(182,164,255,.36);font-size:12px}
+/* path */
+.path{display:grid;grid-template-columns:repeat(4,1fr) 1.45fr;gap:10px;margin-top:14px}
+.step{position:relative;padding:13px 15px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.step b{display:block;font:800 16px var(--h)}.step span{font-size:12.5px;color:var(--muted)}
+.step.fin{border-color:rgba(255,209,102,.5);background:radial-gradient(320px 120px at 100% 0,rgba(255,185,56,.22),transparent 70%),var(--panel)}.step.fin b{color:var(--gold)}
+.step.done{opacity:.72}.step.done b::after{content:" ✓";color:#00ff88}.step.now{border-color:var(--live);background:rgba(76,201,255,.08)}.step.now span{color:var(--live);font-weight:700}
+.tri{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.tri .card{padding:15px 17px}.tri h3{margin-bottom:5px;font:700 16px var(--h)}.tri p{font-size:13.5px;color:var(--muted)}
+.fine{margin-top:12px;font-size:12.5px;color:var(--muted)}
+.bar{height:8px;margin:7px 0 6px;overflow:hidden;border-radius:9px;background:rgba(255,255,255,.1)}.bar i{display:block;height:100%;background:linear-gradient(90deg,#8d6fff,#ffd166)}
+/* live */
+.head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}.head h2{font:800 28px var(--h)}.head p{font-size:13px;color:var(--muted)}
+.clock{display:flex;align-items:center;gap:14px;padding:8px 8px 8px 16px;border:1px solid rgba(76,201,255,.42);border-radius:14px;background:rgba(76,201,255,.07)}.clock span{font-size:12.5px;color:var(--muted)}.clock b{font:800 24px var(--h);font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;margin-top:14px;align-items:start}
+.tbl{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.r{display:grid;grid-template-columns:44px minmax(0,1fr) 46px 46px 46px 46px 66px;align-items:center;gap:6px;padding:7px 14px;border-top:1px solid var(--line)}
+.r.h{border-top:0;font-size:11.5px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.03)}.r .c{text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}.r .w{color:var(--gold);font-weight:800}
+.rk{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;font:800 13px var(--h);color:var(--muted)}.rk.q{color:#fff;background:rgba(84,50,211,.62)}
+.nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pts{font:800 16px var(--h);color:var(--gold);text-align:right}
+.r.me{background:rgba(255,209,102,.1);box-shadow:inset 3px 0 0 var(--gold)}.nm i{font-style:normal;font-size:11px;color:var(--gold);margin-left:6px}
+.cut{display:flex;align-items:center;gap:10px;padding:3px 14px;border-top:1px solid rgba(255,209,102,.5);border-bottom:1px solid rgba(255,209,102,.5);font:700 11px var(--h);letter-spacing:.12em;text-transform:uppercase;color:var(--gold);background:rgba(255,209,102,.07)}.cut::after{content:"";flex:1;border-top:1px dashed rgba(255,209,102,.42)}
+.side{display:grid;gap:12px}.side .card{padding:14px 15px}.side h3{margin-bottom:9px;font:700 15px var(--h)}
+.mine{display:flex;justify-content:space-between;gap:8px}.mine div{font-size:11.5px;color:var(--muted)}.mine b{display:block;font:800 22px var(--h);color:var(--text)}
+.need{margin-top:10px;padding:9px 11px;border-radius:11px;font-size:13px;background:rgba(255,209,102,.09);color:#ffe4a3}
+.room{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line)}.room:first-of-type{border-top:0}.room strong{display:block;font:700 14px var(--h)}.room span{font-size:12px;color:var(--muted)}
+.tag{padding:2px 7px;border-radius:999px;font-size:11px;font-weight:700;color:var(--gold);background:rgba(255,209,102,.13)}
+/* final */
+.champ{position:relative;overflow:hidden;padding:28px 32px 0;border:1px solid rgba(255,209,102,.4);border-radius:22px;background:radial-gradient(640px 320px at 50% 0,rgba(255,185,56,.24),transparent 70%),radial-gradient(760px 420px at 50% 120%,rgba(84,50,211,.5),transparent 70%),var(--panel);text-align:center}
+.champ h2{margin-top:6px;font:900 44px/1 var(--h)}.champ>p{margin-top:6px;color:var(--muted)}
+.pod{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:14px;align-items:end;max-width:880px;margin:18px auto 0}
+.col{display:flex;flex-direction:column;align-items:center}.col img{width:96px;height:96px;object-fit:cover;border-radius:18px;border:2px solid rgba(255,255,255,.28);box-shadow:0 10px 24px rgba(0,0,0,.45)}.col.c1 img{width:138px;height:138px;border-color:var(--gold);box-shadow:0 0 0 5px rgba(255,209,102,.18),0 12px 30px rgba(0,0,0,.5)}
+.col strong{margin-top:4px;font:800 19px var(--h)}.col.c1 strong{font-size:24px;color:var(--gold)}.col span{font-size:12.5px;color:#d9d3ee}
+.step3{display:grid;place-items:center;width:100%;margin-top:9px;border-radius:12px 12px 0 0;font:900 34px var(--h);color:rgba(255,255,255,.76);background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.03))}.c1 .step3{height:104px;color:#1a1205;background:linear-gradient(180deg,#ffd166,#c98a1f)}.c2 .step3{height:74px}.c3 .step3{height:56px}
+.finrow{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;margin-top:14px;align-items:start}
+.seven{display:grid;grid-template-columns:repeat(2,1fr);gap:0 18px;padding:6px 16px}.seven div{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}.seven div:nth-child(-n+2){border-top:0}.seven b{width:22px;font:800 14px var(--h);color:var(--muted)}.seven span{flex:1;font-weight:600}.seven em{font-style:normal;font-size:11.5px;color:var(--violet)}
+.proof{padding:14px 15px}.proof h3{margin-bottom:5px;font:700 15px var(--h)}.proof p{font-size:13px;color:var(--muted)}.proof code{display:block;margin:9px 0;padding:7px 9px;border-radius:8px;font:12px ui-monospace,Menlo,monospace;color:#d9d3ee;background:rgba(0,0,0,.28)}
+/* phone */
+#phone{width:820px;padding:20px;display:none}body[data-f=phone] #phone{display:grid;grid-template-columns:390px 390px;gap:0}
+.ph{width:390px;padding:0 14px}.ph .hero{display:block;min-height:0;padding:20px 18px}.ph .hero h1{font-size:50px}.ph .sub{font-size:14px}.ph .when{gap:18px;margin:12px 0 14px}.ph .when b{font-size:16px}.ph .ctas{display:block}.ph .btn{width:100%}.ph .ctas small{display:block;margin-top:7px;text-align:center}
+.ph .hero::before{background-size:cover;background-position:62% 0}.ph .hero::after{background:rgba(11,6,20,.88)}.ph .prizes{margin-top:10px}.ph .path{grid-template-columns:repeat(4,1fr);gap:6px}.ph .step{padding:8px;text-align:center}.ph .step b{font-size:13px}.ph .step span{font-size:11px}.ph .step.fin{grid-column:1/-1}
+.ph .head{margin:0 0 10px}.ph .head h2{font-size:23px}.ph .clock{justify-content:space-between;margin-bottom:10px}
+.ph .r{grid-template-columns:36px minmax(0,1fr) 54px;padding:7px 11px}.ph .side{margin-top:10px}
+/* broadcast */
+#broadcast,#break{width:1920px;height:1080px;position:relative;overflow:hidden}
+#broadcast{background:var(--bg)}.shot{position:absolute;left:0;top:0;width:1560px;height:877px;background:url(../track-images/forest-race.jpg) center/cover}
+.bug{position:absolute;left:32px;top:28px;display:flex;align-items:center;gap:18px;padding:12px 24px 12px 16px;border-radius:16px;background:rgba(11,6,20,.9);border:1px solid rgba(255,209,102,.4)}.bug img{height:56px}.bug b{display:block;font:900 30px/1.1 var(--h)}.bug span{font:700 16px var(--h);letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.onair{position:absolute;left:32px;top:126px;display:flex;align-items:center;gap:10px;padding:6px 14px;border-radius:9px;font:800 18px var(--h);letter-spacing:.1em;background:var(--red)}.onair i{width:11px;height:11px;border-radius:50%;background:#fff}
+.order{position:absolute;left:1572px;top:12px;width:336px;height:853px;padding:16px 16px 10px;border-radius:18px;background:var(--panel);border:1px solid var(--line)}.order h3{margin-bottom:8px;font:800 21px var(--h)}
+.o{display:grid;grid-template-columns:30px 42px minmax(0,1fr);align-items:center;gap:6px;height:76px;border-top:1px solid var(--line);font:700 23px var(--h)}.o:first-of-type{border-top:0}.o>b{color:var(--muted)}.o u{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;text-decoration:none;font-size:18px;font-weight:800;color:#120b22;background:#fff}.o.l{color:var(--gold)}.o.l u{background:var(--gold)}
+.lower{position:absolute;left:12px;right:12px;top:889px;height:179px;display:grid;grid-template-columns:250px minmax(0,1fr) 340px;align-items:center;overflow:hidden;border-radius:18px;border:1px solid rgba(255,209,102,.4);background:rgba(11,6,20,.94)}
+.lower .a{height:100%;display:flex;flex-direction:column;justify-content:center;padding:0 24px;font:800 20px var(--h);color:#241700;background:linear-gradient(135deg,#ffe08f,#ffb938)}.lower .a small{font:700 13px var(--h);letter-spacing:.12em;text-transform:uppercase}
+.lower .t{padding:0 36px;font:700 46px/1.15 var(--h)}.lower .p{padding:0 24px;border-left:1px solid var(--line);font:600 17px Inter;color:var(--muted)}.lower .p b{display:block;font:800 30px var(--h);color:var(--gold)}
+#break{padding:54px 72px;background:radial-gradient(900px 520px at 80% 0,rgba(255,185,56,.2),transparent 70%),radial-gradient(1100px 700px at 10% 110%,rgba(84,50,211,.55),transparent 70%),var(--bg)}
+.bk-top{display:flex;align-items:center;justify-content:space-between}.bk-top img{height:82px}
+.bk-title{margin-top:36px}.bk-title h1{margin:8px 0 0;font:900 104px/1 var(--h)}.bk-grid{display:grid;grid-template-columns:minmax(0,1fr) 520px;gap:40px;margin-top:30px;height:640px}
+.fins{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,1fr);grid-auto-flow:column;gap:14px 22px}.fins div{display:flex;align-items:center;gap:16px;padding:14px 20px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.04);font:700 34px var(--h)}.fins b{width:42px;color:var(--gold)}.fins span{margin-left:auto;font-size:21px;color:var(--muted)}
+.cd{display:flex;flex-direction:column;justify-content:center;padding:26px 34px;border:1px solid rgba(255,209,102,.4);border-radius:20px;background:rgba(16,9,31,.8)}.cd span{font:700 20px var(--h);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}.cd b{display:block;margin:6px 0 16px;font:900 170px/1 var(--h);color:var(--gold);font-variant-numeric:tabular-nums}.cd p{padding-top:14px;border-top:1px solid var(--line);font:600 29px/1.5 var(--h)}.cd p em{font-style:normal;color:var(--gold)}
+</style></head>
+<body>
+<section class="frame" id="cup">
+  <div class="hero" data-hero></div>
+  <div class="path" data-path="plan"></div>
+  <div class="tri">
+    <div class="card"><h3>1. Claim your seat</h3><p>Free for Beta pass holders. Register once, and you are in every qualifying round. It uses none of your daily races.</p></div>
+    <div class="card"><h3>2. Race four rounds</h3><p>Every round shuffles you into a new room of 10. Race points go on a live Cup table. If you close the page, your race still runs.</p></div>
+    <div class="card"><h3>3. Make the Grand Final</h3><p>The top 10 go through and everyone restarts on zero. One race decides the Cup: the final result sets the prizes.</p></div>
+  </div>
+  <p class="fine">Every racer has equal stats, so luck decides each race. Ties for the final: most wins, then most second places, then a seeded draw. Team wallets cannot win prizes. <span class="gold">Full rules</span></p>
+</section>
+
+<section class="frame" id="live">
+  <div class="head"><div><span class="eyebrow">Pangs Cup #1 · Live</span><h2>Qualifying standings</h2></div>
+    <div class="clock"><div><span>Round 4 starts in</span></div><b>06:41</b><button class="btn sm">Go to my room</button></div></div>
+  <div class="path" data-path="live"></div>
+  <div class="grid"><div class="tbl" data-board></div>
+    <aside class="side">
+      <div class="card"><h3>Your Cup</h3><div class="mine"><div><b>11th</b>Place</div><div><b class="gold">37</b>Points</div><div><b>2</b>Points to the cut</div></div><div class="need">One good round puts you in the Grand Final.</div></div>
+      <div class="card"><h3>Round 4 rooms</h3>
+        <div class="room"><div><strong>Room A</strong><span>10 racers · 8:45 PM</span></div><button class="btn ghost sm">Watch</button></div>
+        <div class="room"><div><strong>Room B <span class="tag">You</span></strong><span>10 racers · 8:45 PM</span></div><button class="btn sm">Open</button></div>
+        <div class="room"><div><strong>Room C</strong><span>10 racers · 8:45 PM</span></div><button class="btn ghost sm">Watch</button></div>
+      </div>
+    </aside></div>
+</section>
+
+<section class="frame" id="final">
+  <div class="champ"><span class="eyebrow">Pangs Cup #1 · Grand Final result</span><h2>Nightroll takes the Cup</h2><p>30 racers, 4 qualifying rounds, one final.</p>
+    <div class="pod">
+      <div class="col c2"><img src="../../public/beta/beta-racer.webp" alt=""><strong>Mossback</strong><span>Genesis whitelist</span><div class="step3">2</div></div>
+      <div class="col c1"><img src="../../public/beta/beta-racer.webp" alt=""><strong>Nightroll</strong><span>$25 + Genesis whitelist</span><div class="step3">1</div></div>
+      <div class="col c3"><img src="../../public/beta/beta-racer.webp" alt=""><strong>Lunar</strong><span>Genesis whitelist</span><div class="step3">3</div></div>
+    </div></div>
+  <div class="finrow"><div class="card seven" data-seven></div>
+    <div class="card proof"><h3>Check the result</h3><p>The seed fingerprint was posted before the race. Compare it with the seed below and replay the race yourself.</p><code>online-7f3a…c91e</code><button class="btn ghost sm">Watch the replay</button></div></div>
+</section>
+
+<section class="frame" id="phone">
+  <div class="ph"><div class="hero" data-hero></div><div class="path" data-path="plan"></div></div>
+  <div class="ph"><div class="head"><div><span class="eyebrow">Pangs Cup #1 · Live</span><h2>Qualifying</h2></div></div>
+    <div class="clock"><span>Round 4 starts in</span><b>06:41</b></div>
+    <div class="tbl" data-board="compact"></div>
+    <div class="side"><div class="card"><div class="mine"><div><b>11th</b>Place</div><div><b class="gold">37</b>Points</div><div><b>2</b>Points to the cut</div></div></div><button class="btn">Go to my room</button></div></div>
+</section>
+
+<section class="frame" id="broadcast">
+  <div class="shot"></div><div class="bug"><img src="../../public/dark-logo.webp" alt=""><div><b>Pangs Cup</b><span>Grand Final</span></div></div>
+  <div class="onair"><i></i>LIVE</div>
+  <aside class="order"><h3>Race order</h3><div data-order></div></aside>
+  <div class="lower"><div class="a"><small>Race caller</small>Forest Track</div><div class="t">Number 8 surges to the front, and takes the lead!</div><div class="p"><b>$25 + whitelist</b>Winner's prize</div></div>
+</section>
+
+<section class="frame" id="break">
+  <div class="bk-top"><img src="../../public/dark-logo.webp" alt=""><div class="onair" style="position:static"><i></i>LIVE</div></div>
+  <div class="bk-title"><span class="eyebrow" style="font-size:24px">Pangs Cup #1</span><h1>The Grand Final <span class="gold">ten</span></h1></div>
+  <div class="bk-grid"><div class="fins" data-fins></div>
+    <div class="cd"><span>Grand Final starts in</span><b>04:12</b><p>Winner: <em>$25 + Genesis whitelist</em><br>2nd and 3rd: <em>Genesis whitelist</em></p></div></div>
+</section>
+<script>
+const q=new URLSearchParams(location.search);document.body.dataset.f=q.get('f')||'cup';
+const hero=`<div><span class="eyebrow">Beta Season special · Free entry</span><h1>Pangs <em>Cup</em> #1</h1>
+<p class="sub">Thirty racers. Four qualifying rounds. The top ten meet in one Grand Final, live.</p>
+<div class="when"><div><b>Sat, Nov 21</b><span>Date</span></div><div><b>8:00 PM UTC</b><span>First round</span></div><div class="seats"><b>23 of 30</b><span>Seats taken</span><div class="bar"><i style="width:77%"></i></div></div></div>
+<div class="ctas"><button class="btn">Claim my seat</button><small>Needs a Beta pass. No payment, ever.</small></div></div>
+<aside class="prizes"><h3>Prizes</h3>
+<div class="prize"><span class="medal">1</span><div><strong class="gold">$25 + Genesis whitelist</strong><span>Grand Final winner</span></div></div>
+<div class="prize"><span class="medal s">2</span><div><strong>Genesis whitelist</strong><span>Second place</span></div></div>
+<div class="prize"><span class="medal t">3</span><div><strong>Genesis whitelist</strong><span>Third place</span></div></div>
+<div class="prize"><span class="medal f">4-10</span><div><strong>Finalist badge</strong><span>Every other finalist</span></div></div></aside>`;
+document.querySelectorAll('[data-hero]').forEach(e=>e.innerHTML=hero);
+const steps=[['Round 1','8:00 PM'],['Round 2','8:15 PM'],['Round 3','8:30 PM'],['Round 4','8:45 PM']];
+document.querySelectorAll('[data-path]').forEach(e=>{const live=e.dataset.path==='live';
+ e.innerHTML=steps.map((s,i)=>`<div class="step ${live?(i<3?'done':'now'):''}"><b>${s[0]}</b><span>${live&&i==3?'Next up':s[1]}</span></div>`).join('')+`<div class="step fin"><b>Grand Final</b><span>9:15 PM · top 10 · points reset</span></div>`});
+const P=[['Mossback',25,18,15],['Kiro_77',18,25,12],['Nightroll',15,15,25],['TurboScale',25,10,18],['Lunar',12,25,15],['ZeroDrag',18,8,25],['Pinecone',10,18,18],['RollingJoe',25,6,12],['Emberfoot',18,15,8],['Slate',6,25,8],['Pangfan',15,4,18,1],['Quill',12,12,12]];
+const rows=P.map(p=>({n:p[0],r:p.slice(1,4),me:p[4],t:p[1]+p[2]+p[3]})).sort((a,b)=>b.t-a.t);
+document.querySelectorAll('[data-board]').forEach(e=>{const c=e.dataset.board==='compact';
+ const row=(x,i)=>`<div class="r ${x.me?'me':''}"><span class="rk ${i<10?'q':''}">${i+1}</span><span class="nm">${x.n}${x.me?'<i>You</i>':''}</span>${c?'':x.r.map(v=>`<span class="c ${v==25?'w':''}">${v}</span>`).join('')+'<span class="c">–</span>'}<span class="pts">${x.t}</span></div>`;
+ const list=c?rows.slice(7):rows;const off=c?7:0;
+ e.innerHTML=`<div class="r h"><span>#</span><span>Racer</span>${c?'':'<span class="c">R1</span><span class="c">R2</span><span class="c">R3</span><span class="c">R4</span>'}<span style="text-align:right">Points</span></div>`+list.map((x,i)=>row(x,i+off)+(i+off==9?'<div class="cut">Grand Final cut</div>':'')).join('')});
+const seven=['Kiro_77','Pinecone','TurboScale','Slate','ZeroDrag','Emberfoot','Pangfan'];
+document.querySelectorAll('[data-seven]').forEach(e=>e.innerHTML=seven.map((n,i)=>`<div><b>${i+4}</b><span>${n}</span><em>Finalist badge</em></div>`).join(''));
+const O=[[8,'Aura'],[10,'Amber'],[1,'SixSeven'],[6,'Blade'],[7,'Breeze'],[4,'Arrow'],[9,'Blaze'],[5,'Ash'],[2,'Brick'],[3,'Apex']];
+document.querySelectorAll('[data-order]').forEach(e=>e.innerHTML=O.map((o,i)=>`<div class="o ${i==0?'l':''}"><b>${i+1}</b><u>${o[0]}</u><span>${o[1]}</span></div>`).join(''));
+document.querySelectorAll('[data-fins]').forEach(e=>e.innerHTML=[['Nightroll',80],['Mossback',73],['Lunar',70],['Kiro_77',63],['ZeroDrag',61],['TurboScale',59],['Pinecone',58],['Pangfan',55],['Slate',51],['Emberfoot',51]].map((x,i)=>`<div><b>${i+1}</b>${x[0]}<span>${x[1]} pts</span></div>`).join(''));
+</script></body></html>

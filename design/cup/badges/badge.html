@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Pangs Cup badge</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:transparent}svg{display:block}body.sheet{background:#0b0614;padding:40px;display:flex;flex-wrap:wrap;gap:28px;width:1880px}body.sheet svg{border-radius:24px}</style>
+</head><body>
+<script>
+const T={
+ gold:  {m:['#fff6cf','#ffd166','#d99a26','#8a520e','#ffe7a0'],glow:'#ffb938',label:'CHAMPION',top:'crown',laurel:true,ink:'#2a1700'},
+ silver:{m:['#ffffff','#e3e7ef','#a6aebd','#545c6c','#f4f6fa'],glow:'#c7d0e0',label:'2ND PLACE',top:'2',laurel:true,ink:'#1b1f28'},
+ bronze:{m:['#ffe2c4','#e6a56b','#b0672e','#5e2f10','#ffd0a3'],glow:'#e0904c',label:'3RD PLACE',top:'3',laurel:true,ink:'#2a1305'},
+ violet:{m:['#f1ecff','#c3b2ff','#8466f5','#3a2296','#ddd2ff'],glow:'#8d6fff',label:'FINALIST',top:'star',laurel:false,ink:'#170c3a'},
+ teal:  {m:['#e6fbff','#8fe3ff','#2fb3e0','#0b5577','#c4f2ff'],glow:'#4cc9ff',label:'FINALIST',top:'star',laurel:false,ink:'#04202e'},
+};
+const CX=500,CY=468;
+function badge(k,size=1000){
+ const t=T[k],m=t.m,id=k;
+ const pt=(r,a)=>[CX+r*Math.cos(a),CY+r*Math.sin(a)];
+ // milled beads on the rim
+ let beads='';for(let i=0;i<60;i++){const a=i/60*2*Math.PI;const[x,y]=pt(381,a);beads+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.2" fill="${m[4]}" opacity=".75"/>`;}
+ // engraved rays in the field
+ let rays='';for(let i=0;i<36;i++){const a=i/36*2*Math.PI;const[x1,y1]=pt(70,a),[x2,y2]=pt(340,a);rays+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${m[1]}" stroke-opacity="${i%2?.05:.1}" stroke-width="${i%2?3:7}"/>`;}
+ // laurel: leaves along both sides, outside the rim
+ let laurel='';
+ if(t.laurel){for(const s of[-1,1]){
+  const R0=438,th0=0.46,step=0.158,n=14;
+  const[sx,sy]=pt(R0,Math.PI/2+s*th0),[ex,ey]=pt(R0,Math.PI/2+s*(th0+(n-1)*step+0.08));
+  laurel+=`<path d="M${sx.toFixed(1)} ${sy.toFixed(1)} A${R0} ${R0} 0 0 ${s>0?1:0} ${ex.toFixed(1)} ${ey.toFixed(1)}" fill="none" stroke="${m[3]}" stroke-width="8" stroke-linecap="round"/>`;
+  for(let i=0;i<n;i++){const th=th0+i*step,a=Math.PI/2+s*th;const[x,y]=pt(R0,a);
+   const dx=-s*Math.sin(a),dy=s*Math.cos(a);const base=Math.atan2(dy,dx)*180/Math.PI+90;const L=60-i*1.6;
+   for(const side of[-1,1]){const out=side*s;const rot=base+side*38;const [ox,oy]=[x+(side*7)*Math.cos(a),y+(side*7)*Math.sin(a)];
+    laurel+=`<g transform="translate(${ox.toFixed(1)} ${oy.toFixed(1)}) rotate(${rot.toFixed(1)})"><path d="M0 0 C ${L*.34} ${-L*.38} ${L*.3} ${-L*.86} 0 ${-L*1.1} C ${-L*.3} ${-L*.86} ${-L*.34} ${-L*.38} 0 0Z" fill="url(#lf-${id})" stroke="${m[3]}" stroke-width="2.4"/><path d="M0 -5 Q ${L*.05} ${-L*.55} 0 ${-L*.98}" fill="none" stroke="${m[3]}" stroke-opacity=".6" stroke-width="2"/></g>`;}
+   if(i%3===1){const[bx,by]=pt(R0+26,a);laurel+=`<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="7" fill="${m[1]}" stroke="${m[3]}" stroke-width="2"/>`;}}
+  const[tx2,ty2]=pt(R0,Math.PI/2+s*(th0+(n-1)*step+0.1));const dx=-s*Math.sin(Math.PI/2+s*(th0+(n-1)*step+0.1)),dy=s*Math.cos(Math.PI/2+s*(th0+(n-1)*step+0.1));
+  laurel+=`<g transform="translate(${tx2.toFixed(1)} ${ty2.toFixed(1)}) rotate(${(Math.atan2(dy,dx)*180/Math.PI+90).toFixed(1)})"><path d="M0 0 C 13 -16 11 -34 0 -44 C -11 -34 -13 -16 0 0Z" fill="url(#lf-${id})" stroke="${m[3]}" stroke-width="2.4"/></g>`;}}
+ // top medallion icon
+ let icon='';
+ if(t.top==='crown')icon=`<path d="M-44 22 L-50 -24 L-24 0 L0 -36 L24 0 L50 -24 L44 22 Z" fill="${t.ink}"/><rect x="-46" y="28" width="92" height="12" rx="4" fill="${t.ink}"/><circle cx="0" cy="-42" r="7" fill="${t.ink}"/><circle cx="-52" cy="-30" r="6" fill="${t.ink}"/><circle cx="52" cy="-30" r="6" fill="${t.ink}"/>`;
+ else if(t.top==='star'){let d='';for(let i=0;i<10;i++){const r=i%2?20:46,a=-Math.PI/2+i*Math.PI/5;d+=(i?'L':'M')+(r*Math.cos(a)).toFixed(1)+' '+(r*Math.sin(a)).toFixed(1);}icon=`<path d="${d}Z" fill="${t.ink}"/>`;}
+ else icon=`<text x="0" y="30" text-anchor="middle" font-family="Outfit" font-weight="900" font-size="86" fill="${t.ink}">${t.top}</text>`;
+ const[tx,ty]=[CX,CY-382];
+ return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 1000 1000">
+<defs>
+ <radialGradient id="bg-${id}" cx="50%" cy="44%" r="70%"><stop offset="0" stop-color="${t.glow}" stop-opacity=".34"/><stop offset=".45" stop-color="#1a0d33"/><stop offset="1" stop-color="#07040d"/></radialGradient>
+ <linearGradient id="met-${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${m[0]}"/><stop offset=".22" stop-color="${m[1]}"/><stop offset=".5" stop-color="${m[2]}"/><stop offset=".62" stop-color="${m[3]}"/><stop offset=".8" stop-color="${m[1]}"/><stop offset="1" stop-color="${m[4]}"/></linearGradient>
+ <linearGradient id="met2-${id}" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${m[3]}"/><stop offset=".5" stop-color="${m[1]}"/><stop offset="1" stop-color="${m[3]}"/></linearGradient>
+ <linearGradient id="lf-${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${m[0]}"/><stop offset=".55" stop-color="${m[1]}"/><stop offset="1" stop-color="${m[2]}"/></linearGradient>
+ <linearGradient id="rib-${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${m[0]}"/><stop offset=".45" stop-color="${m[1]}"/><stop offset="1" stop-color="${m[2]}"/></linearGradient>
+ <radialGradient id="field-${id}" cx="50%" cy="38%" r="65%"><stop offset="0" stop-color="#3a2170"/><stop offset=".7" stop-color="#1a0e38"/><stop offset="1" stop-color="#0d0720"/></radialGradient>
+ <radialGradient id="halo-${id}" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${t.glow}" stop-opacity=".42"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></radialGradient>
+ <filter id="sh-${id}" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity=".55"/></filter>
+ <clipPath id="clip-${id}"><circle cx="${CX}" cy="${CY}" r="342"/></clipPath>
+ <path id="arc-${id}" d="M ${CX-262} ${CY} A 262 262 0 0 1 ${CX+262} ${CY}"/>
+</defs>
+<rect width="1000" height="1000" fill="url(#bg-${id})"/>
+<g opacity=".5">${Array.from({length:26},(_,i)=>{const x=(i*373)%1000,y=(i*617)%1000;return `<circle cx="${x}" cy="${y}" r="${1+(i%3)}" fill="${m[0]}" opacity="${.15+(i%4)*.1}"/>`}).join('')}</g>
+${laurel}
+<g filter="url(#sh-${id})">
+ <circle cx="${CX}" cy="${CY}" r="396" fill="url(#met-${id})"/>
+ <circle cx="${CX}" cy="${CY}" r="370" fill="url(#met2-${id})"/>
+ ${beads}
+ <circle cx="${CX}" cy="${CY}" r="352" fill="${m[3]}"/>
+ <circle cx="${CX}" cy="${CY}" r="344" fill="url(#field-${id})"/>
+</g>
+<g clip-path="url(#clip-${id})">${rays}<circle cx="${CX}" cy="${CY+30}" r="250" fill="url(#halo-${id})"/></g>
+<circle cx="${CX}" cy="${CY}" r="306" fill="none" stroke="${m[1]}" stroke-opacity=".3" stroke-width="2" stroke-dasharray="2 10"/>
+<text font-family="Outfit" font-weight="800" font-size="38" letter-spacing="9" fill="${m[1]}"><textPath href="#arc-${id}" startOffset="50%" text-anchor="middle">PANGS CUP · #1</textPath></text>
+<ellipse cx="${CX+10}" cy="${CY+176}" rx="210" ry="20" fill="#000" opacity=".35"/>
+<image href="../../../public/badges/early-pangolin.webp" x="${CX-262}" y="${CY-118}" width="524" height="302" filter="url(#sh-${id})"/>
+<g transform="translate(${tx} ${ty})" filter="url(#sh-${id})"><circle r="74" fill="url(#met-${id})"/><circle r="62" fill="url(#rib-${id})" stroke="${m[3]}" stroke-width="3"/>${icon}</g>
+<g filter="url(#sh-${id})">
+ <path d="M178 772 L262 772 L262 872 L178 872 L210 822 Z" fill="${m[3]}"/><path d="M822 772 L738 772 L738 872 L822 872 L790 822 Z" fill="${m[3]}"/>
+ <path d="M240 744 L760 744 L760 856 L240 856 Z" fill="url(#rib-${id})" stroke="${m[3]}" stroke-width="4"/>
+ <path d="M240 856 L262 872 L262 856Z M760 856 L738 872 L738 856Z" fill="#000" opacity=".45"/>
+ <text x="500" y="823" text-anchor="middle" font-family="Outfit" font-weight="900" font-size="${t.label.length>8?58:66}" letter-spacing="6" fill="${t.ink}">${t.label}</text>
+</g>
+<text x="500" y="936" text-anchor="middle" font-family="Outfit" font-weight="700" font-size="28" letter-spacing="8" fill="${m[1]}" opacity=".8">PANGS RALLY · BETA SEASON</text>
+</svg>`;}
+const q=new URLSearchParams(location.search);
+if(q.get('sheet')){document.body.className='sheet';document.body.insertAdjacentHTML('beforeend',['gold','silver','bronze','violet','teal'].map(k=>badge(k,352)).join('')+'<div style="width:100%"></div>'+['gold','silver','bronze','violet','teal'].map(k=>badge(k,160)).join('')+['gold','silver','bronze','violet','teal'].map(k=>badge(k,72)).join(''));}
+else document.body.insertAdjacentHTML('beforeend',badge(q.get('t')||'gold'));
+</script></body></html>

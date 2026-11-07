@@ -13,10 +13,11 @@ import {
   type TestRacer, type TestRaceResult,
   streakFor,
 } from './race/testSeason.ts';
+import { cupLeave, cupRegister, cupStatus, type CupEntryRow, type CupRow } from './cup.ts';
 
 export interface RaceRow {
   id: string;
-  kind: 'bot' | 'online';
+  kind: 'bot' | 'online' | 'cup';
   terrain: string;
   seed: string;
   status: 'open' | 'finished';
@@ -26,6 +27,10 @@ export interface RaceRow {
   finished_at: string | null;
   field: TestRacer[] | null;
   results: TestRaceResult[] | null;
+  /** Pangs Cup races only (cup.ts): which Cup, round and room. */
+  cup_id?: number | null;
+  cup_round?: number | null;
+  cup_room?: number | null;
 }
 
 export interface EntryRow {
@@ -135,6 +140,20 @@ export interface Store {
   insertReport(report: ReportRow): Promise<void>;
   /** Reports since `since`: by this wallet, or by signed-out visitors when wallet is null. */
   countReports(since: string, wallet: string | null): Promise<number>;
+  /** When the wallet first joined the game; null if it never did. */
+  playerJoinedAt(wallet: string): Promise<string | null>;
+  getCup(id: number): Promise<CupRow | null>;
+  /** The Cup with the highest number. */
+  latestCup(): Promise<CupRow | null>;
+  /** For scripts and the dev server only; the game never creates a Cup by itself. */
+  insertCup(cup: CupRow): Promise<void>;
+  cupEntries(cupId: number): Promise<CupEntryRow[]>;
+  /** A second entry for the same wallet is ignored. */
+  insertCupEntry(entry: CupEntryRow): Promise<void>;
+  deleteCupEntry(cupId: number, wallet: string): Promise<void>;
+  cupRaces(cupId: number): Promise<RaceRow[]>;
+  /** 'conflict' when this Cup round and room already has its race (migration 013). */
+  insertCupRace(race: RaceRow): Promise<'ok' | 'conflict'>;
 }
 
 export interface ReportRow {
@@ -167,6 +186,8 @@ export interface Deps {
   betaSeasonEnd?: Date | null;
   /** The free prediction game. Off in production until migration 011 is applied and the owner opens it. */
   predictions?: boolean;
+  /** Team wallets (lower-case) that cannot enter a Pangs Cup. */
+  cupTeamWallets?: Set<string>;
 }
 
 export interface BetaGate {
@@ -189,7 +210,7 @@ const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 
 export { signInMessage };
 
-class HttpError extends Error {
+export class HttpError extends Error {
   status: number;
   code: string;
   constructor(status: number, code: string, message: string) {
@@ -218,6 +239,9 @@ export async function handle(deps: Deps, action: string, body: Record<string, un
       case 'prediction-board': requirePredictions(deps); return ok(await predictionBoard(deps, token));
       case 'report': return ok(await report(deps, body, token));
       case 'set-username': return ok(await setUsername(deps, await requireWallet(deps, token), str(body.username)));
+      case 'cup': return ok(await cupStatus(deps, body.cupId, token));
+      case 'cup-register': return ok(await cupRegister(deps, token, body.cupId));
+      case 'cup-leave': return ok(await cupLeave(deps, token, body.cupId));
       case 'beta-voucher': return ok(await betaVoucher(deps, await requireWallet(deps, token)));
       default: throw new HttpError(404, 'unknown_action', 'Unknown action.');
     }
@@ -274,7 +298,7 @@ export function normalizeInvite(v: unknown): string {
   return /^[A-Z0-9-]{4,32}$/.test(code) ? code : '';
 }
 
-async function requireWallet(deps: Deps, token: string | null): Promise<string> {
+export async function requireWallet(deps: Deps, token: string | null): Promise<string> {
   if (!token) throw new HttpError(401, 'signed_out', 'Connect your wallet to race.');
   const wallet = await deps.store.getSessionWallet(await deps.sha256Hex(token), deps.now());
   if (!wallet) throw new HttpError(401, 'signed_out', 'Your session expired. Connect your wallet again.');
@@ -338,7 +362,7 @@ async function betaMinted(deps: Deps, wallet: string): Promise<boolean> {
   return minted;
 }
 
-async function requireBeta(deps: Deps, wallet: string) {
+export async function requireBeta(deps: Deps, wallet: string) {
   if (!(await betaMinted(deps, wallet))) {
     throw new HttpError(403, 'beta_required', 'Mint your free Beta pass to start racing. It costs only gas.');
   }
@@ -714,7 +738,7 @@ async function setUsername(deps: Deps, wallet: string, raw: string) {
 const RACE_LEAD_IN_SECONDS = 3.5;
 
 /** When a race just resolved at `now` crosses the line on screen; points count from then on. */
-function raceEndsAt(now: Date, results: TestRaceResult[]): string {
+export function raceEndsAt(now: Date, results: TestRaceResult[]): string {
   const raceSeconds = Math.max(0, ...results.map(r => r.finishTime ?? 0));
   return new Date(now.getTime() + (RACE_LEAD_IN_SECONDS + raceSeconds) * 1000).toISOString();
 }
@@ -743,8 +767,11 @@ async function claimSlot(deps: Deps, wallet: string, raceId: string, now: Date, 
 
 async function publicRace(deps: Deps, race: RaceRow, entries: EntryRow[]) {
   const names = await deps.store.getUsernames(entries.map(e => e.wallet));
+  // Cup races tell the caller which round it is ("Number 4 wins Round 2 of the Pangs Cup!").
+  const cupRow = race.kind === 'cup' && race.cup_id ? await deps.store.getCup(race.cup_id) : null;
   return {
     id: race.id,
+    cup: cupRow && race.cup_round ? { round: race.cup_round, final: race.cup_round > cupRow.qualifying_rounds } : null,
     kind: race.kind,
     terrain: race.terrain,
     status: race.status,

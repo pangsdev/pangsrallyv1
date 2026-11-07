@@ -13,7 +13,8 @@
     "test:season": "node scripts/test-season-check.mjs",
     "invite:create": "node scripts/create-invite.mjs",
     "reports": "node scripts/list-reports.mjs",
-    "beta:stats": "node scripts/beta-stats.mjs"
+    "beta:stats": "node scripts/beta-stats.mjs",
+    "cup": "node scripts/cup-admin.mjs"
   },
   "dependencies": {
     "@pinata/sdk": "^2.1.0",

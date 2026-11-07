@@ -10,6 +10,7 @@
  *   optional TEST_UNLIMITED_WALLETS = comma-separated wallets exempt from the daily limit (and invites);
  *   optional TEST_OPEN_SIGNUP = 1 lets new wallets join without an invite code;
  *   optional BETA_SEASON_END = ISO time the season ends; wallets joining later get no Early Pangolin badge;
+ *   optional CUP_TEAM_WALLETS = comma-separated team wallets that cannot enter a Pangs Cup;
  *   optional BETA_CONTRACT + BETA_SIGNER_KEY (+ BETA_CHAIN_ID, BETA_RPC_URL) turn on the Beta pass gate.
  */
 import { createClient } from '@supabase/supabase-js';
@@ -43,6 +44,7 @@ const deps: Deps = {
   inviteRequired: Deno.env.get('TEST_OPEN_SIGNUP') !== '1',
   beta: createBetaGate((name) => Deno.env.get(name)),
   betaSeasonEnd: Deno.env.get('BETA_SEASON_END') ? new Date(Deno.env.get('BETA_SEASON_END')!) : null,
+  cupTeamWallets: new Set((Deno.env.get('CUP_TEAM_WALLETS') ?? '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean)),
 };
 
 Deno.serve(async (req) => {

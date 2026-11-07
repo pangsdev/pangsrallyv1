@@ -97,6 +97,10 @@ function excited(text) {
     [/^(Number \w+) wins it, by a nose!$/, '[shouts] [excited] $1 WINS IT, by a NOSE!'],
     [/^You come home (second|third)\.$/, '[excited] You come home $1!'],
     [/^You come home (\w+)\.$/, 'You come home $1.'],
+    [/^(Number \w+) wins this round of the Pangs Cup!$/, '[shouts] [excited] $1 WINS this round of the Pangs Cup!'],
+    [/^(Number \w+) wins the Grand Final, and the Pangs Cup!$/, '[shouts] [excited] $1 WINS the Grand Final, and the PANGS CUP!'],
+    [/^This is it, the Grand Final of the Pangs Cup! They're lining up\.$/, "[excited] This is it, the GRAND FINAL of the Pangs Cup! They're lining up!"],
+    [/^The Pangs Cup is underway! They're lining up\.$/, "[excited] The Pangs Cup is UNDERWAY! They're lining up!"],
   ];
   for (const [re, out] of rules) if (re.test(text)) return text.replace(re, out);
   return `[excited] ${text}`; // speed bursts and "You charge up", already written to be called out
