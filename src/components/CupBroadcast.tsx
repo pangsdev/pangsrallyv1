@@ -13,6 +13,9 @@ import './cup.css';
  * round's race (the Grand Final, or the room picked with ?room=2) with the English race caller.
  * Nothing to operate during the show: it follows the Cup schedule on its own.
  */
+/** About how long one room takes on air (load, line-up, race, result). */
+const ROOM_SLOT_MS = 75_000;
+
 export default function CupBroadcast() {
   const { data, now } = useCup();
   const [scale, setScale] = useState(1);
@@ -38,6 +41,12 @@ export default function CupBroadcast() {
     const round = [...data.rounds].reverse().find(r => r.state !== 'upcoming');
     if (!round || Date.now() - Date.parse(round.at) > 14 * 60_000) return;
     const rooms = roomParam ? round.rooms.filter(r => r.room === roomPick) : [...round.rooms].sort((a, b) => a.room - b.room);
+    // On a fresh load (or reload) join the running order where it stands now, about 75 s per room,
+    // so a reload never starts the round over from Room A.
+    if (!rooms.some(r => shown.current.has(r.raceId))) {
+      const due = Math.min(rooms.length - 1, Math.floor((Date.now() - Date.parse(round.at)) / ROOM_SLOT_MS));
+      rooms.slice(0, Math.max(0, due)).forEach(r => shown.current.add(r.raceId));
+    }
     const room = rooms.find(r => !shown.current.has(r.raceId));
     if (!room) return;
     shown.current.add(room.raceId);
