@@ -3,6 +3,7 @@ import { metamaskDeepLink, PREDICTIONS_ON, testSeason, type HistoryRow, type Lea
 import { DAILY_RACE_LIMIT, POINTS_BY_POSITION } from '../race/testSeason';
 import { LeaderboardBadges } from './Badges';
 import { BoardTabs } from './Predictions';
+import type { WalletOption } from '../testSeason/wallets';
 
 /** Shown instead of a race page until the player has signed in with their wallet. */
 export function SignInGate({ signingIn, onSignIn }: { signingIn: boolean; onSignIn: () => void }) {
@@ -12,7 +13,7 @@ export function SignInGate({ signingIn, onSignIn }: { signingIn: boolean; onSign
         <img src="/beta/beta-pass.webp" alt="" style={{ width: 96, height: 96, borderRadius: 18, marginBottom: '1rem' }} />
         <h3>Join the Beta Season</h3>
         <p style={{ maxWidth: 460, margin: '0.75rem auto 0', lineHeight: 1.6 }}>
-          Connect MetaMask and sign a free message. New players enter an invite code once, then claim the free Beta pass
+          Connect your wallet (MetaMask, Rabby, OKX, …) and sign a free message. New players enter an invite code once, then claim the free Beta pass
           (gas only). You get {DAILY_RACE_LIMIT} races a day and season points for every finish.
         </p>
         <button className="btn btn-primary" style={{ marginTop: '1.5rem' }} disabled={signingIn} onClick={onSignIn}>
@@ -43,6 +44,31 @@ export function NoWalletModal({ onClose }: { onClose: () => void }) {
             <a className="btn btn-primary" href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer">Get MetaMask</a>
           )}
           <button className="btn btn-outline" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Several wallet extensions are installed: the player picks the one to race with. */
+export function WalletPickerModal({ wallets, onPick, onCancel }: { wallets: WalletOption[]; onPick: (w: WalletOption) => void; onCancel: () => void }) {
+  return (
+    <div className="season-modal-backdrop" onClick={onCancel}>
+      <div className="season-modal glass-panel wallet-picker" onClick={e => e.stopPropagation()} role="dialog" aria-label="Choose a wallet">
+        <h3>Connect a wallet</h3>
+        <p>Pick the wallet you want to race with.</p>
+        <ul className="wallet-picker-list">
+          {wallets.map(w => (
+            <li key={w.rdns}>
+              <button className="wallet-picker-item" onClick={() => onPick(w)}>
+                {w.icon ? <img src={w.icon} alt="" /> : <span className="wallet-picker-blank" aria-hidden="true" />}
+                <span>{w.name}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <div className="season-modal-actions">
+          <button className="btn btn-outline" onClick={onCancel}>Cancel</button>
         </div>
       </div>
     </div>

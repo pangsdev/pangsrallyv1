@@ -96,8 +96,9 @@ export interface Store {
   setBetaMinted(wallet: string, now: Date): Promise<void>;
   /** Races that used up a place of this day. A seat in a waiting room (slot 0) is not one yet. */
   countEntriesOnDay(wallet: string, day: string): Promise<number>;
-  /** Seats this wallet holds in open rooms that have not used a race yet (slot 0). */
-  heldSeats(wallet: string): Promise<number>;
+  /** Seats this wallet booked on `day` in rooms that are still open (slot 0). A seat keeps a race back
+   *  only on the day it was booked: a room that waits past midnight does not cost the next day a race. */
+  heldSeats(wallet: string, day: string): Promise<number>;
   /** Turns a held seat into a race of this day; 'conflict' when a parallel request took the slot. */
   chargeSeat(raceId: string, wallet: string, day: string, slot: number): Promise<'ok' | 'conflict'>;
   insertRace(race: RaceRow): Promise<void>;
@@ -320,7 +321,7 @@ async function me(deps: Deps, wallet: string) {
   }
   const unlimited = deps.unlimitedWallets.has(wallet);
   const racesToday = await deps.store.countEntriesOnDay(wallet, utcDay(now));
-  const held = await deps.store.heldSeats(wallet);
+  const held = await deps.store.heldSeats(wallet, utcDay(now));
   const board = await deps.store.leaderboard(10_000, now);
   const index = board.findIndex(r => r.wallet === wallet);
   const row = board[index];
@@ -751,7 +752,7 @@ export function raceOver(race: RaceRow, now: Date): boolean {
 async function claimSlot(deps: Deps, wallet: string, raceId: string, now: Date, result: { position: number; points: number } | null): Promise<boolean> {
   const day = utcDay(now);
   const unlimited = deps.unlimitedWallets.has(wallet);
-  const held = await deps.store.heldSeats(wallet);
+  const held = await deps.store.heldSeats(wallet, day);
   for (let attempt = 0; attempt < DAILY_RACE_LIMIT + 2; attempt++) {
     const used = await deps.store.countEntriesOnDay(wallet, day);
     if (!unlimited && used + held >= DAILY_RACE_LIMIT) return false;
@@ -804,13 +805,17 @@ function checkTerrain(terrain: string) {
 async function claimSeat(deps: Deps, wallet: string, raceId: string, now: Date): Promise<boolean> {
   const day = utcDay(now);
   const used = await deps.store.countEntriesOnDay(wallet, day);
-  if (!deps.unlimitedWallets.has(wallet) && used + await deps.store.heldSeats(wallet) >= DAILY_RACE_LIMIT) return false;
+  if (!deps.unlimitedWallets.has(wallet) && used + await deps.store.heldSeats(wallet, day) >= DAILY_RACE_LIMIT) return false;
   const status = await deps.store.insertEntry({ race_id: raceId, wallet, day, slot: 0, position: null, points: 0, joined_at: now.toISOString() });
   // A conflict here is a double click: the seat is already ours.
   return status === 'ok' || (await deps.store.listEntries(raceId)).some(e => e.wallet === wallet);
 }
 
-/** The race starts: the held seat becomes a race of today. It was kept back, so the limit is not checked again. */
+/**
+ * The race starts: the held seat becomes a race of today. The limit is not checked again: the seat
+ * kept a place back on the day it was booked. A room that fills after midnight already cost that day
+ * its race, so here it may be one over today's five (the new day is never cut short by an old seat).
+ */
 async function chargeSeat(deps: Deps, wallet: string, raceId: string, now: Date) {
   const day = utcDay(now);
   for (let attempt = 0; attempt < DAILY_RACE_LIMIT + 2; attempt++) {

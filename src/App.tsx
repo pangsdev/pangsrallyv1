@@ -15,7 +15,8 @@ import { BadgeUnlocked, SeasonBadgeUnlocked, markBadgeSeen, markSeasonBadgeSeen,
 import WalletMenu from './components/WalletMenu';
 import ReportPage from './components/ReportPage';
 import { PredictionBoard } from './components/Predictions';
-import { SeasonLeaderboard, SignInGate, NoWalletModal, InviteCodeModal, BetaMintModal } from './components/SeasonPages';
+import { SeasonLeaderboard, SignInGate, NoWalletModal, InviteCodeModal, BetaMintModal, WalletPickerModal } from './components/SeasonPages';
+import { forgetWallet, getEthereum, listWallets, pickWallet, type WalletOption } from './testSeason/wallets';
 import { clearSession, getSession, hasWallet, mintBetaPass, PREDICTIONS_ON, signInWithWallet, testSeason, type PlayerStatus } from './testSeason/api';
 import { shortWallet } from './race/testSeason';
 
@@ -183,6 +184,7 @@ function App() {
 
   const signOut = () => {
     clearSession();
+    void forgetWallet(); // the next Connect asks which wallet (and account) again
     setPlayer(null);
     setWalletConnected(false);
     setWalletAddress('');
@@ -200,6 +202,9 @@ function App() {
   // Open while the sign-in waits for an invite code; resolve(null) cancels.
   const [inviteAsk, setInviteAsk] = useState<{ error: string; resolve: (code: string | null) => void } | null>(null);
   const askInvite = (error: string) => new Promise<string | null>(resolve => setInviteAsk({ error, resolve }));
+  // Open while the player picks one of several installed wallets; resolve(null) cancels.
+  const [walletAsk, setWalletAsk] = useState<{ wallets: WalletOption[]; resolve: (w: WalletOption | null) => void } | null>(null);
+  const askWallet = (wallets: WalletOption[]) => new Promise<WalletOption | null>(resolve => setWalletAsk({ wallets, resolve }));
 
   const [betaOpen, setBetaOpen] = useState(false);
   const needsBeta = (p: PlayerStatus | null) => !!p && p.beta?.required && !p.beta.minted;
@@ -222,9 +227,18 @@ function App() {
       setNoWalletHelp(true);
       return null;
     }
+    // Several wallet extensions (MetaMask, Rabby, OKX, …): let the player choose instead of taking
+    // whichever one grabbed window.ethereum.
+    const wallets = listWallets();
+    let chosen: WalletOption | null = wallets.length === 1 ? wallets[0] : null;
+    if (wallets.length > 1) {
+      chosen = await askWallet(wallets);
+      if (!chosen) return null;
+    }
+    if (chosen) pickWallet(chosen.rdns);
     setSigningIn(true);
     try {
-      const status = await signInWithWallet(askInvite);
+      const status = await signInWithWallet(askInvite, chosen?.provider);
       applyPlayer(status);
       showToast('Wallet connected. Welcome to the Beta season!', 'success');
       if (needsBeta(status)) setBetaOpen(true);
@@ -277,9 +291,9 @@ function App() {
   const TOTAL_DISTANCE = 3000; // Increased distance for longer spread
 
   const fetchMarketplaceListings = async () => {
-    if (!(window as any).ethereum) return;
+    if (!getEthereum()) return;
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const provider = new ethers.BrowserProvider(getEthereum() as any);
       const marketContract = new ethers.Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, provider);
       const active = await marketContract.getActiveListings();
       
@@ -325,9 +339,9 @@ function App() {
   };
 
   const fetchPlayerBalance = async () => {
-    if (walletAddress && (window as any).ethereum) {
+    if (walletAddress && getEthereum()) {
       try {
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        const provider = new ethers.BrowserProvider(getEthereum() as any);
         const accounts = await provider.send('eth_accounts', []);
         if (accounts.length > 0) {
           const balanceWei = await provider.getBalance(accounts[0]);
@@ -367,10 +381,10 @@ function App() {
   const [listPrice, setListPrice] = useState('0.1');
 
   const handleListNFT = async (tokenId: number, priceStr: string) => {
-    if (!(window as any).ethereum) return;
+    if (!getEthereum()) return;
     setIsListing(true);
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const provider = new ethers.BrowserProvider(getEthereum() as any);
       const signer = await provider.getSigner();
       
       const nftContract = new ethers.Contract(CONTRACT_ADDRESS, [
@@ -402,10 +416,10 @@ function App() {
   };
 
   const handleCancelListing = async (tokenId: number) => {
-    if (!(window as any).ethereum) return;
+    if (!getEthereum()) return;
     setIsListing(true);
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const provider = new ethers.BrowserProvider(getEthereum() as any);
       const signer = await provider.getSigner();
       
       const marketContract = new ethers.Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
@@ -423,10 +437,10 @@ function App() {
   };
 
   const handleBuyNFT = async (nft: any) => {
-    if (!(window as any).ethereum) return;
+    if (!getEthereum()) return;
     setIsProcessingBuy(true);
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const provider = new ethers.BrowserProvider(getEthereum() as any);
       const signer = await provider.getSigner();
       const marketContract = new ethers.Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
       
@@ -455,16 +469,20 @@ function App() {
   // Restore the test-season session on page load; drop it if the wallet switches account.
   useEffect(() => {
     refreshPlayer();
-    const eth = (window as any).ethereum;
-    if (!eth?.on) return;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Listen on the wallet the player signed in with (rebinds after a sign-in through another wallet).
+  useEffect(() => {
+    const eth = getEthereum();
+    if (!player || !eth?.on) return;
     const onAccounts = (accounts: string[]) => {
       const session = getSession();
       if (session && accounts[0]?.toLowerCase() !== session.wallet) signOut();
     };
-    eth.on('accountsChanged', onAccounts);
-    return () => eth.removeListener?.('accountsChanged', onAccounts);
+    eth.on('accountsChanged', onAccounts as never);
+    return () => eth.removeListener?.('accountsChanged', onAccounts as never);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [player?.wallet]);
 
   const showToast = (message: string, type: 'success'|'error'|'info' = 'info') => {
     const id = Date.now() + Math.random();
@@ -479,7 +497,7 @@ function App() {
   const fetchMyNFTs = async (address: string) => {
     setIsFetchingNFTs(true);
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const provider = new ethers.BrowserProvider(getEthereum() as any);
       
       // Fetch from Beta Pass Contract
       const betaNftContract = new ethers.Contract(BETA_PASS_CONTRACT_ADDRESS, PangsRallyBetaPassContract.abi, provider);
@@ -654,7 +672,7 @@ function App() {
     }
     
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const provider = new ethers.BrowserProvider(getEthereum() as any);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, PangsRallyContract.abi, signer);
       
@@ -693,7 +711,7 @@ function App() {
   const handleCreateReferralCode = async () => {
     if (!createCodeInput) return;
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const provider = new ethers.BrowserProvider(getEthereum() as any);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, PangsRallyContract.abi, signer);
       showToast('Creating referral code...', 'info');
@@ -713,7 +731,7 @@ function App() {
       return;
     }
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const provider = new ethers.BrowserProvider(getEthereum() as any);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, PangsRallyContract.abi, signer);
       const tx = await contract.claimCommissions();
@@ -750,14 +768,14 @@ function App() {
   };
 
   const hatchEgg = async () => {
-    if (typeof (window as any).ethereum === 'undefined') {
+    if (!getEthereum()) {
       showToast('Please install MetaMask to hatch!', 'error');
       return;
     }
     
     setIsMintingBaby(true);
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const provider = new ethers.BrowserProvider(getEthereum() as any);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, PangsRallyContract.abi, signer);
 
@@ -1052,8 +1070,8 @@ function App() {
         
         const { amountWei, nonce, signature } = await res.json();
         
-        if (!(window as any).ethereum) throw new Error('Wallet not connected');
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        if (!getEthereum()) throw new Error('Wallet not connected');
+        const provider = new ethers.BrowserProvider(getEthereum() as any);
         const signer = await provider.getSigner();
         const raceContract = new ethers.Contract(RACING_ADDRESS, RACING_ABI, signer);
         
@@ -1129,10 +1147,10 @@ function App() {
         setIsJoiningRace(false);
       } else {
         // Real on-chain mode: joinRace TX + Supabase record
-        if (!(window as any).ethereum) return;
+        if (!getEthereum()) return;
         setIsJoiningRace(true);
         try {
-          const provider = new ethers.BrowserProvider((window as any).ethereum);
+          const provider = new ethers.BrowserProvider(getEthereum() as any);
           const signer = await provider.getSigner();
           const playerAddress = signer.address;
           
@@ -1275,6 +1293,13 @@ function App() {
 
       {noWalletHelp && <NoWalletModal onClose={() => setNoWalletHelp(false)} />}
       {betaOpen && <BetaMintModal onMint={mintBeta} onClose={() => setBetaOpen(false)} />}
+      {walletAsk && (
+        <WalletPickerModal
+          wallets={walletAsk.wallets}
+          onPick={(w) => { walletAsk.resolve(w); setWalletAsk(null); }}
+          onCancel={() => { walletAsk.resolve(null); setWalletAsk(null); }}
+        />
+      )}
       {inviteAsk && (
         <InviteCodeModal
           error={inviteAsk.error}

@@ -703,4 +703,26 @@ const fillRoom = async (roomId, taken = 0) => {
   ok('with fewer than 10 racers the Cup is postponed and runs nothing; a new date brings it back');
 }
 
+// --- a room that waits past midnight does not cost the new day a race ------
+{
+  const t = await signIn(Wallet.createRandom());
+  const room = (await call('online-join', { terrain: 'Forest' }, t)).body.race;
+  assert.equal((await call('me', {}, t)).body.racesLeft, DAILY_RACE_LIMIT - 1, 'the seat keeps a race back today');
+  const bookedOn = new Date(clock).toISOString().slice(0, 10);
+  clock = Date.parse(bookedOn + 'T00:00:00Z') + 86_400_000 + 3_600_000; // 01:00 UTC the next day
+  const next = (await call('me', {}, t)).body;
+  assert.equal(next.bookedSeats.length, 1, 'still waiting in the room');
+  assert.equal(next.racesLeft, DAILY_RACE_LIMIT, 'all five races are back after midnight');
+  for (let i = 0; i < DAILY_RACE_LIMIT; i++) assert.equal((await call('bot-race', { terrain: 'Forest' }, t)).status, 200);
+  await fillRoom(room.id, (await call('online-status', { raceId: room.id })).body.race.players.length);
+  clock += (ROOM_FULL_COUNTDOWN_SECONDS + 1) * 1000;
+  const after = (await call('online-status', { raceId: room.id })).body.race;
+  assert.equal(after.status, 'finished', 'the room still races');
+  const me = (await call('me', {}, t)).body;
+  assert.equal(me.racesToday, DAILY_RACE_LIMIT + 1, 'the room race counts on the day it ran, on top of the five');
+  assert.equal(me.racesLeft, 0);
+  clock = Date.parse(after.finishedAt) + 1;
+  ok('a room that waits past midnight does not cost the new day a race; it runs on top of the five');
+}
+
 console.log(`\n${checks} checks passed.`);

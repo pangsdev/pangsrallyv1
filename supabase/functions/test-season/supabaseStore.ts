@@ -79,9 +79,9 @@ export function createSupabaseStore(db: SupabaseClient): Store {
       if (res.error) throw new Error(res.error.message);
       return res.count ?? 0;
     },
-    async heldSeats(wallet) {
+    async heldSeats(wallet, day) {
       const rows = must(await db.from('test_race_entries').select('race_id, race:test_races!inner(status)')
-        .eq('wallet', wallet).eq('slot', 0).eq('race.status', 'open')) as unknown[];
+        .eq('wallet', wallet).eq('day', day).eq('slot', 0).eq('race.status', 'open')) as unknown[];
       return rows.length;
     },
     async chargeSeat(raceId, wallet, day, slot) {

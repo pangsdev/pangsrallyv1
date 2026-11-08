@@ -2134,3 +2134,10 @@
 .beta-modal-art { width: 220px; height: 220px; border-radius: 18px; object-fit: cover; border: 2px solid rgba(255, 209, 102, 0.55); box-shadow: 0 18px 40px -12px rgba(84, 50, 211, 0.6); margin-bottom: 0.5rem; }
 .season-invite-error { color: #ff6b6b; font-size: 0.9rem; margin: -0.25rem 0 0.9rem; }
 .wallet-points { margin-left: 8px; padding: 2px 8px; border-radius: 10px; background: rgba(255, 215, 0, 0.15); color: #c9a400; font-size: 0.75rem; font-weight: 700; }
+
+/* Wallet picker (EIP-6963: every installed wallet extension) */
+.wallet-picker-list { list-style: none; margin: 0 0 1.25rem; padding: 0; display: grid; gap: 0.5rem; }
+.wallet-picker-item { width: 100%; display: flex; align-items: center; gap: 0.85rem; padding: 0.75rem 1rem; border-radius: 12px; border: 1px solid var(--border-color, rgba(255,255,255,0.12)); background: rgba(255, 255, 255, 0.04); color: var(--text-main); font: inherit; font-weight: 600; cursor: pointer; text-align: left; transition: border-color 0.15s, background 0.15s; }
+.wallet-picker-item:hover, .wallet-picker-item:focus-visible { border-color: var(--primary, #ccff00); background: rgba(255, 255, 255, 0.08); outline: none; }
+.wallet-picker-item img, .wallet-picker-blank { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; }
+.wallet-picker-blank { background: rgba(255, 255, 255, 0.1); }

@@ -4,6 +4,7 @@
  */
 import { BrowserProvider, Contract } from 'ethers';
 import { signInMessage, type Streak, type TestRacer, type TestRaceResult } from '../race/testSeason';
+import { getEthereum, hasAnyWallet, type Eip1193 } from './wallets';
 
 /** The Supabase project's public URL (not a secret). Used when the host sets no VITE_SUPABASE_URL. */
 const PROJECT_URL = 'https://rzpcppmzpyocoqnjwrwp.supabase.co';
@@ -206,9 +207,9 @@ async function call<T>(action: string, params: Record<string, unknown> = {}): Pr
   return body as T;
 }
 
-/** True when a browser wallet (MetaMask, Rabby, …) is injected. */
+/** True when a browser wallet (MetaMask, Rabby, OKX, …) is installed. */
 export function hasWallet(): boolean {
-  return typeof window !== 'undefined' && !!(window as unknown as { ethereum?: unknown }).ethereum;
+  return hasAnyWallet();
 }
 
 /** Opens this page inside the MetaMask mobile app's browser. */
@@ -237,8 +238,8 @@ function walletConnectError(e: unknown): ApiError {
  * needs an invite code: `askInvite` is called with the reason and returns the code typed in
  * (or null to give up). The same signature is reused for the retry, so nobody signs twice.
  */
-export async function signInWithWallet(askInvite: (reason: string) => Promise<string | null>): Promise<PlayerStatus> {
-  const eth = (window as unknown as { ethereum?: unknown }).ethereum;
+export async function signInWithWallet(askInvite: (reason: string) => Promise<string | null>, wallet?: Eip1193): Promise<PlayerStatus> {
+  const eth = wallet ?? getEthereum();
   if (!eth) throw new ApiError(0, 'no_wallet', 'No wallet found. Install MetaMask to join the Beta season.');
   // Check the server first so nobody is asked to sign a message that cannot be used.
   await call('leaderboard');
@@ -285,7 +286,7 @@ async function switchChain(eth: { request(a: { method: string; params?: unknown[
 
 /** Mints the free Beta pass (the player pays only gas) and returns the refreshed status. */
 export async function mintBetaPass(onStep: (step: 'voucher' | 'chain' | 'confirm' | 'pending') => void): Promise<PlayerStatus> {
-  const eth = (window as unknown as { ethereum?: { request(a: { method: string; params?: unknown[] }): Promise<unknown> } }).ethereum;
+  const eth = getEthereum();
   if (!eth) throw new ApiError(0, 'no_wallet', 'No wallet found. Install MetaMask to mint your Beta pass.');
   onStep('voucher');
   const { contract, chainId, voucher } = await call<{ contract: string; chainId: number; voucher: string }>('beta-voucher');
@@ -457,7 +458,7 @@ async function sendCupClaim(
   onStep: (step: 'chain' | 'confirm' | 'pending') => void,
   send: (c: Contract) => Promise<{ hash: string; wait(): Promise<unknown> }>,
 ): Promise<string> {
-  const eth = (window as unknown as { ethereum?: { request(a: { method: string; params?: unknown[] }): Promise<unknown> } }).ethereum;
+  const eth = getEthereum();
   if (!eth) throw new ApiError(0, 'no_wallet', 'No wallet found. Open this page in MetaMask to claim.');
   onStep('chain');
   try {

@@ -76,8 +76,8 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
     async countEntriesOnDay(wallet, day) {
       return entries.filter(e => e.wallet === wallet && e.day === day && e.slot > 0).length;
     },
-    async heldSeats(wallet) {
-      return entries.filter(e => e.wallet === wallet && e.slot === 0 && races.get(e.race_id)?.status === 'open').length;
+    async heldSeats(wallet, day) {
+      return entries.filter(e => e.wallet === wallet && e.day === day && e.slot === 0 && races.get(e.race_id)?.status === 'open').length;
     },
     async chargeSeat(raceId, wallet, day, slot) {
       if (entries.some(e => e.wallet === wallet && e.day === day && e.slot === slot)) return 'conflict';
