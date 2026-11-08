@@ -141,7 +141,10 @@ function Standings({ data, player, onWatch }: { data: CupStatus; player: PlayerS
   const mine: CupStanding | undefined = data.standings[mineIndex];
   const cutPoints = data.standings[FINAL_SIZE - 1]?.total ?? 0;
   const qualifyingDone = data.rounds.filter(r => !r.final).every(r => r.state === 'done');
-  const current = [...data.rounds].reverse().find(r => r.state !== 'upcoming');
+  const started = data.rounds.filter(r => r.state !== 'upcoming');
+  // Every round that has started stays watchable: tabs pick the round, the latest one by default.
+  const [picked, setPicked] = useState<number | null>(null);
+  const current = started.find(r => r.round === picked) ?? started[started.length - 1];
   const showCut = data.standings.length > FINAL_SIZE;
 
   return (
@@ -181,6 +184,15 @@ function Standings({ data, player, onWatch }: { data: CupStatus; player: PlayerS
         {current && (
           <div className="cup-card">
             <h3>{current.final ? 'Grand Final' : `Round ${current.round} rooms`}</h3>
+            {started.length > 1 && (
+              <div className="cup-roundtabs" role="tablist" aria-label="Pick a round">
+                {started.map(r => (
+                  <button key={r.round} role="tab" aria-selected={r === current} className={r === current ? 'on' : ''} onClick={() => setPicked(r.round)}>
+                    {r.final ? 'Final' : `R${r.round}`}
+                  </button>
+                ))}
+              </div>
+            )}
             {current.rooms.map(room => (
               <div key={room.raceId} className="cup-room">
                 <div><strong>{current.final ? 'Final room' : `Room ${String.fromCharCode(64 + room.room)}`}{room.mine && <span className="cup-tag">You</span>}</strong><span>{room.names.length} racers · {time(current.at)}</span></div>

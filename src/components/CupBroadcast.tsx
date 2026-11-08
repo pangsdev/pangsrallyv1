@@ -28,18 +28,29 @@ export default function CupBroadcast() {
     return () => window.removeEventListener('resize', fit);
   }, []);
 
-  // A round that just started goes on air once; it stays until its result has been on screen a while.
+  // Every room of a round goes on air, one after another (A, B, C, …): the results are fixed when the
+  // round starts, so the later rooms replay a few minutes behind. ?room=N shows only that room.
+  // Only the latest round that started in the last 14 minutes plays, so a reload never digs up old rounds.
+  const roomParam = Number(new URLSearchParams(window.location.search).get('room')) || null;
+  const [lastRoom, setLastRoom] = useState(true);
   useEffect(() => {
     if (!data || showing) return;
-    const live = data.rounds.find(r => r.state === 'live');
-    if (!live) return;
-    const room = live.rooms.find(r => r.room === roomPick) ?? live.rooms[0];
-    if (!room || shown.current.has(room.raceId)) return;
+    const round = [...data.rounds].reverse().find(r => r.state !== 'upcoming');
+    if (!round || Date.now() - Date.parse(round.at) > 14 * 60_000) return;
+    const rooms = roomParam ? round.rooms.filter(r => r.room === roomPick) : [...round.rooms].sort((a, b) => a.room - b.room);
+    const room = rooms.find(r => !shown.current.has(r.raceId));
+    if (!room) return;
     shown.current.add(room.raceId);
-    setShowing({ raceId: room.raceId, label: live.final ? 'Grand Final' : `Round ${live.round} · Room ${String.fromCharCode(64 + room.room)}` });
-  }, [data, showing, roomPick]);
+    setLastRoom(rooms.every(r => shown.current.has(r.raceId)));
+    const count = round.rooms.length;
+    setShowing({
+      raceId: room.raceId,
+      label: round.final ? 'Grand Final' : `Round ${round.round} · Room ${String.fromCharCode(64 + room.room)}${count > 1 ? ` of ${count}` : ''}`,
+    });
+  }, [data, showing, roomPick, roomParam]);
 
-  const onFinished = () => setTimeout(() => setShowing(null), 14_000);
+  // A short look at the result between rooms; a longer one after the last room of the round.
+  const onFinished = () => setTimeout(() => setShowing(null), lastRoom ? 14_000 : 7_000);
 
   return (
     <div className="cupbc" onClick={() => { unlockAnnounce(); setSoundOn(true); }}>

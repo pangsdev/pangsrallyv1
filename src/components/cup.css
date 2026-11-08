@@ -224,3 +224,9 @@
 .cupbc-right .cupbc-cd p { font-size: 23px; }
 /* broadcast race: Rico's booth fills the side column down to the caption bar */
 .cupbc-race .rr-rico .rico-cam { aspect-ratio: auto; height: 330px; --rico-pos: 50% 40%; }
+
+/* Round tabs on the rooms card: every round that has started stays watchable */
+.cup-roundtabs { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 10px; }
+.cup-roundtabs button { padding: 5px 11px; border-radius: 999px; border: 1px solid var(--cup-line); background: transparent; color: var(--cup-muted); font: 700 12.5px var(--font-heading); cursor: pointer; }
+.cup-roundtabs button:hover { color: #fff; border-color: rgba(255, 255, 255, 0.35); }
+.cup-roundtabs button.on { background: var(--cup-live); border-color: var(--cup-live); color: #04121c; }
