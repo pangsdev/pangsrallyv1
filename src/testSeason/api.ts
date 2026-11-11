@@ -13,8 +13,8 @@ const BASE: string = import.meta.env.VITE_TEST_SEASON_API
 const UNAVAILABLE = 'The race server is not available right now. Please try again in a few minutes.';
 const SESSION_KEY = 'pangsrally_test_session';
 
-/** The free prediction game is still in the works: it shows on the dev server only, never in a production build. */
-export const PREDICTIONS_ON = import.meta.env.DEV;
+/** The prediction game is shelved (owner, Nov 2026): off everywhere, the dev server included. */
+export const PREDICTIONS_ON = false;
 
 export interface PlayerStatus {
   wallet: string;
@@ -56,7 +56,7 @@ export interface RacePlayer {
 
 export interface PublicRace {
   id: string;
-  kind: 'bot' | 'online' | 'cup';
+  kind: 'bot' | 'online' | 'cup' | 'rally';
   /** Pangs Cup races only: which round, and whether it is the Grand Final */
   cup?: { round: number; final: boolean } | null;
   terrain: string;
@@ -325,6 +325,32 @@ export function seatNote(player: Pick<PlayerStatus, 'bookedSeats'>): string {
 }
 
 /* ------------------------------------------------------------------ */
+/* Daily Rally                                                         */
+/* ------------------------------------------------------------------ */
+
+export interface RallyRoom {
+  room: number;
+  raceId: string;
+  finishedAt: string | null;
+  /** crossed the line on screen */
+  over: boolean;
+  names: string[];
+  mine: boolean;
+  podium: { name: string; position: number }[] | null;
+}
+
+export interface RallyStatus {
+  hourUtc: number;
+  terrain: string;
+  next: { day: string; startsAt: string; registered: number; entrants: string[] };
+  /** the latest rally that has started (today after 18:00 UTC, otherwise yesterday's) */
+  last: { day: string; startsAt: string; rooms: RallyRoom[] } | null;
+  board: { rank: number; name: string; points: number; rallies: number; wins: number; podiums: number; me: boolean }[];
+  me: { registered: boolean; raceId: string | null; result: { position: number; points: number } | null; rank: number | null; points: number } | null;
+  serverTime: string;
+}
+
+/* ------------------------------------------------------------------ */
 /* Pangs Cup                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -511,4 +537,7 @@ export const testSeason = {
   cup: (cupId?: number) => call<CupStatus>('cup', cupId ? { cupId } : {}),
   cupRegister: (cupId: number) => call<CupStatus>('cup-register', { cupId }),
   cupLeave: (cupId: number) => call<CupStatus>('cup-leave', { cupId }),
+  rally: () => call<RallyStatus>('rally'),
+  rallyRegister: () => call<RallyStatus>('rally-register'),
+  rallyLeave: () => call<RallyStatus>('rally-leave'),
 };

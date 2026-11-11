@@ -4,12 +4,13 @@ interface Props {
   label: string;
   points: number | null;
   onProfile: () => void;
+  onCollection: () => void;
   onReport: () => void;
   onDisconnect: () => void;
 }
 
 /** The signed-in badge in the header. Clicking it opens a menu; signing out takes its own click. */
-export default function WalletMenu({ label, points, onProfile, onReport, onDisconnect }: Props) {
+export default function WalletMenu({ label, points, onProfile, onCollection, onReport, onDisconnect }: Props) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
 
@@ -38,6 +39,7 @@ export default function WalletMenu({ label, points, onProfile, onReport, onDisco
       {open && (
         <div className="wm-menu" role="menu">
           <button type="button" role="menuitem" onClick={pick(onProfile)}>Profile</button>
+          <button type="button" role="menuitem" onClick={pick(onCollection)}>My Collection</button>
           <button type="button" role="menuitem" onClick={pick(onReport)}>Report a bug</button>
           <div className="wm-line" />
           <button type="button" role="menuitem" className="wm-danger" onClick={pick(onDisconnect)}>Disconnect</button>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { seatNote, testSeason, type PlayerStatus, type RoomSummary } from '../testSeason/api';
+import { seatNote, testSeason, type PlayerStatus, type RallyStatus } from '../testSeason/api';
 import './lobby.css';
-import { BETA_RACER_ART, FIELD_SIZE, POINTS_BY_POSITION, ROOM_FULL_COUNTDOWN_SECONDS, shortWallet } from '../race/testSeason';
+import { BETA_RACER_ART, FIELD_SIZE, POINTS_BY_POSITION, shortWallet } from '../race/testSeason';
 import { BALL_SPRITES } from '../race/sprites';
 import { ClockIcon, FlagIcon, TrackBadge } from './Icons';
 import HeroRunner from './HeroRunner';
@@ -9,7 +9,7 @@ import HeroRunner from './HeroRunner';
 interface Props {
   categoryInfo: any;
   player: PlayerStatus;
-  onSelectMode: (mode: 'bot' | 'online') => void;
+  onSelectMode: (mode: 'bot' | 'online' | 'daily') => void;
   onBack: () => void;
 }
 
@@ -19,44 +19,40 @@ const clock = (ms: number) => {
   return `${h ? `${h}:` : ''}${String(m).padStart(h ? 2 : 1, '0')}:${String(sec).padStart(2, '0')}`;
 };
 
-/** Live board for the online room: the 10 seats filling up, then a ticking countdown once it is full. */
-function NextRoomBoard({ terrain }: { terrain: string }) {
-  const [room, setRoom] = useState<RoomSummary | null>(null);
+/** Live board for the Daily Rally: the countdown to the start and who is in. */
+function RallyBoard() {
+  const [rally, setRally] = useState<RallyStatus | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const skew = useRef(0);
 
   useEffect(() => {
     let live = true;
-    const load = () => testSeason.rooms(terrain)
-      .then(r => {
-        if (!live) return;
-        skew.current = Date.parse(r.serverTime) - Date.now();
-        setRoom(r.rooms[0] ?? null);
-      })
+    const load = () => testSeason.rally()
+      .then(r => { if (!live) return; skew.current = Date.parse(r.serverTime) - Date.now(); setRally(r); })
       .catch(() => {});
     load();
-    const poll = setInterval(load, 15_000);
+    const poll = setInterval(load, 20_000);
     const tick = setInterval(() => setNow(Date.now()), 1000);
     return () => { live = false; clearInterval(poll); clearInterval(tick); };
-  }, [terrain]);
+  }, []);
 
-  const start = room?.startsAt ? Date.parse(room.startsAt) : null;
+  const start = rally ? Date.parse(rally.next.startsAt) : null;
   const left = start ? start - (now + skew.current) : 0;
-  const taken = room?.players ?? 0;
-  const open = FIELD_SIZE - taken;
+  const count = rally?.next.registered ?? 0;
+  const shown = Math.min(count, FIELD_SIZE);
   return (
     <div className="lobby-board" aria-hidden="true">
       <div className="lobby-board-top">
-        <span className="lobby-board-live"><i /> {start ? 'Room full' : 'Open room'}</span>
-        <strong>{start ? new Date(start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : `${taken}/${FIELD_SIZE}`}</strong>
+        <span className="lobby-board-live"><i /> {rally?.me?.registered ? "You're in" : 'Next rally'}</span>
+        <strong>{start ? new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''}</strong>
       </div>
-      <div className={`lobby-board-clock ${start ? '' : 'seats'}`}>{!room ? '…' : !start ? `${open} ${open === 1 ? 'seat' : 'seats'} left` : left > 0 ? clock(left) : 'Starting'}</div>
+      <div className="lobby-board-clock">{!rally ? '…' : clock(left)}</div>
       <div className="lobby-board-seats">
         {Array.from({ length: FIELD_SIZE }, (_, i) => (
-          <span key={i} className={i < taken ? 'on' : ''}>{i < taken && <img src={BETA_RACER_ART} alt="" />}</span>
+          <span key={i} className={i < shown ? 'on' : ''}>{i < shown && <img src={BETA_RACER_ART} alt="" />}</span>
         ))}
       </div>
-      <div className="lobby-board-foot">{taken} of {FIELD_SIZE} seats taken{room?.joined ? ' · you are in' : ''}</div>
+      <div className="lobby-board-foot">{count} {count === 1 ? 'racer' : 'racers'} in · bots fill empty seats</div>
     </div>
   );
 }
@@ -65,6 +61,8 @@ export default function RaceLobby({ categoryInfo, player, onSelectMode, onBack }
   const canRace = player.unlimited || player.racesLeft > 0;
   const resets = new Date(player.resetsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   const terrain = categoryInfo?.terrain ?? 'Forest';
+  // 18:00 UTC in the player's own time, e.g. "9:00 PM GMT+3"
+  const dailyTime = new Date(Date.UTC(2026, 0, 1, 18)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
 
   return (
     <div className="lobby-root">
@@ -123,16 +121,19 @@ export default function RaceLobby({ categoryInfo, player, onSelectMode, onBack }
               <span className="lobby-cta">{canRace ? 'Race Now' : 'Limit Reached'}</span>
             </button>
 
-            <button className="lobby-mode online" disabled={!canRace} onClick={() => onSelectMode('online')}>
+            <button className="lobby-mode online" onClick={() => onSelectMode('daily')}>
               <div className="lobby-runner" aria-hidden="true">
                 <HeroRunner art="/landing/runner-beta.webp" ball={BALL_SPRITES.Beta} className="lobby-runner-canvas" />
               </div>
-              <h3>Online Race</h3>
-              <p>Race real players, no bots. When all {FIELD_SIZE} seats are taken, the race starts {ROOM_FULL_COUNTDOWN_SECONDS / 60} minutes later. A seat uses one of today's races when the race starts.</p>
-              <NextRoomBoard terrain={terrain} />
-              <div className="lobby-chips"><span>Real players</span><span>No bots</span><span>Up to {POINTS_BY_POSITION[0]} pts</span></div>
-              <span className="lobby-cta">{canRace ? 'See Rooms' : 'Limit Reached'}</span>
+              <h3>Daily Rally</h3>
+              <p>One race a day for everyone, at {dailyTime}. Join for free: it uses none of your daily races. Rally points have their own leaderboard.</p>
+              <RallyBoard />
+              <div className="lobby-chips"><span>Every day</span><span>Free entry</span><span>Up to {POINTS_BY_POSITION[0]} pts</span></div>
+              <span className="lobby-cta">Join the Rally</span>
             </button>
+            {(player.bookedSeats?.length ?? 0) > 0 && (
+              <button className="lobby-seat-link" onClick={() => onSelectMode('online')}>You still hold a seat in an online room · See it</button>
+            )}
           </div>
         </div>
       </div>

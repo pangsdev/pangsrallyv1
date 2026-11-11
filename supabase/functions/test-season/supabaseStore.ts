@@ -1,6 +1,7 @@
 /** Postgres-backed Store (tables from supabase/migrations/003_test_season.sql … 006_test_scheduled_rooms.sql). */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CupEntryRow, CupRow } from './cup.ts';
+import type { RallyDayRow, RallyEntryRow } from './rally.ts';
 import type { EntryRow, LeaderRow, PredictionBoardRow, PredictionRow, RaceRow, Store } from './core.ts';
 import { sortLeaderboard, sortPredictionBoard } from './memoryStore.ts';
 
@@ -185,6 +186,34 @@ export function createSupabaseStore(db: SupabaseClient): Store {
     },
     async cupRaces(cupId) {
       return must(await db.from('test_races').select('*').eq('cup_id', cupId)) as RaceRow[];
+    },
+    async getRallyDay(day) {
+      return must(await db.from('test_rally_days').select('*').eq('day', day).maybeSingle()) as RallyDayRow | null;
+    },
+    async insertRallyDay(row) {
+      const res = await db.from('test_rally_days').insert(row);
+      if (res.error && res.error.code !== UNIQUE_VIOLATION) throw new Error(res.error.message);
+    },
+    async rallyEntries(day) {
+      return must(await db.from('test_rally_entries').select('*').eq('day', day).order('registered_at')) as RallyEntryRow[];
+    },
+    async insertRallyEntry(entry) {
+      const res = await db.from('test_rally_entries').insert(entry);
+      if (res.error && res.error.code !== UNIQUE_VIOLATION) throw new Error(res.error.message);
+    },
+    async deleteRallyEntry(day, wallet) {
+      must(await db.from('test_rally_entries').delete().eq('day', day).eq('wallet', wallet));
+    },
+    async rallyRaces(day) {
+      let q = db.from('test_races').select('*').eq('kind', 'rally');
+      if (day !== null) q = q.eq('rally_day', day);
+      return must(await q.limit(5000)) as RaceRow[];
+    },
+    async insertRallyRace(race) {
+      const res = await db.from('test_races').insert(race);
+      if (res.error?.code === UNIQUE_VIOLATION) return 'conflict';
+      if (res.error) throw new Error(res.error.message);
+      return 'ok';
     },
     async insertCupRace(race) {
       const res = await db.from('test_races').insert(race);

@@ -8,6 +8,7 @@ import { supabase as _supabase, createRace, joinRaceDB, finishRace, markPrizeCla
 import { unlockAnnounce } from './race/announce';
 import './App.css'
 import RaceLobby from './components/RaceLobby';
+import SiteNav from './components/SiteNav';
 import OnlineRooms from './components/OnlineRooms';
 import Profile, { BetaInventory } from './components/Profile';
 import Landing from './components/Landing';
@@ -26,6 +27,7 @@ const RaceRoom = lazy(() => import('./components/RaceRoom'));
 const OnlineRoom = lazy(() => import('./components/OnlineRoom'));
 const CupPage = lazy(() => import('./components/CupPage'));
 const CupBroadcast = lazy(() => import('./components/CupBroadcast'));
+const RallyPage = lazy(() => import('./components/RallyPage'));
 
 const ViewLoader = () => (
   <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center', paddingTop: '120px', color: 'var(--text-secondary, #888)' }}>
@@ -133,7 +135,7 @@ function App() {
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [selectedNFTDetails, setSelectedNFTDetails] = useState<any | null>(null);
   const [renameInput, setRenameInput] = useState('');
-  const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'race-lobby' | 'bot-race' | 'online-rooms' | 'online-race' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral' | 'replay' | 'report' | 'predictions' | 'cup' | 'cup-live'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'how-to-play' | 'laboratory' | 'rally' | 'race-lobby' | 'bot-race' | 'online-rooms' | 'online-race' | 'room-browser' | 'race-room' | 'live-race' | 'inventory' | 'marketplace' | 'leaderboard' | 'my-races' | 'referral' | 'replay' | 'report' | 'predictions' | 'cup' | 'cup-live' | 'daily'>('landing');
 
   const [parentA, setParentA] = useState<any>(null);
   const [parentB, setParentB] = useState<any>(null);
@@ -169,7 +171,7 @@ function App() {
   /** online room to resume from My Races (null → join a new one) */
   const [onlineRaceId, setOnlineRaceId] = useState<string | null>(null);
   const [replayRaceId, setReplayRaceId] = useState<string | null>(null);
-  const replayBack = useRef<'my-races' | 'predictions' | 'cup'>('my-races');
+  const replayBack = useRef<'my-races' | 'predictions' | 'cup' | 'daily'>('my-races');
   /** a Pangs Cup exists (shows the Cup link in the header) */
   const [hasCup, setHasCup] = useState(false);
   useEffect(() => { testSeason.cup().then(() => setHasCup(true)).catch(() => setHasCup(false)); }, []);
@@ -835,7 +837,7 @@ function App() {
   /* ---------------------------------------------------------------- */
   const SIMPLE_PATHS: Partial<Record<typeof currentView, string>> = {
     landing: '/', 'how-to-play': '/vision', rally: '/rally', leaderboard: '/leaderboard', 'my-races': '/profile',
-    inventory: '/inventory', marketplace: '/marketplace', laboratory: '/lab', report: '/report', cup: '/cup', ...(PREDICTIONS_ON ? { predictions: '/predictions' } : {}),
+    inventory: '/inventory', marketplace: '/marketplace', laboratory: '/lab', report: '/report', cup: '/cup', daily: '/daily', ...(PREDICTIONS_ON ? { predictions: '/predictions' } : {}),
   };
   const pathForView = (): string | null => {
     const track = `/rally/${String(activeCategoryInfo?.terrain ?? 'forest').toLowerCase()}`;
@@ -1419,68 +1421,14 @@ function App() {
           <div className="logo" onClick={() => setCurrentView('landing')} style={{cursor: 'pointer', display: 'flex', alignItems: 'center'}}>
             <img src="/dark-logo.webp" alt="Pangs Rally Logo" className="logo-img" width={640} height={213} fetchPriority="high" />
           </div>
-          <nav className="nav-links">
-            <a 
-              className={currentView === 'how-to-play' ? 'active' : ''} 
-              onClick={() => setCurrentView('how-to-play')}
-              style={{cursor: 'pointer'}}
-            >
-              The Vision
-            </a>
-            <a 
-              className={currentView === 'rally' || currentView === 'live-race' || currentView === 'race-room' ? 'active' : ''} 
-              onClick={() => setCurrentView('rally')}
-              style={{cursor: 'pointer'}}
-            >
-              The Rally
-            </a>
-            <a 
-              className={currentView === 'laboratory' ? 'active' : ''} 
-              onClick={() => setCurrentView('laboratory')}
-              style={{cursor: 'pointer'}}
-            >
-              Laboratory
-            </a>
-            <a 
-              className={currentView === 'inventory' ? 'active' : ''} 
-              onClick={() => setCurrentView('inventory')}
-              style={{cursor: 'pointer'}}
-            >
-              Inventory
-            </a>
-            <a 
-              className={currentView === 'marketplace' ? 'active' : ''} 
-              onClick={() => setCurrentView('marketplace')}
-              style={{cursor: 'pointer'}}
-            >
-              Marketplace
-            </a>
-            {hasCup && (
-              <a className={`nav-cup ${currentView === 'cup' ? 'active' : ''}`} onClick={() => setCurrentView('cup')} style={{cursor: 'pointer'}}>
-                Pangs Cup
-              </a>
-            )}
-            <a 
-              className={currentView === 'leaderboard' || currentView === 'predictions' ? 'active' : ''} 
-              onClick={() => setCurrentView('leaderboard')}
-              style={{cursor: 'pointer'}}
-            >
-              Leaderboard
-            </a>
-            <a 
-              className={currentView === 'my-races' ? 'active' : ''} 
-              onClick={() => setCurrentView('my-races')}
-              style={{cursor: 'pointer'}}
-            >
-              Profile
-            </a>
-          </nav>
+          <SiteNav view={currentView} go={setCurrentView} hasCup={hasCup} />
           <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             {walletConnected ? (
               <WalletMenu
                 label={player?.username ?? walletAddress}
                 points={player?.points ?? null}
                 onProfile={() => setCurrentView('my-races')}
+                onCollection={() => setCurrentView('inventory')}
                 onReport={() => setCurrentView('report')}
                 onDisconnect={() => { signOut(); showToast('Wallet disconnected', 'info'); }}
               />
@@ -1561,11 +1509,11 @@ function App() {
               categoryInfo={activeCategoryInfo}
               player={player}
               onSelectMode={(mode) => {
-                if (needsBeta(player)) { setBetaOpen(true); return; }
+                if (mode !== 'daily' && needsBeta(player)) { setBetaOpen(true); return; }
                 unlockAnnounce();
                 setOnlineRaceId(null);
                 setRaceKey(k => k + 1);
-                setCurrentView(mode === 'bot' ? 'bot-race' : 'online-rooms');
+                setCurrentView(mode === 'bot' ? 'bot-race' : mode === 'daily' ? 'daily' : 'online-rooms');
               }}
               onBack={() => setCurrentView('rally')}
             />
@@ -1626,11 +1574,11 @@ function App() {
           <RaceRoom
             key={`replay-${replayRaceId}`}
             categoryInfo={mockCategories[0]}
-            title={replayBack.current === 'cup' ? 'Pangs Cup' : 'Replay'}
+            title={replayBack.current === 'cup' ? 'Pangs Cup' : replayBack.current === 'daily' ? 'Daily Rally' : 'Replay'}
             playerWallet={player?.wallet ?? null}
             loadRace={() => testSeason.race(replayRaceId)}
             onBack={() => setCurrentView(replayBack.current)}
-            backLabel={replayBack.current === 'predictions' ? '← Back to Predictions' : replayBack.current === 'cup' ? '← Back to the Cup' : '← Back to Profile'}
+            backLabel={replayBack.current === 'predictions' ? '← Back to Predictions' : replayBack.current === 'cup' ? '← Back to the Cup' : replayBack.current === 'daily' ? '← Back to the Daily Rally' : '← Back to Profile'}
           />
         )}
 
@@ -2131,6 +2079,14 @@ function App() {
         )}
 
         {currentView === 'cup-live' && <CupBroadcast />}
+
+        {currentView === 'daily' && (
+          <RallyPage
+            player={player}
+            onSignIn={signIn}
+            onWatch={(id) => { unlockAnnounce(); replayBack.current = 'daily'; setReplayRaceId(id); setCurrentView('replay'); }}
+          />
+        )}
 
         {currentView === 'leaderboard' && (
           <SeasonLeaderboard playerWallet={player?.wallet ?? null} onTab={t => setCurrentView(t === 'season' ? 'leaderboard' : 'predictions')} />

@@ -216,11 +216,15 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
   }, [phase, sim, myResult]);
 
   const pickedRacer = pick ? sim?.racers.find(r => r.number === pick) ?? null : null;
-  const medal = (pos: number) => pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : '🏁';
   const winner = sim?.standings()[0];
 
   /* ---------- share card ---------- */
-  const isCup = loaded?.race.kind === 'cup';
+  const raceKind = loaded?.race.kind;
+  const isCup = raceKind === 'cup';
+  // what the share card, the tweet and the result say this race was for
+  const event = isCup ? { name: 'Pangs Cup', pts: 'Cup', where: 'the Pangs Cup' }
+    : raceKind === 'rally' ? { name: 'Daily Rally', pts: 'Rally', where: 'the @PangsRally Daily Rally' }
+    : { name: 'Beta Season', pts: 'Season', where: '@PangsRally' };
   useEffect(() => {
     if (!showResults || !sim || !myResult) return;
     let cancelled = false;
@@ -231,12 +235,12 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
     drawShareCard({
       track: finishShot.current,
       terrain,
-      event: isCup ? 'Pangs Cup' : 'Beta Season',
+      event: event.name,
       playerName: me?.name ?? 'I',
       position: myResult.position,
       fieldSize: sim.racers.length,
       points: myResult.points,
-      pointsLabel: isCup ? 'Cup pts' : 'Season pts',
+      pointsLabel: `${event.pts} pts`,
       top: rows.map(r => ({ position: r.position, number: r.number, name: r.name, body: r.body, time: r.finishTime, isPlayer: r.isPlayer })),
     })
       .then(canvasToBlob)
@@ -247,10 +251,10 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
       })
       .catch(() => {});
     return () => { cancelled = true; if (url) URL.revokeObjectURL(url); };
-  }, [showResults, sim, myResult, terrain, isCup]);
+  }, [showResults, sim, myResult, terrain, event.name, event.pts]);
 
   const shareText = myResult
-    ? `${myResult.position === 1 ? `🏆 I won on the ${terrain} Track` : `🏁 I finished ${ordinalOf(myResult.position)} of ${sim?.racers.length ?? 10} on the ${terrain} Track`} in ${isCup ? 'the Pangs Cup' : '@PangsRally'}!\n+${myResult.points} ${isCup ? 'Cup' : 'Beta Season'} points\n\nRace your Pangolin 👇\nhttps://pangsrally.com`
+    ? `${myResult.position === 1 ? `🏆 I won on the ${terrain} Track` : `🏁 I finished ${ordinalOf(myResult.position)} of ${sim?.racers.length ?? 10} on the ${terrain} Track`} in ${event.where}!\n+${myResult.points} ${event.pts === 'Season' ? 'Beta Season' : event.pts} points\n\nRace your Pangolin 👇\nhttps://pangsrally.com`
     : '';
 
   const saveCard = () => {
@@ -289,7 +293,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
         <button className="rr-btn" onClick={onBack}>{backLabel}</button>
         <div style={{ textAlign: 'center' }}>
           <h2 className="rr-title" style={{ color: theme.hudAccent }}><TrackBadge terrain={terrain} size={26} style={{ marginRight: 8, verticalAlign: '-5px' }} />{terrain} Track · {title}</h2>
-          <p className="rr-sub">{loaded?.race.kind === 'cup' ? 'Pangs Cup · Equal stats for everyone · luck decides' : 'Beta Season · Season points for every finish'} · {DEFAULT_RACE_DISTANCE}m</p>
+          <p className="rr-sub">{isCup ? 'Pangs Cup · Equal stats for everyone · luck decides' : raceKind === 'rally' ? 'Daily Rally · Rally points for every finish' : 'Beta Season · Season points for every finish'} · {DEFAULT_RACE_DISTANCE}m</p>
         </div>
         <div className="rr-header-spacer" />
       </div>
@@ -413,20 +417,41 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
       {/* results */}
       {phase === 'finished' && showResults && sim && (
         <div className="rr-results-backdrop">
-          <div className="rr-results">
-            {myResult ? (
-              <>
-                <div className="medal">{medal(myResult.position)}</div>
-                <h2>{myResult.position === 1 ? 'CHAMPION!' : myResult.position <= 3 ? 'PODIUM FINISH!' : 'Race Complete'}</h2>
-                <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0 }}>
-                  You finished <strong style={{ color: '#fff' }}>#{myResult.position}</strong> of {sim.racers.length} on the {terrain} Track
-                </p>
-                <div className="rr-prize">
-                  <div className="amt">+{myResult.points} pts</div>
-                  <div className="note">Season points · they count on the Beta Season leaderboard</div>
+          <div className={`rr-results ${myResult ? '' : 'solo'}`}>
+            <div className="rr-res-main">
+              {myResult ? (
+                <div className="rr-res-head">
+                  <div className={`rr-res-badge p${Math.min(myResult.position, 4)}`}>
+                    <strong>{myResult.position}</strong>
+                    <span>of {sim.racers.length}</span>
+                  </div>
+                  <div className="rr-res-title">
+                    <h2>{myResult.position === 1 ? 'Champion!' : myResult.position <= 3 ? 'Podium finish!' : 'Race complete'}</h2>
+                    <p>You finished {ordinalOf(myResult.position)} on the {terrain} Track</p>
+                    <span className="rr-res-pts">+{myResult.points} {event.pts.toLowerCase()} pts</span>
+                  </div>
                 </div>
+              ) : (
+                <div className="rr-res-head">
+                  <div className="rr-res-badge p1"><strong>{winner?.number ?? '—'}</strong><span>winner</span></div>
+                  <div className="rr-res-title">
+                    <h2>Race result</h2>
+                    <p>{winner ? <>Number {winner.number} <b>{winner.name}</b> wins on the {terrain} Track</> : null}</p>
+                  </div>
+                </div>
+              )}
+
+              {pickedRacer && (
+                <p className={`rr-pickline ${predictionPointsFor(pickedRacer.position) > 0 ? 'hit' : ''}`}>
+                  Your pick, <strong>Number {pickedRacer.number}</strong>, finished {ordinal(pickedRacer.position)} · +{predictionPointsFor(pickedRacer.position)} prediction pts
+                </p>
+              )}
+
+              {myResult && (
                 <div className="rr-share">
-                  {card ? <img className="rr-share-thumb" src={card.url} alt="Your race result card" /> : <div className="rr-share-thumb loading" />}
+                  <button className="rr-share-card" disabled={!card} onClick={saveCard} title="Save image">
+                    {card ? <img src={card.url} alt="Your race result card" /> : <span className="rr-share-wait" />}
+                  </button>
                   <div className="rr-share-actions">
                     <button className="rr-btn rr-share-x" disabled={!card} onClick={shareOnX}>
                       <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
@@ -434,52 +459,34 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
                     </button>
                     <button className="rr-btn" disabled={!card} onClick={saveCard}>Save image</button>
                   </div>
+                  {shareNote && <p className="rr-share-note">{shareNote}</p>}
                 </div>
-                {shareNote && <p className="rr-share-note">{shareNote}</p>}
-              </>
-            ) : (
-              <>
-                <div className="medal">🏆</div>
-                <h2>Race Result</h2>
-                <p style={{ color: 'rgba(255,255,255,0.7)', margin: '0 0 0.5rem' }}>
-                  {winner ? <>Number {winner.number} <strong style={{ color: '#fff' }}>{winner.name}</strong> wins on the {terrain} Track</> : null}
-                </p>
-              </>
-            )}
-
-            {pickedRacer && (
-              <p className={`rr-pickline ${predictionPointsFor(pickedRacer.position) > 0 ? 'hit' : ''}`}>
-                Your pick, <strong>Number {pickedRacer.number}</strong>, finished {ordinal(pickedRacer.position)} · +{predictionPointsFor(pickedRacer.position)} prediction pts
-              </p>
-            )}
-
-            <div className="rr-final">
-              {sim.standings().map((r: RacerSim) => (
-                <div key={r.id} className={`rr-row ${r.isPlayer ? 'me' : ''} ${r.number === pick ? 'pick' : ''} ${r.position <= 3 ? `top${r.position}` : ''}`}>
-                  <span className="rr-pos">{r.position}</span>
-                  <span className="rr-num">{r.number}</span>
-                  <img className="rr-avatar" src={r.avatarUrl ?? BALL_SPRITES[r.body]} alt="" onError={(e) => { (e.currentTarget as HTMLImageElement).src = BALL_SPRITES[r.body]; }} />
-                  <span className="rr-name">{r.isPlayer ? `${r.name} (You)` : r.name}</span>
-                  <span className="rr-time">{formatTime(r.finishTime)}</span>
-                </div>
-              ))}
+              )}
             </div>
 
-            {raceAgain?.hint && !raceAgain.enabled && (
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', margin: '0 0 0.75rem' }}>{raceAgain.hint}</p>
-            )}
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button className="rr-btn" style={{ flex: 1, padding: '12px' }} onClick={onBack}>{backLabel.replace(/^←\s*/, '')}</button>
-              {raceAgain && (
-                <button
-                  className="rr-btn primary"
-                  style={{ flex: 1, padding: '12px' }}
-                  disabled={!raceAgain.enabled}
-                  onClick={raceAgain.onClick}
-                >
-                  {raceAgain.label}
-                </button>
-              )}
+            <div className="rr-res-side">
+              <h3>Finish order</h3>
+              <div className="rr-final">
+                {sim.standings().map((r: RacerSim) => (
+                  <div key={r.id} className={`rr-row ${r.isPlayer ? 'me' : ''} ${r.number === pick ? 'pick' : ''} ${r.position <= 3 ? `top${r.position}` : ''}`}>
+                    <span className="rr-pos">{r.position}</span>
+                    <span className="rr-num">{r.number}</span>
+                    <img className="rr-avatar" src={r.avatarUrl ?? BALL_SPRITES[r.body]} alt="" onError={(e) => { (e.currentTarget as HTMLImageElement).src = BALL_SPRITES[r.body]; }} />
+                    <span className="rr-name">{r.isPlayer ? `${r.name} (You)` : r.name}</span>
+                    <span className="rr-time">{formatTime(r.finishTime)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rr-res-foot">
+              {raceAgain?.hint && !raceAgain.enabled && <p className="rr-res-hint">{raceAgain.hint}</p>}
+              <div className="rr-res-btns">
+                <button className="rr-btn" onClick={onBack}>{backLabel.replace(/^←\s*/, '')}</button>
+                {raceAgain && (
+                  <button className="rr-btn primary" disabled={!raceAgain.enabled} onClick={raceAgain.onClick}>{raceAgain.label}</button>
+                )}
+              </div>
             </div>
           </div>
         </div>

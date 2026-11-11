@@ -120,6 +120,8 @@ function testSeasonDevPlugin(env: Record<string, string>) {
     // .env carries the live BETA_* values for the scripts; dev only enforces the Beta pass with DEV_BETA_GATE=1
     // (point BETA_RPC_URL / BETA_CHAIN_ID / BETA_CONTRACT at a local chain to rehearse a mint).
     beta: env.DEV_BETA_GATE === '1' ? createBetaGate((name) => env[name]) : null,
+    // DEV_RALLY_MINUTE_UTC=1325 moves the Daily Rally start to 22:05 UTC, to rehearse a start locally.
+    rallyMinuteUtc: env.DEV_RALLY_MINUTE_UTC ? Number(env.DEV_RALLY_MINUTE_UTC) : undefined,
     cupTeamWallets: new Set((env.CUP_TEAM_WALLETS || '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean)),
   }
   // A dev Cup to rehearse on, with 12 named demo racers already in: registration open for

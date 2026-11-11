@@ -725,4 +725,53 @@ const fillRoom = async (roomId, taken = 0) => {
   ok('a room that waits past midnight does not cost the new day a race; it runs on top of the five');
 }
 
+// --- Daily Rally -------------------------------------------------------------
+{
+  const day = new Date(clock + 2 * 86_400_000).toISOString().slice(0, 10);
+  clock = Date.parse(`${day}T10:00:00Z`);
+  let status = (await call('rally')).body;
+  assert.equal(status.next.day, day, 'before 18:00 UTC sign-ups are for today');
+  assert.equal(status.next.startsAt, `${day}T18:00:00.000Z`);
+  const racers = [];
+  for (let i = 0; i < 13; i++) racers.push(await signIn(Wallet.createRandom()));
+  const before = (await call('me', {}, racers[0])).body.racesLeft;
+  for (const t of racers) assert.equal((await call('rally-register', {}, t)).status, 200);
+  await call('rally-register', {}, racers[0]);
+  status = (await call('rally', {}, racers[0])).body;
+  assert.equal(status.next.registered, 13, 'signing up twice keeps one place');
+  assert.equal(status.me.registered, true);
+  assert.equal((await call('me', {}, racers[0])).body.racesLeft, before, 'a rally sign-up uses none of the daily races');
+  // leaving before the start gives the place back
+  await call('rally-leave', {}, racers[12]);
+  assert.equal((await call('rally')).body.next.registered, 12);
+
+  clock = Date.parse(`${day}T18:00:01Z`);
+  const [a, b] = await Promise.all([call('rally', {}, racers[0]), call('rally', {}, racers[1])]);
+  assert.equal(a.status, 200); assert.equal(b.status, 200);
+  status = a.body;
+  assert.equal(status.last.day, day);
+  assert.equal(status.last.rooms.length, 2, '12 racers make two rooms of 6');
+  assert.equal(status.next.day, new Date(Date.parse(day) + 86_400_000).toISOString().slice(0, 10), 'after the start, sign-ups are for tomorrow');
+  const races = await deps.store.rallyRaces(day);
+  assert.equal(races.length, 2, 'parallel requests run each room once');
+  const wallets = races.flatMap(r => r.field.filter(f => f.wallet).map(f => f.wallet));
+  assert.equal(wallets.length, 12); assert.equal(new Set(wallets).size, 12, 'every racer races exactly once');
+  assert.ok(races.every(r => r.field.length === FIELD_SIZE), 'bots fill the empty seats');
+  assert.equal(status.board.length, 0, 'no points until the races cross the line');
+  assert.equal((await call('rally-leave', {}, racers[0])).status, 200, 'leaving now only touches tomorrow');
+
+  // the player sees their own result on the replay
+  const mine = status.me.raceId;
+  const replay = (await call('race', { raceId: mine }, racers[0])).body.race;
+  assert.equal(replay.kind, 'rally');
+  assert.equal(replay.players.length, 6, 'the room lists its players, not the bots');
+
+  clock = Math.max(...races.map(r => Date.parse(r.finished_at))) + 1;
+  status = (await call('rally', {}, racers[0])).body;
+  const total = races.flatMap(r => r.results.filter(x => r.field.find(f => f.id === x.id)?.wallet).map(x => POINTS_BY_POSITION[x.position - 1])).reduce((n, p) => n + p, 0);
+  assert.equal(status.board.reduce((n, r) => n + r.points, 0), total, 'rally points are the 25/18/15… table of each player');
+  assert.ok(status.me.result && status.me.result.points === POINTS_BY_POSITION[status.me.result.position - 1]);
+  ok('Daily Rally: sign up free, rooms of 10 with bots at 18:00 UTC, each room runs once, own points table');
+}
+
 console.log(`\n${checks} checks passed.`);

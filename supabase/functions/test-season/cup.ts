@@ -106,7 +106,7 @@ export async function roomSeed(deps: Pick<Deps, 'sha256Hex'>, secret: string, ro
 }
 
 /** Wallets split into rooms of at most 10, as evenly as possible (23 → 8, 8, 7), in a secret-seeded order. */
-async function drawRooms(deps: Pick<Deps, 'sha256Hex'>, secret: string, round: number, wallets: string[]): Promise<string[][]> {
+export async function drawRooms(deps: Pick<Deps, 'sha256Hex'>, secret: string, round: number, wallets: string[]): Promise<string[][]> {
   const keyed = await Promise.all([...wallets].sort().map(async w => ({ w, k: await deps.sha256Hex(`${secret}:draw:${round}:${w}`) })));
   const order = keyed.sort((a, b) => (a.k < b.k ? -1 : 1)).map(x => x.w);
   const rooms = Math.max(1, Math.ceil(order.length / FIELD_SIZE));

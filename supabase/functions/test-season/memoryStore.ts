@@ -4,6 +4,7 @@
  * Data is lost when the dev server restarts.
  */
 import type { CupEntryRow, CupRow } from './cup.ts';
+import type { RallyDayRow, RallyEntryRow } from './rally.ts';
 import { raceOver, type EntryRow, type LeaderRow, type PredictionBoardRow, type PredictionRow, type RaceRow, type ReportRow, type Store } from './core.ts';
 
 /** `invites`: code → places, e.g. { 'DEV-RALLY': 1000 } so dev sign-in works. */
@@ -19,6 +20,8 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
   let predictions: PredictionRow[] = [];
   const cups = new Map<number, CupRow>();
   let cupEntries: CupEntryRow[] = [];
+  const rallyDays = new Map<string, RallyDayRow>();
+  let rallyEntries: RallyEntryRow[] = [];
 
   const clone = <T>(v: T): T => (v === null || v === undefined ? v : JSON.parse(JSON.stringify(v)));
 
@@ -193,6 +196,30 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
     },
     async cupRaces(cupId) {
       return clone([...races.values()].filter(r => r.cup_id === cupId));
+    },
+    async getRallyDay(day) {
+      return clone(rallyDays.get(day) ?? null);
+    },
+    async insertRallyDay(row) {
+      if (!rallyDays.has(row.day)) rallyDays.set(row.day, clone(row));
+    },
+    async rallyEntries(day) {
+      return clone(rallyEntries.filter(e => e.day === day).sort((a, b) => a.registered_at.localeCompare(b.registered_at)));
+    },
+    async insertRallyEntry(entry) {
+      if (!rallyEntries.some(e => e.day === entry.day && e.wallet === entry.wallet)) rallyEntries.push(clone(entry));
+    },
+    async deleteRallyEntry(day, wallet) {
+      rallyEntries = rallyEntries.filter(e => !(e.day === day && e.wallet === wallet));
+    },
+    async rallyRaces(day) {
+      return clone([...races.values()].filter(r => r.kind === 'rally' && (day === null || r.rally_day === day)));
+    },
+    async insertRallyRace(race) {
+      // Mirrors the unique index of 015: one race per rally day and room.
+      if ([...races.values()].some(r => r.kind === 'rally' && r.rally_day === race.rally_day && r.rally_room === race.rally_room)) return 'conflict';
+      races.set(race.id, clone(race));
+      return 'ok';
     },
     async insertCupRace(race) {
       // Mirrors the unique index of 013: one race per Cup round and room.

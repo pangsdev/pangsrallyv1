@@ -120,3 +120,5 @@
   .rooms-seats { grid-column: 1 / -1; grid-row: 2; }
   .rooms-join { min-width: 0; }
 }
+.lobby-seat-link { grid-column: 1 / -1; justify-self: end; background: none; border: 0; padding: 0; color: rgba(255,255,255,0.6); font-size: 0.82rem; text-decoration: underline; cursor: pointer; }
+.lobby-seat-link:hover { color: #fff; }

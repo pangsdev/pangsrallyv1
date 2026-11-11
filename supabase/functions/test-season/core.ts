@@ -14,10 +14,11 @@ import {
   streakFor,
 } from './race/testSeason.ts';
 import { cupLeave, cupRegister, cupStatus, type CupEntryRow, type CupRow } from './cup.ts';
+import { rallyLeave, rallyPlacings, rallyRegister, rallyStatus, type RallyDayRow, type RallyEntryRow } from './rally.ts';
 
 export interface RaceRow {
   id: string;
-  kind: 'bot' | 'online' | 'cup';
+  kind: 'bot' | 'online' | 'cup' | 'rally';
   terrain: string;
   seed: string;
   status: 'open' | 'finished';
@@ -31,6 +32,9 @@ export interface RaceRow {
   cup_id?: number | null;
   cup_round?: number | null;
   cup_room?: number | null;
+  /** Daily Rally races only (rally.ts): which day (YYYY-MM-DD) and room. */
+  rally_day?: string | null;
+  rally_room?: number | null;
 }
 
 export interface EntryRow {
@@ -155,6 +159,17 @@ export interface Store {
   cupRaces(cupId: number): Promise<RaceRow[]>;
   /** 'conflict' when this Cup round and room already has its race (migration 013). */
   insertCupRace(race: RaceRow): Promise<'ok' | 'conflict'>;
+  getRallyDay(day: string): Promise<RallyDayRow | null>;
+  /** A second row for the same day is ignored (the first secret stays). */
+  insertRallyDay(row: RallyDayRow): Promise<void>;
+  rallyEntries(day: string): Promise<RallyEntryRow[]>;
+  /** A second entry for the same wallet and day is ignored. */
+  insertRallyEntry(entry: RallyEntryRow): Promise<void>;
+  deleteRallyEntry(day: string, wallet: string): Promise<void>;
+  /** Rally races of one day, or of every day when `day` is null. */
+  rallyRaces(day: string | null): Promise<RaceRow[]>;
+  /** 'conflict' when this day and room already has its race (migration 015). */
+  insertRallyRace(race: RaceRow): Promise<'ok' | 'conflict'>;
 }
 
 export interface ReportRow {
@@ -187,6 +202,8 @@ export interface Deps {
   betaSeasonEnd?: Date | null;
   /** The free prediction game. Off in production until migration 011 is applied and the owner opens it. */
   predictions?: boolean;
+  /** Daily Rally start, minutes after midnight UTC; unset = 18:00 (the dev server sets it to test a start). */
+  rallyMinuteUtc?: number;
   /** Team wallets (lower-case) that cannot enter a Pangs Cup. */
   cupTeamWallets?: Set<string>;
 }
@@ -243,6 +260,9 @@ export async function handle(deps: Deps, action: string, body: Record<string, un
       case 'cup': return ok(await cupStatus(deps, body.cupId, token));
       case 'cup-register': return ok(await cupRegister(deps, token, body.cupId));
       case 'cup-leave': return ok(await cupLeave(deps, token, body.cupId));
+      case 'rally': return ok(await rallyStatus(deps, token));
+      case 'rally-register': return ok(await rallyRegister(deps, token));
+      case 'rally-leave': return ok(await rallyLeave(deps, token));
       case 'beta-voucher': return ok(await betaVoucher(deps, await requireWallet(deps, token)));
       default: throw new HttpError(404, 'unknown_action', 'Unknown action.');
     }
@@ -783,11 +803,20 @@ async function publicRace(deps: Deps, race: RaceRow, entries: EntryRow[]) {
     seed: race.status === 'finished' ? race.seed : null,
     field: race.status === 'finished' ? race.field : null,
     results: race.status === 'finished' ? race.results : null,
-    players: entries
-      .sort((a, b) => a.joined_at.localeCompare(b.joined_at))
-      .map(e => ({ wallet: e.wallet, name: names[e.wallet] ?? shortWallet(e.wallet), position: e.position, points: e.points })),
+    players: race.status === 'finished' && (race.kind === 'cup' || race.kind === 'rally')
+      // Cup and rally races keep no entries: their players are the field's wallets.
+      ? await fieldPlayers(deps, race)
+      : entries
+        .sort((a, b) => a.joined_at.localeCompare(b.joined_at))
+        .map(e => ({ wallet: e.wallet, name: names[e.wallet] ?? shortWallet(e.wallet), position: e.position, points: e.points })),
     maxPlayers: FIELD_SIZE,
   };
+}
+
+async function fieldPlayers(deps: Deps, race: RaceRow) {
+  const placed = rallyPlacings(race);
+  const names = await deps.store.getUsernames(placed.map(p => p.wallet));
+  return placed.map(p => ({ wallet: p.wallet, name: names[p.wallet] ?? shortWallet(p.wallet), position: p.position, points: p.points }));
 }
 
 async function mustGetRace(deps: Deps, id: string): Promise<RaceRow> {
