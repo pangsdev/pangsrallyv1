@@ -5,7 +5,9 @@
  *   1. asks the game server for the latest Cup (`cup` action), which also starts every round that is
  *      due, so rounds begin on time even when nobody has the page open;
  *   2. once the Grand Final has finished, writes the results and the Participant root on chain and
- *      turns on the Claim buttons (publish.ts; safe to repeat).
+ *      turns on the Claim buttons (publish.ts; safe to repeat);
+ *   3. in the first minutes after 18:00 UTC, asks for the Daily Rally (`rally` action), which draws and
+ *      runs that day's rooms, so the rally starts on time even when nobody has the page open.
  *
  * Secrets: CUP_OPERATOR_KEY (the wallet that owns PangsCup; holds only gas), CUP_CONTRACT, optional
  * CUP_RPC_URL. Anyone may call it: it only ever does what is due (start rounds, publish a finished
@@ -28,6 +30,19 @@ const reply = (status: number, body: unknown) =>
 Deno.serve(async (req) => {
   const secret = Deno.env.get('CUP_CRON_SECRET');
   if (secret && req.headers.get('x-cron-secret') !== secret) return reply(401, { error: 'unauthorized' });
+
+  // Daily Rally start (rally.ts, RALLY_HOUR_UTC = 18): only near the start, and never in the Cup's way.
+  const minute = new Date().getUTCHours() * 60 + new Date().getUTCMinutes();
+  if (minute >= 18 * 60 && minute < 18 * 60 + 10) {
+    try {
+      const r = await fetch(`${url}/functions/v1/test-season`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rally' }),
+      });
+      console.log(JSON.stringify({ rally: r.status }));
+    } catch (e) {
+      console.error('rally start', e);
+    }
+  }
 
   try {
     const res = await fetch(`${url}/functions/v1/test-season`, {
