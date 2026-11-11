@@ -12,6 +12,7 @@ import { predictionPointsFor } from '../race/testSeason';
 import { ordinal } from './Predictions';
 import '../race/race.css';
 import { TrackBadge } from './Icons';
+import { canvasToBlob, drawShareCard, ordinalOf } from './shareCard';
 
 /** A race whose result the server has already fixed; the room only replays it. */
 export interface LoadedRace {
@@ -80,6 +81,11 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
   const [callLog, setCallLog] = useState<CommentaryCall[]>([]);
   const [announcerMuted, setMutedUi] = useState(() => isAnnouncerMuted());
   phaseRef.current = phase;
+  /** copies the track as drawn right now; the finish frame goes on the share card */
+  const snapshotRef = useRef<(() => HTMLCanvasElement | null) | null>(null);
+  const finishShot = useRef<HTMLCanvasElement | null>(null);
+  const [card, setCard] = useState<{ blob: Blob; url: string } | null>(null);
+  const [shareNote, setShareNote] = useState<string | null>(null);
 
   /* ---------- fetch the race once, then build the simulation that replays it ---------- */
   // One request per mounted room: StrictMode re-runs effects, and a second call would start (and spend) a second race.
@@ -179,6 +185,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
       setPhase('finished');
       onFinishedRef.current?.();
       // let the finish-line celebration play before covering the track
+      setTimeout(() => { finishShot.current = snapshotRef.current?.() ?? null; }, 2000);
       setTimeout(() => setShowResults(true), 2200);
     }
   }, [tryCall]);
@@ -212,6 +219,70 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
   const medal = (pos: number) => pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : '🏁';
   const winner = sim?.standings()[0];
 
+  /* ---------- share card ---------- */
+  const isCup = loaded?.race.kind === 'cup';
+  useEffect(() => {
+    if (!showResults || !sim || !myResult) return;
+    let cancelled = false;
+    let url: string | null = null;
+    const order = sim.standings();
+    const me = order.find(r => r.isPlayer);
+    const rows = order.filter(r => r.position <= 3 || r.isPlayer);
+    drawShareCard({
+      track: finishShot.current,
+      terrain,
+      event: isCup ? 'Pangs Cup' : 'Beta Season',
+      playerName: me?.name ?? 'I',
+      position: myResult.position,
+      fieldSize: sim.racers.length,
+      points: myResult.points,
+      pointsLabel: isCup ? 'Cup pts' : 'Season pts',
+      top: rows.map(r => ({ position: r.position, number: r.number, name: r.name, body: r.body, time: r.finishTime, isPlayer: r.isPlayer })),
+    })
+      .then(canvasToBlob)
+      .then(blob => {
+        if (cancelled || !blob) return;
+        url = URL.createObjectURL(blob);
+        setCard({ blob, url });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; if (url) URL.revokeObjectURL(url); };
+  }, [showResults, sim, myResult, terrain, isCup]);
+
+  const shareText = myResult
+    ? `${myResult.position === 1 ? `🏆 I won on the ${terrain} Track` : `🏁 I finished ${ordinalOf(myResult.position)} of ${sim?.racers.length ?? 10} on the ${terrain} Track`} in ${isCup ? 'the Pangs Cup' : '@PangsRally'}!\n+${myResult.points} ${isCup ? 'Cup' : 'Beta Season'} points\n\nRace your Pangolin 👇\nhttps://pangsrally.com`
+    : '';
+
+  const saveCard = () => {
+    if (!card) return;
+    const a = document.createElement('a');
+    a.href = card.url;
+    a.download = 'pangs-rally-result.png';
+    a.click();
+  };
+
+  const shareOnX = () => {
+    if (!card) return;
+    const file = new File([card.blob], 'pangs-rally-result.png', { type: 'image/png' });
+    // phones: the share sheet hands the image straight to the X app
+    if (window.matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] })) {
+      navigator.share({ files: [file], text: shareText }).catch(() => {});
+      return;
+    }
+    // desktop: X's post window cannot take an image from a link, so copy it for a paste
+    let copying: Promise<void>;
+    try {
+      copying = navigator.clipboard.write([new ClipboardItem({ 'image/png': card.blob })]);
+    } catch (err) {
+      copying = Promise.reject(err);
+    }
+    window.open(`https://x.com/intent/post?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener,noreferrer');
+    copying.then(
+      () => setShareNote('Image copied. Paste it into your post with ⌘V / Ctrl+V.'),
+      () => { saveCard(); setShareNote('Image saved. Attach it to your post.'); },
+    );
+  };
+
   return (
     <div className="rr-root">
       <div className="rr-header">
@@ -241,6 +312,7 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
               onTick={handleTick}
               onSceneReady={handleSceneReady}
               onReady={handleTrackReady}
+              snapshotRef={snapshotRef}
             />
           )}
 
@@ -353,6 +425,17 @@ export default function RaceRoom({ categoryInfo, title, playerWallet, loadRace, 
                   <div className="amt">+{myResult.points} pts</div>
                   <div className="note">Season points · they count on the Beta Season leaderboard</div>
                 </div>
+                <div className="rr-share">
+                  {card ? <img className="rr-share-thumb" src={card.url} alt="Your race result card" /> : <div className="rr-share-thumb loading" />}
+                  <div className="rr-share-actions">
+                    <button className="rr-btn rr-share-x" disabled={!card} onClick={shareOnX}>
+                      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                      Share on X
+                    </button>
+                    <button className="rr-btn" disabled={!card} onClick={saveCard}>Save image</button>
+                  </div>
+                </div>
+                {shareNote && <p className="rr-share-note">{shareNote}</p>}
               </>
             ) : (
               <>

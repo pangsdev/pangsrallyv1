@@ -21,6 +21,8 @@ export interface PixiRaceTrackProps {
   onSceneReady?: () => void;
   /** called once every racer is on the start line and the countdown can begin */
   onReady?: () => void;
+  /** filled with a function that copies the current frame into a 2D canvas (for the share card) */
+  snapshotRef?: React.MutableRefObject<(() => HTMLCanvasElement | null) | null>;
   style?: React.CSSProperties;
   className?: string;
 }
@@ -167,7 +169,7 @@ interface RacerView {
 /* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
-export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneReady, onReady, style, className }: PixiRaceTrackProps) {
+export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneReady, onReady, snapshotRef, style, className }: PixiRaceTrackProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const runningRef = useRef(running);
   const onTickRef = useRef(onTick);
@@ -202,6 +204,19 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
       app = a;
       if (import.meta.env.DEV) (window as unknown as { __pangsApp?: Application }).__pangsApp = a; // dev-only: pause/slow the ticker from the console
       host.appendChild(a.canvas);
+      if (snapshotRef) {
+        snapshotRef.current = () => {
+          // render and copy in the same task, before the WebGL buffer is cleared
+          try {
+            a.render();
+            const out = document.createElement('canvas');
+            out.width = a.canvas.width;
+            out.height = a.canvas.height;
+            out.getContext('2d')?.drawImage(a.canvas, 0, 0);
+            return out;
+          } catch { return null; }
+        };
+      }
       a.canvas.style.display = 'block';
       a.canvas.style.width = '100%';
       a.canvas.style.height = '100%';
@@ -1262,6 +1277,7 @@ export default function PixiRaceTrack({ sim, running, terrain, onTick, onSceneRe
 
     return () => {
       cancelled = true;
+      if (snapshotRef) snapshotRef.current = null;
       if (app) {
         app.destroy(true, { children: true, texture: false });
         app = null;
