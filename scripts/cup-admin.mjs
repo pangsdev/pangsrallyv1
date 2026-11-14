@@ -5,7 +5,8 @@
  *
  *   npm run cup -- create  --id 1 --starts 2026-11-21T20:00:00Z [--seats 50] [--usdg 15,10,5] [--eligible-before ISO] [--send]
  *                          --usdg 0,0,0 makes a whitelist-only Cup (podium: Genesis whitelist + badge, no USDG)
- *   npm run cup -- update  --id 1 [--starts ISO] [--seats N] [--send]   new date (e.g. after a postponement) or more seats
+ *   npm run cup -- update  --id 1 [--starts ISO] [--seats N] [--round-minutes N] [--final-gap N] [--send]
+ *                          new date (e.g. after a postponement), more seats, or a new round spacing before it starts
  *   npm run cup -- status  --id 1
  *   npm run cup -- deploy  [--send]                       PangsCup contract (owner = dev wallet, prize token = USDG)
  *   npm run cup -- uris    --contract 0x… --cid <IPFS CID of the metadata folder> --id 1 [--send]
@@ -119,9 +120,14 @@ switch (command) {
       if (!(Number(arg('seats')) >= 10)) fail('--seats must be 10 or more');
       patch.seats = Number(arg('seats'));
     }
-    if (!Object.keys(patch).length) fail('Nothing to change: pass --starts and/or --seats.');
+    for (const [flag, col] of [['round-minutes', 'round_minutes'], ['final-gap', 'final_gap_minutes']]) {
+      if (!arg(flag)) continue;
+      if (!(Number(arg(flag)) >= 2)) fail(`--${flag} must be 2 or more`);
+      patch[col] = Number(arg(flag));
+    }
+    if (!Object.keys(patch).length) fail('Nothing to change: pass --starts, --seats, --round-minutes and/or --final-gap.');
     const d = await game('cup', { cupId: id });
-    if (patch.starts_at && d.rounds.some(r => r.state !== 'upcoming')) fail('This Cup has already raced; its date cannot move.');
+    if ((patch.starts_at || patch.round_minutes || patch.final_gap_minutes) && d.rounds.some(r => r.state !== 'upcoming')) fail('This Cup has already raced; its schedule cannot change.');
     console.log(`${d.cup.title}: ${d.cup.registered} registered, state ${d.cup.state}.`);
     console.log(`Change: ${JSON.stringify(patch)}`);
     if (!send) { console.log('\nPreview only. Add --send to change the live Cup.'); break; }
