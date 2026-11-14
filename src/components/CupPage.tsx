@@ -292,7 +292,7 @@ function PrizeClaim({ data, player, award }: { data: CupStatus; player: PlayerSt
           <>
             <p>Claim your soulbound badge{usdg > 0 ? ` and ${usdg} USDG` : ''}. You pay only gas, on Robinhood Chain.</p>
             <button className="cup-btn" disabled={!!step} onClick={claim}>{step ?? `Claim badge${usdg > 0 ? ` + ${usdg} USDG` : ''}`}</button>
-            {chain.deadline && <small>USDG can be claimed until {new Date(chain.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}. The badge never expires.</small>}
+            {chain.deadline && usdg > 0 && <small>USDG can be claimed until {new Date(chain.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}. The badge never expires.</small>}
           </>
         )}
         {error && <p className="err">{error}</p>}

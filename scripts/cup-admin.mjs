@@ -3,7 +3,8 @@
  * Pangs Cup admin. Every command that spends gas or changes the live database only estimates
  * or previews unless you add --send. Keys come from .env and are never printed.
  *
- *   npm run cup -- create  --id 1 --starts 2026-11-21T20:00:00Z [--seats 50] [--eligible-before ISO] [--send]
+ *   npm run cup -- create  --id 1 --starts 2026-11-21T20:00:00Z [--seats 50] [--usdg 15,10,5] [--eligible-before ISO] [--send]
+ *                          --usdg 0,0,0 makes a whitelist-only Cup (podium: Genesis whitelist + badge, no USDG)
  *   npm run cup -- update  --id 1 [--starts ISO] [--seats N] [--send]   new date (e.g. after a postponement) or more seats
  *   npm run cup -- status  --id 1
  *   npm run cup -- deploy  [--send]                       PangsCup contract (owner = dev wallet, prize token = USDG)
@@ -81,6 +82,9 @@ switch (command) {
   case 'create': {
     const starts = arg('starts');
     if (!(id > 0) || !starts || !Number.isFinite(Date.parse(starts))) fail('Usage: create --id 1 --starts 2026-11-21T20:00:00Z');
+    const usdg = arg('usdg', '15,10,5').split(',').map(Number);
+    if (usdg.length !== 3 || usdg.some(n => !(n >= 0))) fail('--usdg takes three amounts for 1st, 2nd, 3rd, e.g. 15,10,5 or 0,0,0');
+    const podium = (n) => (n > 0 ? `${n} USDG + Genesis whitelist` : 'Genesis whitelist');
     const secret = randomBytes(32).toString('hex');
     const row = {
       id, title: arg('title', `Pangs Cup #${id}`), terrain: 'Forest', starts_at: new Date(starts).toISOString(),
@@ -89,13 +93,14 @@ switch (command) {
       eligible_before: arg('eligible-before') ? new Date(arg('eligible-before')).toISOString() : null,
       seed_secret: secret, seed_commit: createHash('sha256').update(secret).digest('hex'),
       prizes: [
-        { tier: 1, usdg: 15, label: '15 USDG + Genesis whitelist' },
-        { tier: 2, usdg: 10, label: '10 USDG + Genesis whitelist' },
-        { tier: 3, usdg: 5, label: '5 USDG + Genesis whitelist' },
+        { tier: 1, usdg: usdg[0], label: podium(usdg[0]) },
+        { tier: 2, usdg: usdg[1], label: podium(usdg[1]) },
+        { tier: 3, usdg: usdg[2], label: podium(usdg[2]) },
         { tier: 4, usdg: 0, label: 'Finalist badge' },
       ],
     };
     console.log(`${row.title}: Round 1 at ${row.starts_at}, ${row.seats} seats, registration closes 30 min before.`);
+    console.log(`Prizes: ${row.prizes.map(p => `${p.tier}: ${p.label}`).join(' · ')}`);
     console.log(`Seed fingerprint (post this before Round 1): ${row.seed_commit}`);
     if (!send) { console.log('\nPreview only. Add --send to create it in the live database.'); break; }
     await rest('test_cups', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(row) });
