@@ -46,7 +46,12 @@ export interface CupPrize {
   /** USDG, whole units */
   usdg: number;
   label: string;
+  /** finishing places this prize covers, e.g. [4, 5]; a range wins over the plain tier prize */
+  places?: [number, number];
 }
+
+const prizeFor = (prizes: CupPrize[], place: number, tier: number) =>
+  prizes.find(p => p.places && place >= p.places[0] && place <= p.places[1]) ?? prizes.find(p => p.tier === tier && !p.places);
 
 export interface CupEntryRow {
   cup_id: number;
@@ -259,7 +264,7 @@ export async function cupStatus(deps: Deps, rawId: unknown, token: string | null
   const table = await standingsOf(deps, cup, wallets, races, now);
   const standings = table.map((s, i) => ({ rank: i + 1, wallet: s.wallet, name: name(s.wallet), total: s.total, rounds: s.rounds, wins: s.wins }));
   const result = finalOver ? finalResult(final)!.map(p => ({
-    ...p, name: name(p.wallet), prize: cup.prizes.find(x => x.tier === p.tier)?.label ?? TIER_NAMES[p.tier],
+    ...p, name: name(p.wallet), prize: prizeFor(cup.prizes, p.place, p.tier)?.label ?? TIER_NAMES[p.tier],
   })) : null;
 
   let me = null;

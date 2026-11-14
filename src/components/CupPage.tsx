@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  claimCupParticipant, claimCupPrize, readCupAward, readCupParticipant, testSeason,
+  prizeFor, claimCupParticipant, claimCupPrize, readCupAward, readCupParticipant, testSeason,
   type CupStatus, type CupStanding, type OnChainAward, type PlayerStatus,
 } from '../testSeason/api';
 import { FINAL_SIZE, TIER_LABEL, clockText, day, nextUp, ordinal, time, useCup, zoned } from './cupShared';
@@ -120,9 +120,9 @@ function Prizes({ data }: { data: CupStatus }) {
     <aside className="cup-prizes">
       <h3>Prizes</h3>
       {data.cup.prizes.map(p => (
-        <div key={p.tier} className="cup-prize">
+        <div key={`${p.tier}-${p.places?.join('-') ?? ''}`} className="cup-prize">
           <img src={`/cup/badge-${p.tier}.webp`} alt="" />
-          <div><strong className={p.tier === 1 ? 'gold' : ''}>{p.label}</strong><span>{p.tier === 4 ? 'Every other finalist' : TIER_LABEL[p.tier]}</span></div>
+          <div><strong className={p.tier === 1 ? 'gold' : ''}>{p.label}</strong><span>{p.places ? `${ordinal(p.places[0])}–${ordinal(p.places[1])} place` : p.tier === 4 ? 'Every other finalist' : TIER_LABEL[p.tier]}</span></div>
         </div>
       ))}
       <div className="cup-prize">
@@ -222,7 +222,7 @@ function Podium({ data, onWatch, player }: { data: CupStatus; onWatch: (id: stri
             <div key={p.wallet} className={`cup-col c${p.place}`}>
               <img src={`/cup/badge-${p.tier}.webp`} alt="" />
               <strong>{p.name}</strong>
-              <span>{p.prize}</span>
+              <span>{prizeFor(data.cup.prizes, p.place, p.tier)?.label ?? p.prize}</span>
               <div className="cup-block">{p.place}</div>
               {i === 1 && null}
             </div>
@@ -231,7 +231,7 @@ function Podium({ data, onWatch, player }: { data: CupStatus; onWatch: (id: stri
       </div>
       <div className="cup-finrow">
         <div className="cup-card cup-seven">
-          {rest.map(p => <div key={p.wallet}><b>{p.place}</b><span>{p.name}</span><em>Finalist badge</em></div>)}
+          {rest.map(p => <div key={p.wallet}><b>{p.place}</b><span>{p.name}</span><em>{prizeFor(data.cup.prizes, p.place, p.tier)?.label ?? 'Finalist badge'}</em></div>)}
           {finalRace && <button className="cup-btn ghost sm" onClick={() => onWatch(finalRace)}>Watch the Grand Final</button>}
         </div>
         <ClaimCard data={data} player={player} />
@@ -283,7 +283,7 @@ function PrizeClaim({ data, player, award }: { data: CupStatus; player: PlayerSt
     <div className="cup-card cup-claim">
       <img src={`/cup/badge-${award.tier}.webp`} alt="" />
       <div>
-        <h3>{TIER_LABEL[award.tier]}: {award.prize}</h3>
+        <h3>{TIER_LABEL[award.tier]}: {prizeFor(data.cup.prizes, award.place, award.tier)?.label ?? award.prize}</h3>
         {!contract || !chain?.published ? (
           <p>Your prize goes on chain within a day of the final. Come back here to claim it from this wallet.</p>
         ) : chain.claimed ? (

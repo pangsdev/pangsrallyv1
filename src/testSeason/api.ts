@@ -354,7 +354,18 @@ export interface RallyStatus {
 /* Pangs Cup                                                           */
 /* ------------------------------------------------------------------ */
 
-export interface CupPrize { tier: number; usdg: number; label: string }
+export interface CupPrize {
+  tier: number;
+  usdg: number;
+  label: string;
+  /** finishing places this prize covers, e.g. [4, 5]; tiers 1-3 cover their own place, tier 4 without places covers 4th-10th */
+  places?: [number, number];
+}
+
+/** The prize for a final place: a prize with a place range wins over the plain tier one. */
+export function prizeFor(prizes: CupPrize[], place: number, tier: number): CupPrize | undefined {
+  return prizes.find(p => p.places && place >= p.places[0] && place <= p.places[1]) ?? prizes.find(p => p.tier === tier && !p.places);
+}
 
 export interface CupRoom {
   room: number;

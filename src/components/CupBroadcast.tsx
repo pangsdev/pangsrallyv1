@@ -93,7 +93,9 @@ function Board({ data, now }: { data: ReturnType<typeof useCup>['data']; now: nu
   const qualifyingDone = data.rounds.filter(r => !r.final).every(r => r.state === 'done');
   const prizes = (
     <p>
-      {cup.prizes.filter(p => p.tier < 4).map(p => <span key={p.tier}>{p.tier === 1 ? 'Winner' : p.tier === 2 ? '2nd' : '3rd'}: <em>{p.label}</em><br /></span>)}
+      {cup.prizes.filter(p => p.tier < 4 || /whitelist/i.test(p.label)).map(p => (
+        <span key={`${p.tier}-${p.places?.join('-') ?? ''}`}>{p.places ? `${p.places[0]}th–${p.places[1]}th` : p.tier === 1 ? 'Winner' : p.tier === 2 ? '2nd' : '3rd'}: <em>{p.label}</em><br /></span>
+      ))}
     </p>
   );
 

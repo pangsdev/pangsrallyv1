@@ -5,8 +5,9 @@
  *
  *   npm run cup -- create  --id 1 --starts 2026-11-21T20:00:00Z [--seats 50] [--usdg 15,10,5] [--eligible-before ISO] [--send]
  *                          --usdg 0,0,0 makes a whitelist-only Cup (podium: Genesis whitelist + badge, no USDG)
+ *                          --wl-top 5 gives the whitelist to places 1-5 (4th-5th also get the Finalist badge)
  *   npm run cup -- update  --id 1 [--starts ISO] [--seats N] [--round-minutes N] [--final-gap N] [--send]
- *                          new date (e.g. after a postponement), more seats, or a new round spacing before it starts
+ *                          [--usdg 0,0,0] [--wl-top 5]  new date, more seats, round spacing or prizes before it starts
  *   npm run cup -- status  --id 1
  *   npm run cup -- deploy  [--send]                       PangsCup contract (owner = dev wallet, prize token = USDG)
  *   npm run cup -- uris    --contract 0x… --cid <IPFS CID of the metadata folder> --id 1 [--send]
@@ -35,6 +36,19 @@ const env = Object.fromEntries(readFileSync(new URL('.env', root), 'utf8').split
   .map(([, k, v]) => [k, v.replace(/^["']|["']$/g, '')]));
 const [command] = process.argv.slice(2);
 const arg = (n, fallback) => { const i = process.argv.indexOf(`--${n}`); return i > 0 ? process.argv[i + 1] : fallback; };
+
+/** Prizes from --usdg 15,10,5 (podium USDG; 0,0,0 = none) and --wl-top N (Genesis whitelist for places 1..N, default 3). */
+function buildPrizes() {
+  const usdg = arg('usdg', '15,10,5').split(',').map(Number);
+  if (usdg.length !== 3 || usdg.some(n => !(n >= 0))) fail('--usdg takes three amounts for 1st, 2nd, 3rd, e.g. 15,10,5 or 0,0,0');
+  const wlTop = Number(arg('wl-top', '3'));
+  if (!(wlTop >= 3 && wlTop <= 10)) fail('--wl-top must be between 3 and 10');
+  const podium = (n) => (n > 0 ? `${n} USDG + Genesis whitelist` : 'Genesis whitelist');
+  const prizes = [1, 2, 3].map(t => ({ tier: t, usdg: usdg[t - 1], label: podium(usdg[t - 1]) }));
+  if (wlTop > 3) prizes.push({ tier: 4, usdg: 0, label: 'Genesis whitelist + Finalist badge', places: [4, wlTop] });
+  prizes.push(wlTop < 10 ? { tier: 4, usdg: 0, label: 'Finalist badge', places: [Math.max(4, wlTop + 1), 10] } : null);
+  return prizes.filter(Boolean).map(p => (wlTop <= 3 && p.places ? { tier: p.tier, usdg: p.usdg, label: p.label } : p));
+}
 const send = process.argv.includes('--send');
 const fail = (msg) => { console.error(msg); process.exit(1); };
 const url = env.VITE_SUPABASE_URL || PROJECT_URL;
@@ -83,9 +97,6 @@ switch (command) {
   case 'create': {
     const starts = arg('starts');
     if (!(id > 0) || !starts || !Number.isFinite(Date.parse(starts))) fail('Usage: create --id 1 --starts 2026-11-21T20:00:00Z');
-    const usdg = arg('usdg', '15,10,5').split(',').map(Number);
-    if (usdg.length !== 3 || usdg.some(n => !(n >= 0))) fail('--usdg takes three amounts for 1st, 2nd, 3rd, e.g. 15,10,5 or 0,0,0');
-    const podium = (n) => (n > 0 ? `${n} USDG + Genesis whitelist` : 'Genesis whitelist');
     const secret = randomBytes(32).toString('hex');
     const row = {
       id, title: arg('title', `Pangs Cup #${id}`), terrain: 'Forest', starts_at: new Date(starts).toISOString(),
@@ -93,12 +104,7 @@ switch (command) {
       seats: Number(arg('seats', '50')), register_close_minutes: 30,
       eligible_before: arg('eligible-before') ? new Date(arg('eligible-before')).toISOString() : null,
       seed_secret: secret, seed_commit: createHash('sha256').update(secret).digest('hex'),
-      prizes: [
-        { tier: 1, usdg: usdg[0], label: podium(usdg[0]) },
-        { tier: 2, usdg: usdg[1], label: podium(usdg[1]) },
-        { tier: 3, usdg: usdg[2], label: podium(usdg[2]) },
-        { tier: 4, usdg: 0, label: 'Finalist badge' },
-      ],
+      prizes: buildPrizes(),
     };
     console.log(`${row.title}: Round 1 at ${row.starts_at}, ${row.seats} seats, registration closes 30 min before.`);
     console.log(`Prizes: ${row.prizes.map(p => `${p.tier}: ${p.label}`).join(' · ')}`);
@@ -125,9 +131,10 @@ switch (command) {
       if (!(Number(arg(flag)) >= 2)) fail(`--${flag} must be 2 or more`);
       patch[col] = Number(arg(flag));
     }
-    if (!Object.keys(patch).length) fail('Nothing to change: pass --starts, --seats, --round-minutes and/or --final-gap.');
+    if (arg('usdg') || arg('wl-top')) patch.prizes = buildPrizes();
+    if (!Object.keys(patch).length) fail('Nothing to change: pass --starts, --seats, --round-minutes, --final-gap, --usdg and/or --wl-top.');
     const d = await game('cup', { cupId: id });
-    if ((patch.starts_at || patch.round_minutes || patch.final_gap_minutes) && d.rounds.some(r => r.state !== 'upcoming')) fail('This Cup has already raced; its schedule cannot change.');
+    if ((patch.starts_at || patch.round_minutes || patch.final_gap_minutes || patch.prizes) && d.rounds.some(r => r.state !== 'upcoming')) fail('This Cup has already raced; its schedule cannot change.');
     console.log(`${d.cup.title}: ${d.cup.registered} registered, state ${d.cup.state}.`);
     console.log(`Change: ${JSON.stringify(patch)}`);
     if (!send) { console.log('\nPreview only. Add --send to change the live Cup.'); break; }
