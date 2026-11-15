@@ -15,12 +15,22 @@ import './cup.css';
  */
 /** About how long one room takes on air (load, line-up, race, result). */
 const ROOM_SLOT_MS = 75_000;
+/** One room on air plus the short look at its result. */
+const SLOT_MS = ROOM_SLOT_MS + 7_000;
+const airedKey = (cupId: number) => `pangsrally_cupbc_aired_${cupId}`;
+function loadAired(cupId: number): string[] {
+  try { return JSON.parse(localStorage.getItem(airedKey(cupId)) ?? '[]') as string[]; } catch { return []; }
+}
+function saveAired(cupId: number, ids: Set<string>) {
+  try { localStorage.setItem(airedKey(cupId), JSON.stringify([...ids].slice(-200))); } catch { /* private mode: in-memory only */ }
+}
 
 export default function CupBroadcast() {
   const { data, now } = useCup();
   const [scale, setScale] = useState(1);
   const [showing, setShowing] = useState<{ raceId: string; label: string } | null>(null);
   const shown = useRef(new Set<string>());
+  const airedFor = useRef<number | null>(null);
   const [soundOn, setSoundOn] = useState(false);
   const roomPick = Math.max(1, Number(new URLSearchParams(window.location.search).get('room')) || 1);
 
@@ -38,18 +48,26 @@ export default function CupBroadcast() {
   const [lastRoom, setLastRoom] = useState(true);
   useEffect(() => {
     if (!data || showing) return;
+    // Rooms already on air in this browser (OBS included) survive a reload, so a reload never replays them.
+    if (airedFor.current !== data.cup.id) {
+      airedFor.current = data.cup.id;
+      loadAired(data.cup.id).forEach(id => shown.current.add(id));
+    }
+    const air = (id: string) => { shown.current.add(id); saveAired(data.cup.id, shown.current); };
     const round = [...data.rounds].reverse().find(r => r.state !== 'upcoming');
     if (!round || Date.now() - Date.parse(round.at) > 14 * 60_000) return;
     const rooms = roomParam ? round.rooms.filter(r => r.room === roomPick) : [...round.rooms].sort((a, b) => a.room - b.room);
     // On a fresh load (or reload) join the running order where it stands now, about 75 s per room,
     // so a reload never starts the round over from Room A.
+    // Room N airs about (N-1)*slot after the round starts; rooms whose slot is over are skipped, and once
+    // the whole round is over the board stays up.
     if (!rooms.some(r => shown.current.has(r.raceId))) {
-      const due = Math.min(rooms.length - 1, Math.floor((Date.now() - Date.parse(round.at)) / ROOM_SLOT_MS));
-      rooms.slice(0, Math.max(0, due)).forEach(r => shown.current.add(r.raceId));
+      const elapsed = Date.now() - Date.parse(round.at);
+      rooms.forEach(r => { if (elapsed >= r.room * SLOT_MS) air(r.raceId); });
     }
     const room = rooms.find(r => !shown.current.has(r.raceId));
     if (!room) return;
-    shown.current.add(room.raceId);
+    air(room.raceId);
     setLastRoom(rooms.every(r => shown.current.has(r.raceId)));
     const count = round.rooms.length;
     setShowing({
