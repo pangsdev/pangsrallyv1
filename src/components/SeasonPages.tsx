@@ -136,12 +136,13 @@ const raceNote = (r: HistoryRow) => r.status === 'finished' ? `+${r.points} pts`
 /** Test-season leaderboard (points from every finish). */
 export function SeasonLeaderboard({ playerWallet, onTab }: { playerWallet: string | null; onTab: (tab: 'season' | 'predictions') => void }) {
   const [players, setPlayers] = useState<LeaderboardPlayer[] | null>(null);
+  const [total, setTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
     const load = () => testSeason.leaderboard()
-      .then(r => { if (live) { setPlayers(r.players); setError(null); } })
+      .then(r => { if (live) { setPlayers(r.players); setTotal(r.total ?? r.players.length); setError(null); } })
       .catch(e => { if (live) setError(e.message); });
     load();
     const id = setInterval(load, 30_000);
@@ -154,7 +155,8 @@ export function SeasonLeaderboard({ playerWallet, onTab }: { playerWallet: strin
       <div className="inventory-header-bar">
         <h2>Beta Season Leaderboard</h2>
         <div className="inventory-stats">
-          <span>Racers: <strong style={{ color: 'var(--primary)' }}>{players?.length ?? '…'}</strong></span>
+          <span>Racers: <strong style={{ color: 'var(--primary)' }}>{total?.toLocaleString('en-US') ?? '…'}</strong></span>
+          {total !== null && players && total > players.length && <span>Showing the top {players.length}</span>}
         </div>
       </div>
 

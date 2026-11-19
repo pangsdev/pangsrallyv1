@@ -239,6 +239,11 @@ export function createSupabaseStore(db: SupabaseClient): Store {
         .order('points', { ascending: false }).order('wins', { ascending: false }).limit(Math.max(limit, 1))) as LeaderRow[];
       return sortLeaderboard(rows).slice(0, limit);
     },
+    async leaderboardSize() {
+      const { count, error } = await db.from('test_leaderboard').select('wallet', { count: 'exact', head: true });
+      if (error) throw new Error(error.message);
+      return count ?? 0;
+    },
     async getUsernames(wallets) {
       const unique = [...new Set(wallets)];
       if (!unique.length) return {};

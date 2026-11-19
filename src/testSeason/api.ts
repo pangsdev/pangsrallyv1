@@ -538,7 +538,8 @@ export const testSeason = {
   race: (raceId: string) => call<{ race: PublicRace }>('race', { raceId }),
   history: () => call<{ races: HistoryRow[] }>('history'),
   profile: () => call<ProfileStatus>('profile'),
-  leaderboard: () => call<{ players: LeaderboardPlayer[] }>('leaderboard'),
+  /** players: the top 100; total: every racer on the board. */
+  leaderboard: () => call<{ players: LeaderboardPlayer[]; total?: number }>('leaderboard'),
   /** Locks the player's number for a room. Free; a pick cannot be changed. */
   predict: (raceId: string, pick: number) => call<{ pick: number | null; crowd: number[] }>('predict', { raceId, pick }),
   prediction: (raceId: string) => call<{ pick: number | null; crowd: number[] }>('prediction', { raceId }),

@@ -125,6 +125,8 @@ export interface Store {
   setEntryResult(raceId: string, wallet: string, position: number, points: number): Promise<void>;
   /** Only races whose finished_at has passed `now` (Postgres: the view compares with now()). */
   leaderboard(limit: number, now: Date): Promise<LeaderRow[]>;
+  /** How many racers are on the board (the board itself only sends the top rows). */
+  leaderboardSize(now: Date): Promise<number>;
   /** wallet → chosen name, for the wallets that have one. */
   getUsernames(wallets: string[]): Promise<Record<string, string>>;
   /** 'taken' when another wallet has this name in any letter case (migration 008). */
@@ -728,13 +730,14 @@ async function profile(deps: Deps, wallet: string) {
 }
 
 async function leaderboard(deps: Deps) {
-  const rows = await deps.store.leaderboard(100, deps.now());
+  const [rows, total] = await Promise.all([deps.store.leaderboard(100, deps.now()), deps.store.leaderboardSize(deps.now())]);
   const names = await deps.store.getUsernames(rows.map(r => r.wallet));
   const days = await deps.store.raceDays(rows.map(r => r.wallet));
   const numbers = await deps.store.racerNumbers(deps.betaSeasonEnd ?? null);
   const today = utcDay(deps.now());
   return {
     players: rows.map((r, i) => ({ rank: i + 1, wallet: r.wallet, name: names[r.wallet] ?? shortWallet(r.wallet), badge: streakFor(days[r.wallet] ?? [], today).badge, racerNumber: numbers[r.wallet] ?? null, points: r.points, races: r.races, wins: r.wins, podiums: r.podiums })),
+    total,
   };
 }
 

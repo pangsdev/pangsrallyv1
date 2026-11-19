@@ -241,6 +241,9 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
       const e = entries.find(x => x.race_id === raceId && x.wallet === wallet);
       if (e) { e.position = position; e.points = points; }
     },
+    async leaderboardSize(now) {
+      return (await this.leaderboard(Number.MAX_SAFE_INTEGER, now)).length;
+    },
     async leaderboard(limit, now) {
       const by = new Map<string, LeaderRow>();
       for (const e of entries) {
