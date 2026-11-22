@@ -45,6 +45,19 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Only wake the game server while a Cup is running or waiting to be published: the full Cup status is
+    // large, and asking for it every minute of every day used up the project's data quota.
+    const { data: latest, error: cupErr } = await db.from('test_cups')
+      .select('id, starts_at, round_minutes, qualifying_rounds, final_gap_minutes, claim_contract')
+      .order('id', { ascending: false }).limit(1).maybeSingle();
+    if (cupErr) throw new Error(`Reading the latest Cup failed: ${cupErr.message}`);
+    if (!latest) return reply(200, { status: 'no-cup' });
+    const start = Date.parse(latest.starts_at);
+    const finalAt = start + ((latest.qualifying_rounds - 1) * latest.round_minutes + latest.final_gap_minutes) * 60_000;
+    const nowMs = Date.now();
+    if (latest.claim_contract) return reply(200, { status: 'published', cupId: latest.id });
+    if (nowMs < start - 60_000 || nowMs > finalAt + 24 * 3_600_000) return reply(200, { status: 'idle', cupId: latest.id });
+
     const res = await fetch(`${url}/functions/v1/test-season`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cup' }),
     });

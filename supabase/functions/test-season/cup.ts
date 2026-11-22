@@ -178,7 +178,21 @@ export function finalResult(race: RaceRow | undefined) {
 /* ------------------------------------------------------------------ */
 
 /** Runs every round whose start time has passed and has no races yet, in order. Safe to call from parallel requests. */
+/** A Cup with results on chain (claim_contract set) never changes again: its races and entries are kept
+ *  in memory so the Cup page and the autopilot stop reading them from the database on every call. */
+const frozenCups = new WeakMap<object, Map<number, { races: RaceRow[]; entries: CupEntryRow[] }>>();
+async function frozenCup(deps: Deps, cup: CupRow) {
+  if (!cup.claim_contract) return null;
+  let byId = frozenCups.get(deps.store);
+  if (!byId) frozenCups.set(deps.store, byId = new Map());
+  let hit = byId.get(cup.id);
+  if (!hit) byId.set(cup.id, hit = { races: await deps.store.cupRaces(cup.id), entries: await deps.store.cupEntries(cup.id) });
+  return hit;
+}
+
 export async function settleCup(deps: Deps, cup: CupRow): Promise<RaceRow[]> {
+  const frozen = await frozenCup(deps, cup);
+  if (frozen) return frozen.races;
   const now = deps.now();
   const times = roundTimes(cup);
   let races = await deps.store.cupRaces(cup.id);
@@ -239,7 +253,7 @@ export async function cupStatus(deps: Deps, rawId: unknown, token: string | null
   const now = deps.now();
   const wallet = token ? await deps.store.getSessionWallet(await deps.sha256Hex(token), now) : null;
   const races = await settleCup(deps, cup);
-  const entries = await deps.store.cupEntries(cup.id);
+  const entries = (await frozenCup(deps, cup))?.entries ?? await deps.store.cupEntries(cup.id);
   const wallets = entries.map(e => e.wallet);
   const names = await deps.store.getUsernames(wallets);
   const name = (w: string) => names[w] ?? shortWallet(w);

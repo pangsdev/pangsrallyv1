@@ -26,7 +26,7 @@ function saveAired(cupId: number, ids: Set<string>) {
 }
 
 export default function CupBroadcast() {
-  const { data, now } = useCup();
+  const { data, now } = useCup({ background: true });
   const [scale, setScale] = useState(1);
   const [showing, setShowing] = useState<{ raceId: string; label: string } | null>(null);
   const shown = useRef(new Set<string>());

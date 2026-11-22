@@ -5,6 +5,7 @@ import type { PlayerStatus } from '../testSeason/api';
 import { ClockIcon, TrackBadge } from './Icons';
 import { PickPanel } from './Predictions';
 import './lobby.css';
+import { pollWhileVisible } from '../testSeason/poll';
 
 interface Props {
   categoryInfo: any;
@@ -16,7 +17,7 @@ interface Props {
   onPredictions: () => void;
 }
 
-const REFRESH_MS = 10_000;
+const REFRESH_MS = 20_000;
 
 /** "in 1 h 05 min", "in 12 min", "in 40 s" */
 export function startsIn(ms: number): string {
@@ -48,9 +49,9 @@ export default function OnlineRooms({ categoryInfo, player, onOpenRoom, onBack, 
       .then(r => { if (!live) return; skew.current = Date.parse(r.serverTime) - Date.now(); setRooms(r.rooms); setError(null); })
       .catch(e => { if (live) setError(e.message); });
     load();
-    const poll = setInterval(load, REFRESH_MS);
+    const stop = pollWhileVisible(load, REFRESH_MS);
     const tick = setInterval(() => setNow(Date.now()), 1000);
-    return () => { live = false; clearInterval(poll); clearInterval(tick); };
+    return () => { live = false; stop(); clearInterval(tick); };
   }, [terrain]);
 
   const join = async (room: RoomSummary) => {

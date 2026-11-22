@@ -4,6 +4,7 @@ import { DAILY_RACE_LIMIT, POINTS_BY_POSITION } from '../race/testSeason';
 import { LeaderboardBadges } from './Badges';
 import { BoardTabs } from './Predictions';
 import type { WalletOption } from '../testSeason/wallets';
+import { pollWhileVisible } from '../testSeason/poll';
 
 /** Shown instead of a race page until the player has signed in with their wallet. */
 export function SignInGate({ signingIn, onSignIn }: { signingIn: boolean; onSignIn: () => void }) {
@@ -145,8 +146,8 @@ export function SeasonLeaderboard({ playerWallet, onTab }: { playerWallet: strin
       .then(r => { if (live) { setPlayers(r.players); setTotal(r.total ?? r.players.length); setError(null); } })
       .catch(e => { if (live) setError(e.message); });
     load();
-    const id = setInterval(load, 30_000);
-    return () => { live = false; clearInterval(id); };
+    const stop = pollWhileVisible(load, 60_000);
+    return () => { live = false; stop(); };
   }, []);
 
   return (

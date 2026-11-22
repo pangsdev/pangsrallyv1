@@ -5,6 +5,7 @@ import { BETA_RACER_ART, FIELD_SIZE, POINTS_BY_POSITION, shortWallet } from '../
 import { BALL_SPRITES } from '../race/sprites';
 import { ClockIcon, FlagIcon, TrackBadge } from './Icons';
 import HeroRunner from './HeroRunner';
+import { pollWhileVisible } from '../testSeason/poll';
 
 interface Props {
   categoryInfo: any;
@@ -31,9 +32,9 @@ function RallyBoard() {
       .then(r => { if (!live) return; skew.current = Date.parse(r.serverTime) - Date.now(); setRally(r); })
       .catch(() => {});
     load();
-    const poll = setInterval(load, 20_000);
+    const stop = pollWhileVisible(load, 60_000);
     const tick = setInterval(() => setNow(Date.now()), 1000);
-    return () => { live = false; clearInterval(poll); clearInterval(tick); };
+    return () => { live = false; stop(); clearInterval(tick); };
   }, []);
 
   const start = rally ? Date.parse(rally.next.startsAt) : null;

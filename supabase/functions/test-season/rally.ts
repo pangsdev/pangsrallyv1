@@ -70,6 +70,7 @@ export async function settleRally(deps: Deps, day: string): Promise<RaceRow[]> {
     const seed = `rally-${(await deps.sha256Hex(`${secret}:${day}:${i + 1}`)).slice(0, 32)}`;
     const field = buildTestField(seed, rooms[i], names);
     const results = runTestRace(seed, field, RALLY_TERRAIN);
+    boardRaces.delete(deps.store);
     await deps.store.insertRallyRace({
       id: deps.uuid(), kind: 'rally', terrain: RALLY_TERRAIN, seed, status: 'finished',
       created_at: now.toISOString(), closes_at: new Date(rallyStart(deps, day)).toISOString(),
@@ -93,9 +94,17 @@ export function rallyPlacings(race: RaceRow) {
 }
 
 /** All-time rally points over the races that have crossed the line, best first. */
+const boardRaces = new WeakMap<object, { at: number; races: RaceRow[] }>();
+const BOARD_CACHE_MS = 60_000;
+
 async function board(deps: Deps, now: Date) {
+  let cached = boardRaces.get(deps.store);
+  if (!cached || Date.now() - cached.at > BOARD_CACHE_MS) {
+    cached = { at: Date.now(), races: await deps.store.rallyRaces(null) };
+    boardRaces.set(deps.store, cached);
+  }
   const by = new Map<string, { wallet: string; points: number; rallies: number; wins: number; podiums: number }>();
-  for (const race of await deps.store.rallyRaces(null)) {
+  for (const race of cached.races) {
     if (!raceOver(race, now)) continue;
     for (const p of rallyPlacings(race)) {
       const row = by.get(p.wallet) ?? { wallet: p.wallet, points: 0, rallies: 0, wins: 0, podiums: 0 };

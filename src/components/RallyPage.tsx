@@ -4,6 +4,7 @@ import { POINTS_BY_POSITION } from '../race/testSeason';
 import { clockText, day, ordinal, zoned } from './cupShared';
 import './cup.css';
 import './rally.css';
+import { pollWhileVisible } from '../testSeason/poll';
 
 interface Props {
   player: PlayerStatus | null;
@@ -25,9 +26,9 @@ function useRally() {
   const soon = data ? Date.parse(data.next.startsAt) - Date.now() < 120_000 : false;
   useEffect(() => {
     load();
-    const poll = setInterval(load, live || soon ? 4_000 : 20_000);
+    const stop = pollWhileVisible(load, live || soon ? 5_000 : 60_000);
     const tick = setInterval(() => setNow(Date.now()), 500);
-    return () => { clearInterval(poll); clearInterval(tick); };
+    return () => { stop(); clearInterval(tick); };
   }, [load, live, soon]);
   return { data, setData, error, now: now + skew.current };
 }

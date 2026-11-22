@@ -1,6 +1,7 @@
 /** Shared by the Cup page and the broadcast screen. */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, testSeason, type CupStatus } from '../testSeason/api';
+import { pollWhileVisible } from '../testSeason/poll';
 
 export const TIER_LABEL: Record<number, string> = { 1: 'Champion', 2: 'Second place', 3: 'Third place', 4: 'Finalist' };
 export const FINAL_SIZE = 10;
@@ -17,7 +18,7 @@ export function clockText(ms: number): string {
 }
 
 /** The Cup from the server, refreshed often while it runs. `skew` lines the browser clock up with the server. */
-export function useCup() {
+export function useCup(opts: { background?: boolean } = {}) {
   const [data, setData] = useState<CupStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -29,11 +30,11 @@ export function useCup() {
   const busy = data?.rounds.some(r => r.state === 'live');
   useEffect(() => {
     load();
-    const every = state === 'finished' ? 60_000 : state === 'live' || busy ? 4_000 : 15_000;
-    const poll = setInterval(load, every);
+    const every = state === 'finished' ? 300_000 : state === 'live' || busy ? 5_000 : 30_000;
+    const stop = pollWhileVisible(load, every, { background: opts.background });
     const tick = setInterval(() => setNow(Date.now()), 500);
-    return () => { clearInterval(poll); clearInterval(tick); };
-  }, [load, state, busy]);
+    return () => { stop(); clearInterval(tick); };
+  }, [load, state, busy, opts.background]);
   return { data, setData, error, reload: load, now: now + skew.current };
 }
 
