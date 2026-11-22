@@ -15,6 +15,7 @@ import {
   type TestRacer, type TestRaceResult,
 } from './race/testSeason.ts';
 import { HttpError, raceEndsAt, raceOver, requireBeta, requireWallet, type Deps, type RaceRow } from './core.ts';
+import { rallyBoard, weekStartDay } from './rally.ts';
 
 export interface CupRow {
   id: number;
@@ -37,6 +38,8 @@ export interface CupRow {
   prizes: CupPrize[];
   /** the PangsCup contract that pays this Cup, once results are on chain */
   claim_contract: string | null;
+  /** seats kept for this week's top Daily Rally racers (migration 016); 0 = none */
+  rally_seats?: number;
   created_at: string;
 }
 
@@ -86,6 +89,67 @@ export async function newCup(
     seed_commit: await deps.sha256Hex(secret),
   };
 }
+/* ------------------------------------------------------------------ */
+/* Weekly Cup                                                          */
+/* ------------------------------------------------------------------ */
+
+/** Every Sunday at 20:00 UTC. Seats follow Daily Rally turnout (~250-320 a day in Nov 2026). */
+export const WEEKLY_CUP = { hourUtc: 20, seats: 300, rallySeats: 20, roundMinutes: 15, finalGapMinutes: 15 };
+/** The whole Grand Final wins a Genesis whitelist place; badges as before. */
+export const WEEKLY_PRIZES: CupPrize[] = [
+  { tier: 1, usdg: 0, label: 'Genesis whitelist' },
+  { tier: 2, usdg: 0, label: 'Genesis whitelist' },
+  { tier: 3, usdg: 0, label: 'Genesis whitelist' },
+  { tier: 4, usdg: 0, label: 'Genesis whitelist + Finalist badge', places: [4, 10] },
+];
+
+/** Sunday 20:00 UTC of the week (Monday-Sunday UTC) that `ms` falls in. */
+export function weeklyCupStart(ms: number): number {
+  return Date.parse(`${weekStartDay(ms)}T00:00:00.000Z`) + 6 * 86_400_000 + WEEKLY_CUP.hourUtc * 3_600_000;
+}
+
+/**
+ * Makes sure this week's Cup exists (the autopilot asks every minute; it is a no-op once it does).
+ * Never schedules over a Cup that is still upcoming, running or waiting for its results on chain.
+ */
+export async function ensureWeeklyCup(deps: Deps) {
+  if (!deps.weeklyCup) return { status: 'off' };
+  const now = deps.now().getTime();
+  const start = weeklyCupStart(now);
+  const latest = await deps.store.latestCup();
+  if (latest && Date.parse(latest.starts_at) >= start) return { status: 'scheduled', cupId: latest.id };
+  if (latest) {
+    const started = Date.parse(latest.starts_at);
+    // Upcoming or racing, or finished but not on chain yet (a postponed Cup stops blocking after a day).
+    if (started > now - 6 * 3_600_000) return { status: 'busy', cupId: latest.id };
+    if (!latest.claim_contract && started > now - 24 * 3_600_000) return { status: 'busy', cupId: latest.id };
+  }
+  // Registration closes 30 minutes before Round 1: too late for this week, next week's comes on Monday.
+  if (now >= start - 30 * 60_000) return { status: 'waiting' };
+  const id = (latest?.id ?? 0) + 1;
+  const cup = await newCup(deps, {
+    id, starts_at: new Date(start).toISOString(), seats: WEEKLY_CUP.seats, rally_seats: WEEKLY_CUP.rallySeats,
+    round_minutes: WEEKLY_CUP.roundMinutes, final_gap_minutes: WEEKLY_CUP.finalGapMinutes, prizes: WEEKLY_PRIZES,
+    created_at: new Date(now).toISOString(),
+  });
+  try {
+    await deps.store.insertCup(cup);
+  } catch (e) {
+    // Two calls at once: the unique id / start time keeps one; the other reads it back.
+    const again = await deps.store.latestCup();
+    if (again && Date.parse(again.starts_at) >= start) return { status: 'scheduled', cupId: again.id };
+    throw e;
+  }
+  return { status: 'created', cupId: id };
+}
+
+/** Wallets holding a kept seat: this week's top rally racers (the week of the Cup). */
+async function rallyTop(deps: Deps, cup: CupRow): Promise<string[]> {
+  if (!cup.rally_seats) return [];
+  const rows = await rallyBoard(deps, weekStartDay(Date.parse(cup.starts_at)), deps.now());
+  return rows.slice(0, cup.rally_seats).map(r => r.wallet);
+}
+
 export const TIER_NAMES: Record<number, string> = { 1: 'Champion', 2: 'Second place', 3: 'Third place', 4: 'Finalist' };
 
 /* ------------------------------------------------------------------ */
@@ -254,6 +318,7 @@ export async function cupStatus(deps: Deps, rawId: unknown, token: string | null
   const wallet = token ? await deps.store.getSessionWallet(await deps.sha256Hex(token), now) : null;
   const races = await settleCup(deps, cup);
   const entries = (await frozenCup(deps, cup))?.entries ?? await deps.store.cupEntries(cup.id);
+  const top = now.getTime() < registerClosesAt(cup) ? await rallyTop(deps, cup) : [];
   const wallets = entries.map(e => e.wallet);
   const names = await deps.store.getUsernames(wallets);
   const name = (w: string) => names[w] ?? shortWallet(w);
@@ -270,6 +335,7 @@ export async function cupStatus(deps: Deps, rawId: unknown, token: string | null
       rooms: list.map(r => ({
         room: r.cup_room, raceId: r.id, finishedAt: r.finished_at,
         names: (r.field ?? []).filter(f => f.wallet).map(f => f.name),
+        wallets: (r.field ?? []).filter(f => f.wallet).map(f => f.wallet!),
         mine: !!wallet && (r.field ?? []).some(f => f.wallet === wallet),
       })),
     };
@@ -284,7 +350,7 @@ export async function cupStatus(deps: Deps, rawId: unknown, token: string | null
   let me = null;
   if (wallet) {
     const registered = wallets.includes(wallet);
-    const problem = registered ? null : await registerProblem(deps, cup, wallet, entries.length);
+    const problem = registered ? null : await registerProblem(deps, cup, wallet, wallets, top);
     me = {
       registered,
       canRegister: !registered && problem === null,
@@ -300,7 +366,7 @@ export async function cupStatus(deps: Deps, rawId: unknown, token: string | null
     cup: {
       id: cup.id, title: cup.title, terrain: cup.terrain, startsAt: cup.starts_at, finalAt: new Date(times[times.length - 1]).toISOString(),
       registerClosesAt: new Date(registerClosesAt(cup)).toISOString(), qualifyingRounds: cup.qualifying_rounds,
-      seats: cup.seats, registered: entries.length, prizes: cup.prizes,
+      seats: cup.seats, registered: entries.length, prizes: cup.prizes, rallySeats: cup.rally_seats ?? 0,
       state: finalOver ? 'finished'
         : now.getTime() < Date.parse(cup.starts_at) ? 'upcoming'
         : !races.length && entries.length < MIN_CUP_RACERS ? 'postponed' : 'live',
@@ -311,6 +377,10 @@ export async function cupStatus(deps: Deps, rawId: unknown, token: string | null
     rounds,
     standings,
     entrants: entries.map(e => name(e.wallet)),
+    // Every wallet in, and the rally racers holding a kept seat: the page is cached for everyone, so each
+    // browser finds its own place in these lists.
+    entrantWallets: wallets,
+    rallyTop: top,
     // After the final: everyone who raced, for the Participant badge's Merkle proof (src/testSeason/cupMerkle.ts).
     participants: finalOver ? wallets : null,
     result,
@@ -320,11 +390,15 @@ export async function cupStatus(deps: Deps, rawId: unknown, token: string | null
 }
 
 /** Why this wallet cannot take a seat right now, or null when it can. */
-async function registerProblem(deps: Deps, cup: CupRow, wallet: string, taken: number): Promise<string | null> {
+async function registerProblem(deps: Deps, cup: CupRow, wallet: string, entered: string[], top: string[]): Promise<string | null> {
   const now = deps.now().getTime();
+  const taken = entered.length;
   if (now >= registerClosesAt(cup)) return 'Registration for this Cup is closed.';
   if (deps.cupTeamWallets?.has(wallet)) return 'Team wallets cannot enter the Cup.';
   if (taken >= cup.seats) return 'All seats are taken.';
+  // Seats kept for the week's top rally racers who have not taken theirs yet.
+  const kept = top.filter(w => !entered.includes(w)).length;
+  if (!top.includes(wallet) && taken + kept >= cup.seats) return `The open seats are taken. The rest are kept for this week's top ${cup.rally_seats} Daily Rally racers.`;
   if (cup.eligible_before) {
     const joined = await deps.store.playerJoinedAt(wallet);
     if (!joined || Date.parse(joined) >= Date.parse(cup.eligible_before)) return 'This Cup is open to racers who joined before it was announced.';
@@ -337,7 +411,7 @@ export async function cupRegister(deps: Deps, token: string | null, rawId: unkno
   const cup = await loadCup(deps, rawId);
   const entries = await deps.store.cupEntries(cup.id);
   if (entries.some(e => e.wallet === wallet)) return cupStatus(deps, cup.id, token);
-  const problem = await registerProblem(deps, cup, wallet, entries.length);
+  const problem = await registerProblem(deps, cup, wallet, entries.map(e => e.wallet), await rallyTop(deps, cup));
   if (problem) throw new HttpError(409, 'cup_closed', problem);
   await requireBeta(deps, wallet);
   await deps.store.insertCupEntry({ cup_id: cup.id, wallet, registered_at: deps.now().toISOString() });

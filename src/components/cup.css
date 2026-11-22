@@ -230,3 +230,11 @@
 .cup-roundtabs button { padding: 5px 11px; border-radius: 999px; border: 1px solid var(--cup-line); background: transparent; color: var(--cup-muted); font: 700 12.5px var(--font-heading); cursor: pointer; }
 .cup-roundtabs button:hover { color: #fff; border-color: rgba(255, 255, 255, 0.35); }
 .cup-roundtabs button.on { background: var(--cup-live); border-color: var(--cup-live); color: #04121c; }
+
+/* Weekly Cups: kept seats for the week's top rally racers, long tables in pages */
+.cup-kept { margin: 12px 0 0; padding: 10px 14px; border-radius: 12px; font-size: 13.5px; color: var(--cup-muted); background: rgba(255, 209, 102, 0.06); border: 1px solid rgba(255, 209, 102, 0.22); }
+.cup-kept b { color: var(--cup-gold); }
+.cup-more { font-style: italic; opacity: 0.75; }
+.cup-table-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; padding: 4px 0 8px; }
+.cup-table-foot .pager { margin-top: 8px; }
+.cup-allrooms { width: 100%; margin-top: 8px; }

@@ -13,8 +13,8 @@ import {
   type TestRacer, type TestRaceResult,
   streakFor,
 } from './race/testSeason.ts';
-import { cupLeave, cupRegister, cupStatus, type CupEntryRow, type CupRow } from './cup.ts';
-import { rallyLeave, rallyPlacings, rallyRegister, rallyStatus, type RallyDayRow, type RallyEntryRow } from './rally.ts';
+import { cupLeave, cupRegister, cupStatus, type CupEntryRow, type CupRow, ensureWeeklyCup } from './cup.ts';
+import { rallyLeave, rallyPlacings, rallyRegister, rallyStatus, type RallyBoardRow, type RallyDayRow, type RallyEntryRow } from './rally.ts';
 
 export interface RaceRow {
   id: string;
@@ -127,6 +127,12 @@ export interface Store {
   leaderboard(limit: number, now: Date): Promise<LeaderRow[]>;
   /** How many racers are on the board (the board itself only sends the top rows). */
   leaderboardSize(now: Date): Promise<number>;
+  /** One page of the board, in leaderboard() order. */
+  leaderboardPage(offset: number, limit: number, now: Date): Promise<LeaderRow[]>;
+  /** This wallet's row and place on the board, or null before its first finish. */
+  leaderboardRank(wallet: string, now: Date): Promise<{ row: LeaderRow; rank: number } | null>;
+  /** Rally points since fromDay (YYYY-MM-DD, Monday of a week) or all time, best first (migration 016). */
+  rallyBoard(fromDay: string | null, now: Date): Promise<RallyBoardRow[]>;
   /** wallet → chosen name, for the wallets that have one. */
   getUsernames(wallets: string[]): Promise<Record<string, string>>;
   /** 'taken' when another wallet has this name in any letter case (migration 008). */
@@ -208,6 +214,8 @@ export interface Deps {
   rallyMinuteUtc?: number;
   /** Team wallets (lower-case) that cannot enter a Pangs Cup. */
   cupTeamWallets?: Set<string>;
+  /** Weekly Pangs Cup: the autopilot schedules one every Sunday (cup.ts ensureWeeklyCup). */
+  weeklyCup?: boolean;
 }
 
 export interface BetaGate {
@@ -253,7 +261,7 @@ export async function handle(deps: Deps, action: string, body: Record<string, un
       case 'race': return ok(await replay(deps, str(body.raceId)));
       case 'history': return ok(await history(deps, await requireWallet(deps, token)));
       case 'profile': return ok(await profile(deps, await requireWallet(deps, token)));
-      case 'leaderboard': return ok(await leaderboard(deps));
+      case 'leaderboard': return ok(await leaderboard(deps, body.page));
       case 'predict': requirePredictions(deps); return ok(await predict(deps, await requireWallet(deps, token), str(body.raceId), body.pick));
       case 'prediction': requirePredictions(deps); return ok(await prediction(deps, str(body.raceId), token));
       case 'prediction-board': requirePredictions(deps); return ok(await predictionBoard(deps, token));
@@ -262,6 +270,7 @@ export async function handle(deps: Deps, action: string, body: Record<string, un
       case 'cup': return ok(await cupStatus(deps, body.cupId, token));
       case 'cup-register': return ok(await cupRegister(deps, token, body.cupId));
       case 'cup-leave': return ok(await cupLeave(deps, token, body.cupId));
+      case 'cup-weekly': return ok(await ensureWeeklyCup(deps));
       case 'rally': return ok(await rallyStatus(deps, token));
       case 'rally-register': return ok(await rallyRegister(deps, token));
       case 'rally-leave': return ok(await rallyLeave(deps, token));
@@ -344,9 +353,9 @@ async function me(deps: Deps, wallet: string) {
   const unlimited = deps.unlimitedWallets.has(wallet);
   const racesToday = await deps.store.countEntriesOnDay(wallet, utcDay(now));
   const held = await deps.store.heldSeats(wallet, utcDay(now));
-  const board = await deps.store.leaderboard(10_000, now);
-  const index = board.findIndex(r => r.wallet === wallet);
-  const row = board[index];
+  // One row and a count, not the whole board: me is called on every page load.
+  const placed = await deps.store.leaderboardRank(wallet, now);
+  const row = placed?.row;
   const username = (await deps.store.getUsernames([wallet]))[wallet] ?? null;
   const days = (await deps.store.raceDays([wallet]))[wallet] ?? [];
   return {
@@ -364,7 +373,7 @@ async function me(deps: Deps, wallet: string) {
     races: row?.races ?? 0,
     wins: row?.wins ?? 0,
     podiums: row?.podiums ?? 0,
-    rank: index >= 0 ? index + 1 : null,
+    rank: placed?.rank ?? null,
     resetsAt: nextUtcMidnight(now),
     beta: deps.beta
       ? { required: true, minted: await betaMinted(deps, wallet), contract: deps.beta.contract, chainId: deps.beta.chainId }
@@ -729,15 +738,23 @@ async function profile(deps: Deps, wallet: string) {
   };
 }
 
-async function leaderboard(deps: Deps) {
-  const [rows, total] = await Promise.all([deps.store.leaderboard(100, deps.now()), deps.store.leaderboardSize(deps.now())]);
+export const LEADERBOARD_PAGE = 25;
+
+/** One page of the season board (25 racers), the total and the page count. Public: the site serves it from a cache. */
+async function leaderboard(deps: Deps, rawPage: unknown) {
+  const now = deps.now();
+  const total = await deps.store.leaderboardSize(now);
+  const pages = Math.max(1, Math.ceil(total / LEADERBOARD_PAGE));
+  const page = Math.min(pages, Math.max(1, Math.floor(Number(rawPage) || 1)));
+  const offset = (page - 1) * LEADERBOARD_PAGE;
+  const rows = await deps.store.leaderboardPage(offset, LEADERBOARD_PAGE, now);
   const names = await deps.store.getUsernames(rows.map(r => r.wallet));
   const days = await deps.store.raceDays(rows.map(r => r.wallet));
   const numbers = await deps.store.racerNumbers(deps.betaSeasonEnd ?? null);
-  const today = utcDay(deps.now());
+  const today = utcDay(now);
   return {
-    players: rows.map((r, i) => ({ rank: i + 1, wallet: r.wallet, name: names[r.wallet] ?? shortWallet(r.wallet), badge: streakFor(days[r.wallet] ?? [], today).badge, racerNumber: numbers[r.wallet] ?? null, points: r.points, races: r.races, wins: r.wins, podiums: r.podiums })),
-    total,
+    players: rows.map((r, i) => ({ rank: offset + i + 1, wallet: r.wallet, name: names[r.wallet] ?? shortWallet(r.wallet), badge: streakFor(days[r.wallet] ?? [], today).badge, racerNumber: numbers[r.wallet] ?? null, points: r.points, races: r.races, wins: r.wins, podiums: r.podiums })),
+    total, page, pages, pageSize: LEADERBOARD_PAGE,
   };
 }
 

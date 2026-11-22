@@ -21,6 +21,14 @@ export interface RallyDayRow {
   created_at: string;
 }
 
+export interface RallyBoardRow {
+  wallet: string;
+  points: number;
+  rallies: number;
+  wins: number;
+  podiums: number;
+}
+
 export interface RallyEntryRow {
   day: string;
   wallet: string;
@@ -28,6 +36,14 @@ export interface RallyEntryRow {
 }
 
 const DAY_MS = 86_400_000;
+/** The week's top rally racers keep a seat in the weekly Pangs Cup (cup.ts). */
+export const RALLY_CUP_SEATS = 20;
+/** Monday (UTC) of the week that `ms` falls in, as YYYY-MM-DD. Weeks run Monday to Sunday. */
+export function weekStartDay(ms: number): string {
+  const d = new Date(ms);
+  const sinceMonday = (d.getUTCDay() + 6) % 7;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - sinceMonday * DAY_MS).toISOString().slice(0, 10);
+}
 const dayOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 /** Start time in minutes after midnight UTC (the dev server can move it to test a start). */
 const startMinute = (deps: Pick<Deps, 'rallyMinuteUtc'>) => deps.rallyMinuteUtc ?? RALLY_HOUR_UTC * 60;
@@ -70,7 +86,7 @@ export async function settleRally(deps: Deps, day: string): Promise<RaceRow[]> {
     const seed = `rally-${(await deps.sha256Hex(`${secret}:${day}:${i + 1}`)).slice(0, 32)}`;
     const field = buildTestField(seed, rooms[i], names);
     const results = runTestRace(seed, field, RALLY_TERRAIN);
-    boardRaces.delete(deps.store);
+    boards.delete(deps.store);
     await deps.store.insertRallyRace({
       id: deps.uuid(), kind: 'rally', terrain: RALLY_TERRAIN, seed, status: 'finished',
       created_at: now.toISOString(), closes_at: new Date(rallyStart(deps, day)).toISOString(),
@@ -94,28 +110,22 @@ export function rallyPlacings(race: RaceRow) {
 }
 
 /** All-time rally points over the races that have crossed the line, best first. */
-const boardRaces = new WeakMap<object, { at: number; races: RaceRow[] }>();
-const BOARD_CACHE_MS = 60_000;
+/** Rally points from the database (migration 016), kept for half a minute: the page polls, the table moves once a day. */
+const boards = new WeakMap<object, Map<string, { at: number; rows: RallyBoardRow[] }>>();
+const BOARD_CACHE_MS = 30_000;
 
-async function board(deps: Deps, now: Date) {
-  let cached = boardRaces.get(deps.store);
-  if (!cached || Date.now() - cached.at > BOARD_CACHE_MS) {
-    cached = { at: Date.now(), races: await deps.store.rallyRaces(null) };
-    boardRaces.set(deps.store, cached);
-  }
-  const by = new Map<string, { wallet: string; points: number; rallies: number; wins: number; podiums: number }>();
-  for (const race of cached.races) {
-    if (!raceOver(race, now)) continue;
-    for (const p of rallyPlacings(race)) {
-      const row = by.get(p.wallet) ?? { wallet: p.wallet, points: 0, rallies: 0, wins: 0, podiums: 0 };
-      row.points += p.points;
-      row.rallies++;
-      if (p.position === 1) row.wins++;
-      if (p.position <= 3) row.podiums++;
-      by.set(p.wallet, row);
-    }
-  }
-  return [...by.values()].sort((a, b) => b.points - a.points || b.wins - a.wins || b.podiums - a.podiums || a.wallet.localeCompare(b.wallet));
+/** `version` changes whenever another rally room crosses the line, so a fresh result never waits for the cache. */
+export async function rallyBoard(deps: Deps, fromDay: string | null, now: Date, version = ''): Promise<RallyBoardRow[]> {
+  let byKey = boards.get(deps.store);
+  if (!byKey) boards.set(deps.store, byKey = new Map());
+  const key = `${fromDay ?? 'all'}:${version}`;
+  const hit = byKey.get(key);
+  // Game time, not wall time: a race counts once it has crossed the line, so the table depends on now.
+  if (hit && now.getTime() >= hit.at && now.getTime() - hit.at < BOARD_CACHE_MS) return hit.rows;
+  const rows = await deps.store.rallyBoard(fromDay, now);
+  if (byKey.size > 20) byKey.clear();
+  byKey.set(key, { at: now.getTime(), rows });
+  return rows;
 }
 
 /** Everything the Daily Rally page shows. Works signed out. */
@@ -128,8 +138,10 @@ export async function rallyStatus(deps: Deps, token: string | null) {
   const lastRaces = (await settleRally(deps, last)).sort((a, b) => (a.rally_room ?? 0) - (b.rally_room ?? 0));
   const next = upcomingDay(deps, now);
   const nextEntries = await deps.store.rallyEntries(next);
-  const table = await board(deps, now);
-  const wallets = [...new Set([...nextEntries.map(e => e.wallet), ...table.slice(0, 50).map(r => r.wallet), ...lastRaces.flatMap(r => (r.field ?? []).filter(f => f.wallet).map(f => f.wallet!))])];
+  const crossed = `${last}:${lastRaces.filter(r => raceOver(r, now)).length}`;
+  const table = await rallyBoard(deps, null, now, crossed);
+  const week = await rallyBoard(deps, weekStartDay(now.getTime()), now, crossed);
+  const wallets = [...new Set([...nextEntries.map(e => e.wallet), ...table.map(r => r.wallet), ...week.map(r => r.wallet), ...lastRaces.flatMap(r => (r.field ?? []).filter(f => f.wallet).map(f => f.wallet!))])];
   const names = await deps.store.getUsernames(wallets);
   const name = (w: string) => names[w] ?? shortWallet(w);
 
@@ -144,7 +156,9 @@ export async function rallyStatus(deps: Deps, token: string | null) {
       day: next,
       startsAt: new Date(rallyStart(deps, next)).toISOString(),
       registered: nextEntries.length,
-      entrants: nextEntries.map(e => name(e.wallet)),
+      // The newest sign-ups by name; every wallet, so a browser can tell whether it is in (the page is cached for everyone).
+      entrants: nextEntries.slice(-30).reverse().map(e => name(e.wallet)),
+      wallets: nextEntries.map(e => e.wallet),
     },
     last: lastRaces.length ? {
       day: last,
@@ -153,11 +167,22 @@ export async function rallyStatus(deps: Deps, token: string | null) {
         room: r.rally_room, raceId: r.id, finishedAt: r.finished_at, over: raceOver(r, now),
         names: (r.field ?? []).filter(f => f.wallet).map(f => f.name),
         mine: !!wallet && (r.field ?? []).some(f => f.wallet === wallet),
+        // Players with their place once the room has crossed the line (bots left out).
+        players: (r.field ?? []).filter(f => f.wallet).map(f => ({
+          wallet: f.wallet!, name: name(f.wallet!),
+          position: raceOver(r, now) ? (rallyPlacings(r).find(p => p.wallet === f.wallet)?.position ?? null) : null,
+        })),
         // the room's top three players, once it has crossed the line on screen
         podium: raceOver(r, now) ? rallyPlacings(r).sort((a, b) => a.position - b.position).slice(0, 3).map(p => ({ name: name(p.wallet), position: p.position })) : null,
       })),
     } : null,
-    board: table.slice(0, 50).map((r, i) => ({ rank: i + 1, name: name(r.wallet), points: r.points, rallies: r.rallies, wins: r.wins, podiums: r.podiums, me: r.wallet === wallet })),
+    board: table.slice(0, 1000).map((r, i) => ({ rank: i + 1, wallet: r.wallet, name: name(r.wallet), points: r.points, rallies: r.rallies, wins: r.wins, podiums: r.podiums, me: r.wallet === wallet })),
+    // This week (Monday-Sunday UTC); its top RALLY_CUP_SEATS keep a seat in the weekly Pangs Cup.
+    week: {
+      from: weekStartDay(now.getTime()),
+      cupSeats: deps.weeklyCup ? RALLY_CUP_SEATS : 0,
+      board: week.slice(0, 1000).map((r, i) => ({ rank: i + 1, wallet: r.wallet, name: name(r.wallet), points: r.points, rallies: r.rallies, wins: r.wins, podiums: r.podiums, me: r.wallet === wallet })),
+    },
     me: wallet ? {
       registered: nextEntries.some(e => e.wallet === wallet),
       raceId: mineRace?.id ?? null,

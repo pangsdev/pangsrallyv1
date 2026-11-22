@@ -1,6 +1,6 @@
 /** Shared by the Cup page and the broadcast screen. */
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, testSeason, type CupStatus } from '../testSeason/api';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ApiError, getSession, testSeason, withCupMe, type CupStatus } from '../testSeason/api';
 import { pollWhileVisible } from '../testSeason/poll';
 
 export const TIER_LABEL: Record<number, string> = { 1: 'Champion', 2: 'Second place', 3: 'Third place', 4: 'Finalist' };
@@ -17,17 +17,29 @@ export function clockText(ms: number): string {
   return h ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`;
 }
 
-/** The Cup from the server, refreshed often while it runs. `skew` lines the browser clock up with the server. */
+/**
+ * The Cup as everyone sees it, read through the site cache and refreshed often while it runs; the
+ * signed-in player's part is worked out in the browser (withCupMe). `skew` lines the browser clock up
+ * with the server. An answer from register/leave goes in with setData, and older cached answers are
+ * skipped until the cache has caught up with it.
+ */
 export function useCup(opts: { background?: boolean } = {}) {
-  const [data, setData] = useState<CupStatus | null>(null);
+  const [raw, setRaw] = useState<CupStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const skew = useRef(0);
-  const load = useCallback(() => testSeason.cup()
-    .then(d => { skew.current = Date.parse(d.serverTime) - Date.now(); setData(d); setError(null); })
+  const fresh = useRef(0);
+  const load = useCallback(() => testSeason.cupPublic()
+    .then(({ data: d, age }) => {
+      skew.current = Date.parse(d.serverTime) + age * 1000 - Date.now();
+      if (Date.parse(d.serverTime) < fresh.current) return;
+      setRaw(d);
+      setError(null);
+    })
     .catch(e => setError(e instanceof ApiError && e.code === 'no_cup' ? 'no_cup' : e instanceof Error ? e.message : 'Could not load the Cup.')), []);
-  const state = data?.cup.state;
-  const busy = data?.rounds.some(r => r.state === 'live');
+  const setData = useCallback((d: CupStatus) => { fresh.current = Date.parse(d.serverTime); setRaw(d); }, []);
+  const state = raw?.cup.state;
+  const busy = raw?.rounds.some(r => r.state === 'live');
   useEffect(() => {
     load();
     const every = state === 'finished' ? 300_000 : state === 'live' || busy ? 5_000 : 30_000;
@@ -35,6 +47,8 @@ export function useCup(opts: { background?: boolean } = {}) {
     const tick = setInterval(() => setNow(Date.now()), 500);
     return () => { stop(); clearInterval(tick); };
   }, [load, state, busy, opts.background]);
+  const wallet = opts.background ? null : getSession()?.wallet ?? null;
+  const data = useMemo(() => (raw ? withCupMe(raw, wallet, Date.now() + skew.current) : null), [raw, wallet]);
   return { data, setData, error, reload: load, now: now + skew.current };
 }
 

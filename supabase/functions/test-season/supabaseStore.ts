@@ -4,6 +4,7 @@ import type { CupEntryRow, CupRow } from './cup.ts';
 import type { RallyDayRow, RallyEntryRow } from './rally.ts';
 import type { EntryRow, LeaderRow, PredictionBoardRow, PredictionRow, RaceRow, Store } from './core.ts';
 import { sortLeaderboard, sortPredictionBoard } from './memoryStore.ts';
+import type { RallyBoardRow } from './rally.ts';
 
 const UNIQUE_VIOLATION = '23505';
 
@@ -240,15 +241,40 @@ export function createSupabaseStore(db: SupabaseClient): Store {
       return sortLeaderboard(rows).slice(0, limit);
     },
     async leaderboardSize() {
-      const { count, error } = await db.from('test_leaderboard').select('wallet', { count: 'exact', head: true });
+      const { count, error } = await db.from('test_leaderboard').select('wallet', { count: 'exact', head: true }).gt('races', 0);
       if (error) throw new Error(error.message);
       return count ?? 0;
     },
+    async leaderboardPage(offset, limit) {
+      return must(await db.from('test_leaderboard').select('*').gt('races', 0)
+        .order('points', { ascending: false }).order('wins', { ascending: false }).order('last_race', { ascending: true, nullsFirst: false })
+        .order('wallet', { ascending: true })
+        .range(offset, offset + Math.max(limit, 1) - 1)) as LeaderRow[];
+    },
+    async leaderboardRank(wallet) {
+      const row = must(await db.from('test_leaderboard').select('*').eq('wallet', wallet).gt('races', 0).maybeSingle()) as LeaderRow | null;
+      if (!row) return null;
+      // Ahead of this racer: more points, or as many with more wins, or as many of both and there first.
+      const ahead = [`points.gt.${row.points}`, `and(points.eq.${row.points},wins.gt.${row.wins})`];
+      if (row.last_race) ahead.push(`and(points.eq.${row.points},wins.eq.${row.wins},last_race.lt."${row.last_race}")`);
+      const { count, error } = await db.from('test_leaderboard').select('wallet', { count: 'exact', head: true }).gt('races', 0).or(ahead.join(','));
+      if (error) throw new Error(error.message);
+      return { row, rank: (count ?? 0) + 1 };
+    },
+    async rallyBoard(fromDay) {
+      const { data, error } = await db.rpc('test_rally_board', { from_day: fromDay });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as RallyBoardRow[];
+    },
     async getUsernames(wallets) {
       const unique = [...new Set(wallets)];
-      if (!unique.length) return {};
-      const rows = must(await db.from('test_players').select('wallet, username').in('wallet', unique).not('username', 'is', null)) as { wallet: string; username: string }[];
-      return Object.fromEntries(rows.map(r => [r.wallet, r.username]));
+      const out: Record<string, string> = {};
+      // In batches: a Cup or rally lists hundreds of wallets, too many for one request URL.
+      for (let i = 0; i < unique.length; i += 100) {
+        const rows = must(await db.from('test_players').select('wallet, username').in('wallet', unique.slice(i, i + 100)).not('username', 'is', null)) as { wallet: string; username: string }[];
+        for (const r of rows) out[r.wallet] = r.username;
+      }
+      return out;
     },
     async setUsername(wallet, name) {
       const res = await db.from('test_players').update({ username: name }).eq('wallet', wallet);

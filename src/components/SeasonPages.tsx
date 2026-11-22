@@ -5,6 +5,7 @@ import { LeaderboardBadges } from './Badges';
 import { BoardTabs } from './Predictions';
 import type { WalletOption } from '../testSeason/wallets';
 import { pollWhileVisible } from '../testSeason/poll';
+import { Pager } from './Pager';
 
 /** Shown instead of a race page until the player has signed in with their wallet. */
 export function SignInGate({ signingIn, onSignIn }: { signingIn: boolean; onSignIn: () => void }) {
@@ -135,20 +136,33 @@ const medal = (pos: number | null) => pos === 1 ? '🥇' : pos === 2 ? '🥈' : 
 const raceNote = (r: HistoryRow) => r.status === 'finished' ? `+${r.points} pts` : r.status === 'live' ? 'Racing now' : 'Waiting';
 
 /** Test-season leaderboard (points from every finish). */
-export function SeasonLeaderboard({ playerWallet, onTab }: { playerWallet: string | null; onTab: (tab: 'season' | 'predictions') => void }) {
+export function SeasonLeaderboard({ playerWallet, playerRank, onTab }: { playerWallet: string | null; playerRank?: number | null; onTab: (tab: 'season' | 'predictions') => void }) {
   const [players, setPlayers] = useState<LeaderboardPlayer[] | null>(null);
   const [total, setTotal] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
-    const load = () => testSeason.leaderboard()
-      .then(r => { if (live) { setPlayers(r.players); setTotal(r.total ?? r.players.length); setError(null); } })
+    const load = () => testSeason.leaderboard(page)
+      .then(({ data: r }) => {
+        if (!live) return;
+        setPlayers(r.players);
+        setTotal(r.total ?? r.players.length);
+        setPages(r.pages ?? 1);
+        setPageSize(r.pageSize ?? 25);
+        setError(null);
+      })
       .catch(e => { if (live) setError(e.message); });
     load();
     const stop = pollWhileVisible(load, 60_000);
     return () => { live = false; stop(); };
-  }, []);
+  }, [page]);
+
+  const go = (p: number) => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const myPage = playerRank ? Math.ceil(playerRank / pageSize) : null;
 
   return (
     <section className="inventory-page animated-enter season-page">
@@ -157,7 +171,8 @@ export function SeasonLeaderboard({ playerWallet, onTab }: { playerWallet: strin
         <h2>Beta Season Leaderboard</h2>
         <div className="inventory-stats">
           <span>Racers: <strong style={{ color: 'var(--primary)' }}>{total?.toLocaleString('en-US') ?? '…'}</strong></span>
-          {total !== null && players && total > players.length && <span>Showing the top {players.length}</span>}
+          {playerRank ? <span>Your rank: <strong style={{ color: 'var(--primary)' }}>#{playerRank}</strong></span> : null}
+          {myPage && myPage !== page && <button type="button" className="season-jump" onClick={() => go(myPage)}>Show my place</button>}
         </div>
       </div>
 
@@ -197,6 +212,7 @@ export function SeasonLeaderboard({ playerWallet, onTab }: { playerWallet: strin
           );
         })}
       </div>
+      <Pager page={page} pages={pages} onPage={go} label="Leaderboard pages" />
     </section>
   );
 }

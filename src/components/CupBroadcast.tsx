@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import RaceRoom from './RaceRoom';
-import { testSeason } from '../testSeason/api';
+import { testSeason, type CupRoom } from '../testSeason/api';
 import { speakCall, unlockAnnounce } from '../race/announce';
 import { LINES } from '../race/announceClips';
 import RicoHost from './RicoHost';
@@ -17,6 +17,8 @@ import './cup.css';
 const ROOM_SLOT_MS = 75_000;
 /** One room on air plus the short look at its result. */
 const SLOT_MS = ROOM_SLOT_MS + 7_000;
+/** Rooms a round puts on air when it has more (they fit in a 15-minute round gap). */
+const FEATURED_ROOMS = 9;
 const airedKey = (cupId: number) => `pangsrally_cupbc_aired_${cupId}`;
 function loadAired(cupId: number): string[] {
   try { return JSON.parse(localStorage.getItem(airedKey(cupId)) ?? '[]') as string[]; } catch { return []; }
@@ -31,6 +33,7 @@ export default function CupBroadcast() {
   const [showing, setShowing] = useState<{ raceId: string; label: string } | null>(null);
   const shown = useRef(new Set<string>());
   const airedFor = useRef<number | null>(null);
+  const featured = useRef(new Map<number, string[]>());
   const [soundOn, setSoundOn] = useState(false);
   const roomPick = Math.max(1, Number(new URLSearchParams(window.location.search).get('room')) || 1);
 
@@ -56,14 +59,26 @@ export default function CupBroadcast() {
     const air = (id: string) => { shown.current.add(id); saveAired(data.cup.id, shown.current); };
     const round = [...data.rounds].reverse().find(r => r.state !== 'upcoming');
     if (!round || Date.now() - Date.parse(round.at) > 14 * 60_000) return;
-    const rooms = roomParam ? round.rooms.filter(r => r.room === roomPick) : [...round.rooms].sort((a, b) => a.room - b.room);
+    // A big Cup has more rooms than fit between rounds (about 80 s each, 15 min apart): the broadcast shows
+    // FEATURED_ROOMS a round, the rooms of the racers highest on the Cup table (Round 1: the first ones).
+    const rankOf = new Map(data.standings.map(s => [s.wallet, s.rank]));
+    const best = (r: CupRoom) => Math.min(...(r.wallets ?? []).map(w => rankOf.get(w) ?? 1e9), 1e9);
+    // Picked once per round, so the line-up on air does not shift as the table moves.
+    if (!featured.current.has(round.round)) {
+      const pick = round.rooms.length <= FEATURED_ROOMS ? round.rooms
+        : [...round.rooms].sort((a, b) => best(a) - best(b) || a.room - b.room).slice(0, FEATURED_ROOMS);
+      featured.current.set(round.round, pick.map(r => r.raceId));
+    }
+    const onAir = featured.current.get(round.round)!;
+    const rooms = roomParam ? round.rooms.filter(r => r.room === roomPick)
+      : round.rooms.filter(r => onAir.includes(r.raceId)).sort((a, b) => a.room - b.room);
     // On a fresh load (or reload) join the running order where it stands now, about 75 s per room,
     // so a reload never starts the round over from Room A.
-    // Room N airs about (N-1)*slot after the round starts; rooms whose slot is over are skipped, and once
+    // The Nth room on air starts about (N-1)*slot after the round; rooms whose slot is over are skipped, and once
     // the whole round is over the board stays up.
     if (!rooms.some(r => shown.current.has(r.raceId))) {
       const elapsed = Date.now() - Date.parse(round.at);
-      rooms.forEach(r => { if (elapsed >= r.room * SLOT_MS) air(r.raceId); });
+      rooms.forEach((r, i) => { if (elapsed >= (i + 1) * SLOT_MS) air(r.raceId); });
     }
     const room = rooms.find(r => !shown.current.has(r.raceId));
     if (!room) return;

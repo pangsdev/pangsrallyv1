@@ -6,6 +6,8 @@
 import type { CupEntryRow, CupRow } from './cup.ts';
 import type { RallyDayRow, RallyEntryRow } from './rally.ts';
 import { raceOver, type EntryRow, type LeaderRow, type PredictionBoardRow, type PredictionRow, type RaceRow, type ReportRow, type Store } from './core.ts';
+import type { RallyBoardRow } from './rally.ts';
+import { pointsFor } from './race/testSeason.ts';
 
 /** `invites`: code → places, e.g. { 'DEV-RALLY': 1000 } so dev sign-in works. */
 export function createMemoryStore(invites: Record<string, number> = {}): Store {
@@ -240,6 +242,33 @@ export function createMemoryStore(invites: Record<string, number> = {}): Store {
     async setEntryResult(raceId, wallet, position, points) {
       const e = entries.find(x => x.race_id === raceId && x.wallet === wallet);
       if (e) { e.position = position; e.points = points; }
+    },
+    async leaderboardPage(offset, limit, now) {
+      return (await this.leaderboard(Number.MAX_SAFE_INTEGER, now)).slice(offset, offset + limit);
+    },
+    async leaderboardRank(wallet, now) {
+      const board = await this.leaderboard(Number.MAX_SAFE_INTEGER, now);
+      const i = board.findIndex(r => r.wallet === wallet);
+      return i >= 0 ? { row: board[i], rank: i + 1 } : null;
+    },
+    async rallyBoard(fromDay, now) {
+      // Same sums as test_rally_board (migration 016).
+      const by = new Map<string, RallyBoardRow>();
+      for (const race of races.values()) {
+        if (race.kind !== 'rally' || !raceOver(race, now) || (fromDay !== null && (race.rally_day ?? '') < fromDay)) continue;
+        for (const racer of race.field ?? []) {
+          if (!racer.wallet) continue;
+          const res = (race.results ?? []).find(r => r.id === racer.id);
+          if (!res) continue;
+          const row = by.get(racer.wallet) ?? { wallet: racer.wallet, points: 0, rallies: 0, wins: 0, podiums: 0 };
+          row.points += pointsFor(res.position);
+          row.rallies++;
+          if (res.position === 1) row.wins++;
+          if (res.position <= 3) row.podiums++;
+          by.set(racer.wallet, row);
+        }
+      }
+      return [...by.values()].sort((a, b) => b.points - a.points || b.wins - a.wins || b.podiums - a.podiums || (a.wallet < b.wallet ? -1 : 1));
     },
     async leaderboardSize(now) {
       return (await this.leaderboard(Number.MAX_SAFE_INTEGER, now)).length;

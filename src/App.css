@@ -2191,3 +2191,12 @@
   .nav-item { padding: 0.42rem 0.55rem; font-size: 0.78rem; }
   .logo-img { max-width: 140px; }
 }
+
+/* Page buttons (Pager.tsx), used by the season board and the Daily Rally */
+.pager { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px; margin-top: 12px; }
+.pager button { min-width: 34px; height: 34px; padding: 0 9px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.04); color: inherit; font: 700 13px var(--font-heading, Outfit, sans-serif); cursor: pointer; }
+.pager button:hover:not(:disabled) { border-color: rgba(255, 209, 102, 0.45); }
+.pager button.on { background: rgba(255, 209, 102, 0.16); border-color: rgba(255, 209, 102, 0.55); color: #ffd166; }
+.pager button:disabled { opacity: 0.35; cursor: default; }
+.pager-gap { padding: 0 4px; opacity: 0.6; }
+.season-jump { padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(255, 209, 102, 0.45); background: rgba(255, 209, 102, 0.1); color: #ffd166; font: 700 12.5px var(--font-heading, Outfit, sans-serif); cursor: pointer; }

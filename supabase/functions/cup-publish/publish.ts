@@ -18,6 +18,8 @@ export const CUP_ABI = [
   'function participantRoot(uint256) view returns (bytes32)',
   'function setResults(uint256 cupId, address[] wallets, uint8[] tiers, uint256[] amounts)',
   'function setParticipants(uint256 cupId, bytes32 root, uint256 racers)',
+  'function uri(uint256 tokenId) view returns (string)',
+  'function setBadgeURI(uint256 tokenId, string uri_)',
 ];
 const ERC20_ABI = ['function decimals() view returns (uint8)', 'function balanceOf(address) view returns (uint256)'];
 const ZERO = '0x' + '0'.repeat(64);
@@ -35,6 +37,8 @@ export interface PublishOptions {
   signer: Wallet;
   /** Saves `claim_contract` on the Cup row (turns on the Claim buttons). */
   markPublished: (cupId: number, contract: string) => Promise<void>;
+  /** Where badges without metadata point (weekly Cups): `${badgeBase}/${tokenId}`. Unset = leave them. */
+  badgeBase?: string;
 }
 
 export type PublishOutcome =
@@ -43,7 +47,7 @@ export type PublishOutcome =
   | { status: 'busy'; reason: string }
   | { status: 'blocked'; reason: string };
 
-export async function publishCup({ status, contract, signer, markPublished }: PublishOptions): Promise<PublishOutcome> {
+export async function publishCup({ status, contract, signer, markPublished, badgeBase }: PublishOptions): Promise<PublishOutcome> {
   const { cup, result } = status;
   if (cup.state !== 'finished' || !result) return { status: 'waiting', cupState: cup.state };
   const address = getAddress(contract);
@@ -66,6 +70,16 @@ export async function publishCup({ status, contract, signer, markPublished }: Pu
   const racers = (status.participants ?? []).map(w => getAddress(w));
   const txs: string[] = [];
 
+  // Weekly Cups have no IPFS upload: their five badges (token id = cupId * 10 + tier) point at the site.
+  if (badgeBase) {
+    for (let tier = 1; tier <= 5; tier++) {
+      const tokenId = cup.id * 10 + tier;
+      if (await c.uri(tokenId)) continue;
+      const tx = await c.setBadgeURI(tokenId, `${badgeBase}/${tokenId}`);
+      txs.push(tx.hash);
+      await tx.wait();
+    }
+  }
   if (Number(await c.claimDeadline(cup.id)) === 0) {
     const [balance, owed] = await Promise.all([token.balanceOf(address), c.totalOwed()]);
     if (balance < owed + total) return { status: 'blocked', reason: `The contract holds too little prize money (needs ${total} more units than it has spare).` };

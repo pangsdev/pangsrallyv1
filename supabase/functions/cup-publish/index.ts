@@ -6,7 +6,8 @@
  *      due, so rounds begin on time even when nobody has the page open;
  *   2. once the Grand Final has finished, writes the results and the Participant root on chain and
  *      turns on the Claim buttons (publish.ts; safe to repeat);
- *   3. in the first minutes after 18:00 UTC, asks for the Daily Rally (`rally` action), which draws and
+ *   3. until this week's Cup exists (weekly Cups, every Sunday 20:00 UTC), asks the game server to schedule it;
+ *   4. in the first minutes after 18:00 UTC, asks for the Daily Rally (`rally` action), which draws and
  *      runs that day's rooms, so the rally starts on time even when nobody has the page open.
  *
  * Secrets: CUP_OPERATOR_KEY (the wallet that owns PangsCup; holds only gas), CUP_CONTRACT, optional
@@ -23,6 +24,13 @@ const RPC = Deno.env.get('CUP_RPC_URL') ?? 'https://rpc.mainnet.chain.robinhood.
 const CHAIN_ID = 4663;
 const url = Deno.env.get('SUPABASE_URL')!;
 const db = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
+
+/** Sunday 20:00 UTC of the Monday-Sunday (UTC) week that `ms` falls in (same as cup.ts weeklyCupStart). */
+function weeklyCupStart(ms: number): number {
+  const d = new Date(ms);
+  const monday = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - ((d.getUTCDay() + 6) % 7) * 86_400_000;
+  return monday + 6 * 86_400_000 + 20 * 3_600_000;
+}
 
 const reply = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -52,9 +60,22 @@ Deno.serve(async (req) => {
       .order('id', { ascending: false }).limit(1).maybeSingle();
     if (cupErr) throw new Error(`Reading the latest Cup failed: ${cupErr.message}`);
     if (!latest) return reply(200, { status: 'no-cup' });
+    const nowMs = Date.now();
     const start = Date.parse(latest.starts_at);
     const finalAt = start + ((latest.qualifying_rounds - 1) * latest.round_minutes + latest.final_gap_minutes) * 60_000;
-    const nowMs = Date.now();
+    // Weekly Cup: until this week's Cup exists, ask the game server to schedule it (it decides whether the
+    // previous Cup is done; WEEKLY_CUP=0 on test-season turns this off).
+    const weekCup = weeklyCupStart(nowMs);
+    if (Date.parse(latest.starts_at) < weekCup && nowMs < weekCup - 30 * 60_000) {
+      try {
+        const r = await fetch(`${url}/functions/v1/test-season`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cup-weekly' }),
+        });
+        console.log(JSON.stringify({ weekly: await r.json() }));
+      } catch (e) {
+        console.error('weekly cup', e);
+      }
+    }
     if (latest.claim_contract) return reply(200, { status: 'published', cupId: latest.id });
     if (nowMs < start - 60_000 || nowMs > finalAt + 24 * 3_600_000) return reply(200, { status: 'idle', cupId: latest.id });
 
@@ -74,7 +95,7 @@ Deno.serve(async (req) => {
 
     const signer = new Wallet(key, new JsonRpcProvider(RPC, CHAIN_ID, { staticNetwork: true }));
     const outcome = await publishCup({
-      status, contract, signer,
+      status, contract, signer, badgeBase: 'https://pangsrally.com/api/cup-badge',
       markPublished: async (cupId, address) => {
         const { error } = await db.from('test_cups').update({ claim_contract: address }).eq('id', cupId);
         if (error) throw new Error(`Saving claim_contract failed: ${error.message}`);

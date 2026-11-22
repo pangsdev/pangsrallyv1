@@ -3,13 +3,19 @@
  * Dev talks to the Vite stand-in at /api/test-season; production to the Edge Function.
  */
 import { BrowserProvider, Contract } from 'ethers';
-import { signInMessage, type Streak, type TestRacer, type TestRaceResult } from '../race/testSeason';
+import { POINTS_BY_POSITION, signInMessage, type Streak, type TestRacer, type TestRaceResult } from '../race/testSeason';
 import { getEthereum, hasAnyWallet, type Eip1193 } from './wallets';
 
 /** The Supabase project's public URL (not a secret). Used when the host sets no VITE_SUPABASE_URL. */
 const PROJECT_URL = 'https://rzpcppmzpyocoqnjwrwp.supabase.co';
 const BASE: string = import.meta.env.VITE_TEST_SEASON_API
   || (import.meta.env.DEV ? '/api/test-season' : `${import.meta.env.VITE_SUPABASE_URL || PROJECT_URL}/functions/v1/test-season`);
+/**
+ * Public data (Cup, Daily Rally, season board) is read through the site's cache (api/live.ts) in
+ * production, so a crowd of viewers costs the game server almost nothing. The dev server and a custom
+ * VITE_TEST_SEASON_API talk to the game server directly.
+ */
+const LIVE: string | null = import.meta.env.VITE_TEST_SEASON_API || import.meta.env.DEV ? null : '/api/live';
 const UNAVAILABLE = 'The race server is not available right now. Please try again in a few minutes.';
 const SESSION_KEY = 'pangsrally_test_session';
 
@@ -184,6 +190,25 @@ export function clearSession() {
   try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
 }
 
+/** A public answer and how many seconds the cache had kept it (for the countdown clock). */
+export interface Cached<T> { data: T; age: number }
+
+async function publicCall<T>(action: string, params: Record<string, string | number | undefined> = {}): Promise<Cached<T>> {
+  if (!LIVE) return { data: await call<T>(action, Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined))), age: 0 };
+  const q = new URLSearchParams({ a: action });
+  for (const [k, v] of Object.entries(params)) if (v !== undefined) q.set(k, String(v));
+  let res: Response;
+  try {
+    res = await fetch(`${LIVE}?${q}`);
+  } catch {
+    throw new ApiError(0, 'network', 'Cannot reach the race server. Check your connection and try again.');
+  }
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, body?.error || 'unavailable', body?.message || UNAVAILABLE);
+  if (!body) throw new ApiError(res.status, 'unavailable', UNAVAILABLE);
+  return { data: body as T, age: Math.max(0, Number(res.headers.get('age')) || 0) };
+}
+
 async function call<T>(action: string, params: Record<string, unknown> = {}): Promise<T> {
   const session = getSession();
   let res: Response;
@@ -337,15 +362,22 @@ export interface RallyRoom {
   names: string[];
   mine: boolean;
   podium: { name: string; position: number }[] | null;
+  /** players with their place once the room has crossed the line */
+  players?: { wallet: string; name: string; position: number | null }[];
 }
+
+export interface RallyBoardEntry { rank: number; wallet?: string; name: string; points: number; rallies: number; wins: number; podiums: number; me: boolean }
 
 export interface RallyStatus {
   hourUtc: number;
   terrain: string;
-  next: { day: string; startsAt: string; registered: number; entrants: string[] };
+  /** entrants: the newest sign-ups by name; wallets: everyone in (to tell whether this browser's wallet is) */
+  next: { day: string; startsAt: string; registered: number; entrants: string[]; wallets?: string[] };
   /** the latest rally that has started (today after 18:00 UTC, otherwise yesterday's) */
   last: { day: string; startsAt: string; rooms: RallyRoom[] } | null;
-  board: { rank: number; name: string; points: number; rallies: number; wins: number; podiums: number; me: boolean }[];
+  board: RallyBoardEntry[];
+  /** this week (Monday-Sunday UTC); its top `cupSeats` keep a seat in the weekly Pangs Cup */
+  week?: { from: string; cupSeats: number; board: RallyBoardEntry[] };
   me: { registered: boolean; raceId: string | null; result: { position: number; points: number } | null; rank: number | null; points: number } | null;
   serverTime: string;
 }
@@ -375,6 +407,7 @@ export interface CupRoom {
   names: string[];
   /** the signed-in player races in this room */
   mine: boolean;
+  wallets?: string[];
 }
 
 export interface CupRound {
@@ -419,10 +452,15 @@ export interface CupStatus {
     seedSecret: string | null;
     /** PangsCup contract that pays this Cup, once set */
     claimContract: string | null;
+    /** seats kept for this week's top Daily Rally racers */
+    rallySeats?: number;
   };
   rounds: CupRound[];
   standings: CupStanding[];
   entrants: string[];
+  /** every wallet in, and the rally racers holding a kept seat (public data: each browser finds itself) */
+  entrantWallets?: string[];
+  rallyTop?: string[];
   /** after the final: the wallets that raced (they can claim the Participant badge) */
   participants: string[] | null;
   result: CupPlacing[] | null;
@@ -539,7 +577,8 @@ export const testSeason = {
   history: () => call<{ races: HistoryRow[] }>('history'),
   profile: () => call<ProfileStatus>('profile'),
   /** players: the top 100; total: every racer on the board. */
-  leaderboard: () => call<{ players: LeaderboardPlayer[]; total?: number }>('leaderboard'),
+  /** One page (25 racers) of the season board, from the cache. */
+  leaderboard: (page = 1) => publicCall<{ players: LeaderboardPlayer[]; total?: number; page?: number; pages?: number; pageSize?: number }>('leaderboard', { page }),
   /** Locks the player's number for a room. Free; a pick cannot be changed. */
   predict: (raceId: string, pick: number) => call<{ pick: number | null; crowd: number[] }>('predict', { raceId, pick }),
   prediction: (raceId: string) => call<{ pick: number | null; crowd: number[] }>('prediction', { raceId }),
@@ -547,9 +586,71 @@ export const testSeason = {
   report: (r: { kind: ReportKind; area: ReportArea; message: string; contact: string; page: string; agent: string }) => call<{ sent: boolean }>('report', r),
   setUsername: (username: string) => call<PlayerStatus>('set-username', { username }),
   cup: (cupId?: number) => call<CupStatus>('cup', cupId ? { cupId } : {}),
+  /** The Cup as everyone sees it, from the cache (no "me": see withCupMe). */
+  cupPublic: (cupId?: number) => publicCall<CupStatus>('cup', { cupId }),
   cupRegister: (cupId: number) => call<CupStatus>('cup-register', { cupId }),
   cupLeave: (cupId: number) => call<CupStatus>('cup-leave', { cupId }),
   rally: () => call<RallyStatus>('rally'),
+  /** The rally as everyone sees it, from the cache (no "me": see withRallyMe). */
+  rallyPublic: () => publicCall<RallyStatus>('rally'),
   rallyRegister: () => call<RallyStatus>('rally-register'),
   rallyLeave: () => call<RallyStatus>('rally-leave'),
 };
+
+/* ------------------------------------------------------------------ */
+/* "Me" from public data                                               */
+/* ------------------------------------------------------------------ */
+
+/** Fills in the signed-in player's part of a cached Cup answer from its wallet lists. */
+export function withCupMe(d: CupStatus, wallet: string | null | undefined, now = Date.now()): CupStatus {
+  if (d.me || !d.entrantWallets) return d;
+  if (!wallet) return d;
+  const w = wallet.toLowerCase();
+  const entered = d.entrantWallets;
+  const registered = entered.includes(w);
+  const rounds = d.rounds.map(r => ({ ...r, rooms: r.rooms.map(room => ({ ...room, mine: !!room.wallets?.includes(w) })) }));
+  const top = d.rallyTop ?? [];
+  const kept = top.filter(x => !entered.includes(x)).length;
+  let problem: string | null = null;
+  if (now >= Date.parse(d.cup.registerClosesAt)) problem = 'Registration for this Cup is closed.';
+  else if (d.cup.registered >= d.cup.seats) problem = 'All seats are taken.';
+  else if (!top.includes(w) && d.cup.registered + kept >= d.cup.seats) problem = `The open seats are taken. The rest are kept for this week's top ${d.cup.rallySeats} Daily Rally racers.`;
+  return {
+    ...d,
+    rounds,
+    me: {
+      registered,
+      canRegister: !registered && !problem,
+      problem: registered ? null : problem,
+      inFinal: !!rounds.find(r => r.final)?.rooms.some(r => r.mine),
+      raced: registered && rounds.some(r => r.rooms.length > 0),
+      award: d.result?.find(r => r.wallet === w) ?? null,
+    },
+  };
+}
+
+/** Fills in the signed-in player's part of a cached rally answer from its wallet lists. */
+export function withRallyMe(d: RallyStatus, wallet: string | null | undefined): RallyStatus {
+  if (d.me || !d.next.wallets) return d;
+  if (!wallet) return d;
+  const w = wallet.toLowerCase();
+  const mark = (rows: RallyBoardEntry[]) => rows.map(r => ({ ...r, me: r.wallet === w }));
+  const board = mark(d.board);
+  const rooms = d.last?.rooms.map(r => ({ ...r, mine: !!r.players?.some(p => p.wallet === w) })) ?? [];
+  const mine = rooms.find(r => r.mine);
+  const place = mine?.players?.find(p => p.wallet === w)?.position ?? null;
+  const row = board.find(r => r.me);
+  return {
+    ...d,
+    board,
+    week: d.week ? { ...d.week, board: mark(d.week.board) } : d.week,
+    last: d.last ? { ...d.last, rooms } : d.last,
+    me: {
+      registered: d.next.wallets.includes(w),
+      raceId: mine?.raceId ?? null,
+      result: place ? { position: place, points: POINTS_BY_POSITION[place - 1] ?? 0 } : null,
+      rank: row?.rank ?? null,
+      points: row?.points ?? 0,
+    },
+  };
+}

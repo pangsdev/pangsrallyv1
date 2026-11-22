@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { seatNote, testSeason, type PlayerStatus, type RallyStatus } from '../testSeason/api';
+import { seatNote, testSeason, type PlayerStatus, type RallyStatus, getSession, withRallyMe } from '../testSeason/api';
 import './lobby.css';
 import { BETA_RACER_ART, FIELD_SIZE, POINTS_BY_POSITION, shortWallet } from '../race/testSeason';
 import { BALL_SPRITES } from '../race/sprites';
@@ -28,8 +28,8 @@ function RallyBoard() {
 
   useEffect(() => {
     let live = true;
-    const load = () => testSeason.rally()
-      .then(r => { if (!live) return; skew.current = Date.parse(r.serverTime) - Date.now(); setRally(r); })
+    const load = () => testSeason.rallyPublic()
+      .then(({ data: r, age }) => { if (!live) return; skew.current = Date.parse(r.serverTime) + age * 1000 - Date.now(); setRally(withRallyMe(r, getSession()?.wallet)); })
       .catch(() => {});
     load();
     const stop = pollWhileVisible(load, 60_000);

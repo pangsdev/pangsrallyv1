@@ -44,6 +44,8 @@ const deps: Deps = {
   inviteRequired: Deno.env.get('TEST_OPEN_SIGNUP') !== '1',
   beta: createBetaGate((name) => Deno.env.get(name)),
   betaSeasonEnd: Deno.env.get('BETA_SEASON_END') ? new Date(Deno.env.get('BETA_SEASON_END')!) : null,
+  // Weekly Pangs Cup on unless WEEKLY_CUP=0 (cup.ts ensureWeeklyCup, called by the cup-publish autopilot).
+  weeklyCup: Deno.env.get('WEEKLY_CUP') !== '0',
   cupTeamWallets: new Set((Deno.env.get('CUP_TEAM_WALLETS') ?? '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean)),
 };
 

@@ -2089,7 +2089,7 @@ function App() {
         )}
 
         {currentView === 'leaderboard' && (
-          <SeasonLeaderboard playerWallet={player?.wallet ?? null} onTab={t => setCurrentView(t === 'season' ? 'leaderboard' : 'predictions')} />
+          <SeasonLeaderboard playerWallet={player?.wallet ?? null} playerRank={player?.rank ?? null} onTab={t => setCurrentView(t === 'season' ? 'leaderboard' : 'predictions')} />
         )}
 
         {PREDICTIONS_ON && currentView === 'predictions' && (

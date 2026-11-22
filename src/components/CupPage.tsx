@@ -5,6 +5,7 @@ import {
 } from '../testSeason/api';
 import { FINAL_SIZE, TIER_LABEL, clockText, day, nextUp, ordinal, time, useCup, zoned } from './cupShared';
 import './cup.css';
+import { Pager } from './Pager';
 
 interface Props {
   player: PlayerStatus | null;
@@ -63,7 +64,7 @@ export default function CupPage({ player, onSignIn, onWatch }: Props) {
         ) : (
           <div className="cup-hero">
             <div>
-              <span className="cup-eyebrow">{cup.state === 'live' ? <><i className="cup-live-dot" />Live now</> : cup.state === 'postponed' ? 'Postponed · new date soon' : 'Beta Season special · Free entry'}</span>
+              <span className="cup-eyebrow">{cup.state === 'live' ? <><i className="cup-live-dot" />Live now</> : cup.state === 'postponed' ? 'Postponed · new date soon' : cup.rallySeats ? 'Weekly · Every Sunday · Free entry' : 'Beta Season special · Free entry'}</span>
               <h1>Pangs <em>Cup</em> #{cup.id}</h1>
               <p className="cup-sub">Up to {cup.seats} racers. {cup.qualifyingRounds} qualifying rounds. The top ten meet in one Grand Final, live.</p>
               <div className="cup-when">
@@ -76,6 +77,13 @@ export default function CupPage({ player, onSignIn, onWatch }: Props) {
                 {cup.state === 'upcoming' && <small>{regClosed ? 'Registration has closed.' : `Needs a Beta pass. No payment, ever. Registration closes at ${time(cup.registerClosesAt)}.`}</small>}
                 {next && <div className="cup-clock"><span>{next.label}</span><b>{clockText(next.at - now)}</b></div>}
               </div>
+              {cup.state === 'upcoming' && !regClosed && !!cup.rallySeats && (
+                <p className="cup-kept">
+                  {data.rallyTop?.includes(player?.wallet?.toLowerCase() ?? '')
+                    ? <>✓ <b>Your seat is kept:</b> you are in this week's Daily Rally top {cup.rallySeats}.</>
+                    : <>The week's top {cup.rallySeats} <b>Daily Rally</b> racers keep a seat until registration closes.</>}
+                </p>
+              )}
               {cup.state === 'postponed' && (
                 <p className="cup-note">Fewer than {cup.minRacers} racers registered in time, so this Cup did not start. Everyone registered keeps their seat; the new date will be announced here and on X.</p>
               )}
@@ -102,7 +110,13 @@ export default function CupPage({ player, onSignIn, onWatch }: Props) {
               <div className="cup-card"><h3>3. Make the Grand Final</h3><p>The top 10 go through and everyone restarts on zero. One race decides the Cup: the final result sets the prizes.</p></div>
             </div>
             {data.entrants.length > 0 && (
-              <div className="cup-card cup-entrants"><h3>Who's in <small>{data.entrants.length}</small></h3><div>{data.entrants.map(n => <span key={n}>{n}</span>)}</div></div>
+              <div className="cup-card cup-entrants">
+                <h3>Who's in <small>{data.entrants.length}</small></h3>
+                <div>
+                  {data.entrants.slice(-40).reverse().map(n => <span key={n}>{n}</span>)}
+                  {data.entrants.length > 40 && <span className="cup-more">+{data.entrants.length - 40} more</span>}
+                </div>
+              </div>
             )}
           </>
         ) : (
@@ -134,6 +148,9 @@ function Prizes({ data }: { data: CupStatus }) {
   );
 }
 
+const STANDINGS_PER_PAGE = 25;
+const ROOMS_SHOWN = 8;
+
 function Standings({ data, player, onWatch }: { data: CupStatus; player: PlayerStatus | null; onWatch: (id: string) => void }) {
   const { cup } = data;
   const wallet = player?.wallet;
@@ -146,6 +163,12 @@ function Standings({ data, player, onWatch }: { data: CupStatus; player: PlayerS
   const [picked, setPicked] = useState<number | null>(null);
   const current = started.find(r => r.round === picked) ?? started[started.length - 1];
   const showCut = data.standings.length > FINAL_SIZE;
+  const [page, setPage] = useState(1);
+  const pages = Math.max(1, Math.ceil(data.standings.length / STANDINGS_PER_PAGE));
+  const at = Math.min(page, pages);
+  const shown = data.standings.slice((at - 1) * STANDINGS_PER_PAGE, at * STANDINGS_PER_PAGE);
+  const myPage = mineIndex >= 0 ? Math.floor(mineIndex / STANDINGS_PER_PAGE) + 1 : null;
+  const [allRooms, setAllRooms] = useState(false);
 
   return (
     <div className="cup-grid">
@@ -155,7 +178,7 @@ function Standings({ data, player, onWatch }: { data: CupStatus; player: PlayerS
           {Array.from({ length: cup.qualifyingRounds }, (_, i) => <span key={i} className="c">R{i + 1}</span>)}
           <span className="r">Points</span>
         </div>
-        {data.standings.map((s, i) => (
+        {shown.map(s => { const i = s.rank - 1; return (
           <div key={s.wallet}>
             <div className={`cup-row ${s.wallet === wallet ? 'me' : ''}`} style={{ gridTemplateColumns: `44px minmax(0,1fr) repeat(${cup.qualifyingRounds}, 46px) 66px` }}>
               <span className={`cup-rank ${i < FINAL_SIZE ? 'q' : ''}`}>{s.rank}</span>
@@ -165,7 +188,11 @@ function Standings({ data, player, onWatch }: { data: CupStatus; player: PlayerS
             </div>
             {showCut && i === FINAL_SIZE - 1 && <div className="cup-cut">{qualifyingDone ? 'Grand Final line' : 'Grand Final cut'}</div>}
           </div>
-        ))}
+        ); })}
+        <div className="cup-table-foot">
+          <Pager page={at} pages={pages} onPage={setPage} label="Cup table pages" />
+          {myPage && myPage !== at && <button type="button" className="cup-btn ghost sm" onClick={() => setPage(myPage)}>Show my place</button>}
+        </div>
       </div>
 
       <aside className="cup-side">
@@ -193,12 +220,17 @@ function Standings({ data, player, onWatch }: { data: CupStatus; player: PlayerS
                 ))}
               </div>
             )}
-            {current.rooms.map(room => (
+            {[...current.rooms].sort((a, b) => Number(b.mine) - Number(a.mine) || a.room - b.room).slice(0, allRooms ? undefined : ROOMS_SHOWN).map(room => (
               <div key={room.raceId} className="cup-room">
                 <div><strong>{current.final ? 'Final room' : `Room ${String.fromCharCode(64 + room.room)}`}{room.mine && <span className="cup-tag">You</span>}</strong><span>{room.names.length} racers · {time(current.at)}</span></div>
                 <button className={`cup-btn sm ${room.mine ? '' : 'ghost'}`} onClick={() => onWatch(room.raceId)}>{current.state === 'live' ? 'Watch' : 'Replay'}</button>
               </div>
             ))}
+            {current.rooms.length > ROOMS_SHOWN && (
+              <button type="button" className="cup-btn ghost sm cup-allrooms" onClick={() => setAllRooms(v => !v)}>
+                {allRooms ? 'Show fewer rooms' : `Show all ${current.rooms.length} rooms`}
+              </button>
+            )}
           </div>
         )}
       </aside>

@@ -29,6 +29,16 @@ const deps = {
   predictions: true,
 };
 const call = (action, body = {}, token = null) => handle(deps, action, { action, ...body }, token);
+/** The whole season board, page by page (the server sends 25 racers a page). */
+const allBoard = async () => {
+  const out = [];
+  for (let page = 1, pages = 1; page <= pages; page++) {
+    const b = (await call('leaderboard', { page })).body;
+    out.push(...b.players);
+    pages = b.pages;
+  }
+  return out;
+};
 
 async function signIn(wallet, inviteCode = 'TEST-RALLY') {
   const message = signInMessage(wallet.address, new Date(clock).toISOString());
@@ -251,10 +261,10 @@ const fillRoom = async (roomId, taken = 0) => {
   assert.ok(Date.parse(res.race.finishedAt) - clock > 10_000, 'ends after lead-in + race');
   assert.equal(res.points, 0, 'no points while the race runs');
   assert.equal((await call('history', {}, t)).body.races[0].points, 0);
-  assert.ok(!(await call('leaderboard')).body.players.some(p => p.wallet === wallet));
+  assert.ok(!(await allBoard()).some(p => p.wallet === wallet));
   clock = Date.parse(res.race.finishedAt) + 1;
   assert.equal((await call('me', {}, t)).body.points, res.you.points);
-  assert.ok((await call('leaderboard')).body.players.some(p => p.wallet === wallet));
+  assert.ok((await allBoard()).some(p => p.wallet === wallet));
   ok('points and the leaderboard wait until the race has run on screen');
 }
 
@@ -273,7 +283,7 @@ const fillRoom = async (roomId, taken = 0) => {
   const race = (await call('bot-race', { terrain: 'Forest' }, tf)).body.race;
   assert.equal(race.field.find(f => f.wallet === fay.address.toLowerCase()).name, 'Speedy_Fay');
   clock = Date.parse(race.finishedAt) + 1;
-  assert.equal((await call('leaderboard')).body.players.find(p => p.wallet === fay.address.toLowerCase()).name, 'Speedy_Fay');
+  assert.equal((await allBoard()).find(p => p.wallet === fay.address.toLowerCase()).name, 'Speedy_Fay');
   ok('players pick a unique name; it shows in races and on the leaderboard; bad names are refused');
 }
 
@@ -291,7 +301,7 @@ const fillRoom = async (roomId, taken = 0) => {
 
 // --- leaderboard ----------------------------------------------------------
 {
-  const board = (await call('leaderboard')).body.players;
+  const board = (await allBoard());
   assert.ok(board.length >= 4);
   for (let i = 1; i < board.length; i++) assert.ok(board[i - 1].points >= board[i].points);
   const a = board.find(p => p.wallet === alice.address.toLowerCase());
@@ -360,7 +370,7 @@ const fillRoom = async (roomId, taken = 0) => {
   const me = (await call('me', {}, aliceToken)).body;
   assert.equal(me.streak.ranToday, true);
   assert.ok(me.streak.current >= 1, 'she raced today');
-  const board = (await call('leaderboard', {})).body.players;
+  const board = (await allBoard());
   assert.equal(board.every(p => typeof p.badge === 'number'), true);
   ok('the server reports the streak on the player and the badge on the leaderboard');
 
@@ -370,7 +380,7 @@ const fillRoom = async (roomId, taken = 0) => {
   assert.equal((await call('me', {}, aliceToken)).body.racerNumber, me.racerNumber);
   deps.betaSeasonEnd = new Date(0);
   assert.equal((await call('me', {}, aliceToken)).body.racerNumber, null);
-  const rowOf = async () => (await call('leaderboard', {})).body.players.find(p => p.wallet === me.wallet);
+  const rowOf = async () => (await allBoard()).find(p => p.wallet === me.wallet);
   assert.equal((await rowOf()).racerNumber, null);
   delete deps.betaSeasonEnd;
   assert.equal((await rowOf()).racerNumber, me.racerNumber);
@@ -515,7 +525,7 @@ const fillRoom = async (roomId, taken = 0) => {
   assert.equal(board.roomsCounted >= 1, true);
   const winner = race.results.find(r => r.position === 1);
   assert.equal(board.recent[0].number, race.field.findIndex(f => f.id === winner.id) + 1);
-  const season = (await call('leaderboard')).body.players.find(p => p.wallet === pia.address.toLowerCase());
+  const season = (await allBoard()).find(p => p.wallet === pia.address.toLowerCase());
   assert.equal(season, undefined);
   ok('picks score 10 / 3 / 0 by saddle number and leave season points alone');
 
@@ -635,7 +645,7 @@ const fillRoom = async (roomId, taken = 0) => {
   ok('four rounds score 25/18/15… per room and the table adds them up, best first');
 
   assert.equal((await call('me', {}, racers[0].t)).body.racesToday, 0, 'Cup races use no daily race');
-  assert.ok(!(await call('leaderboard')).body.players.some(p => expected.has(p.wallet)), 'and give no season points');
+  assert.ok(!(await allBoard()).some(p => expected.has(p.wallet)), 'and give no season points');
   ok('Cup races use no daily race and give no season points');
 
   // Grand Final: the top 10 only, in one room.
@@ -772,6 +782,72 @@ const fillRoom = async (roomId, taken = 0) => {
   assert.equal(status.board.reduce((n, r) => n + r.points, 0), total, 'rally points are the 25/18/15… table of each player');
   assert.ok(status.me.result && status.me.result.points === POINTS_BY_POSITION[status.me.result.position - 1]);
   ok('Daily Rally: sign up free, rooms of 10 with bots at 18:00 UTC, each room runs once, own points table');
+}
+
+// --- Season board: pages, and the rank in `me` --------------------------------
+{
+  const board = await allBoard();
+  const first = (await call('leaderboard', { page: 1 })).body;
+  assert.equal(first.total, board.length, 'total counts every racer on the board');
+  assert.equal(first.players.length, Math.min(25, board.length), '25 racers a page');
+  assert.deepEqual(board.map(p => p.rank), board.map((_, i) => i + 1), 'ranks run on across pages');
+  for (let i = 1; i < board.length; i++) assert.ok(board[i - 1].points >= board[i].points);
+  const t = await signIn(Wallet.createRandom());
+  assert.equal((await call('me', {}, t)).body.rank, null, 'no rank before a first finish');
+  ok('the season board comes in pages of 25 with the total');
+}
+
+// --- Weekly Pangs Cup ----------------------------------------------------------
+{
+  const { weeklyCupStart } = await import('../supabase/functions/test-season/cup.ts');
+  deps.weeklyCup = true;
+  // the next Monday 10:00 UTC
+  const d = new Date(clock + 7 * 86_400_000);
+  const monday = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - ((d.getUTCDay() + 6) % 7) * 86_400_000;
+  clock = monday + 10 * 3_600_000;
+  const before = (await deps.store.latestCup()).id;
+  const made = (await call('cup-weekly')).body;
+  assert.equal(made.status, 'created');
+  assert.equal(made.cupId, before + 1);
+  const again = await Promise.all([call('cup-weekly'), call('cup-weekly')]);
+  assert.ok(again.every(r => r.body.status === 'scheduled' && r.body.cupId === made.cupId), 'one Cup a week, however often the autopilot asks');
+  let cup = (await call('cup', { cupId: made.cupId })).body;
+  assert.equal(cup.cup.startsAt, new Date(weeklyCupStart(clock)).toISOString());
+  assert.equal(new Date(cup.cup.startsAt).getUTCDay(), 0, 'on a Sunday');
+  assert.equal(new Date(cup.cup.startsAt).getUTCHours(), 20, 'at 20:00 UTC');
+  assert.equal(cup.cup.seats, 300);
+  assert.equal(cup.cup.rallySeats, 20);
+  assert.ok(cup.cup.prizes.some(p => p.places && p.places[0] === 4 && p.places[1] === 10 && /whitelist/i.test(p.label)), 'the whole final wins a whitelist place');
+
+  // Kept seats: shrink the Cup to 3 seats, 2 kept for the week's top rally racers.
+  const row = await deps.store.getCup(made.cupId);
+  await deps.store.insertCup({ ...row, seats: 3, rally_seats: 2 });
+  const day = new Date(monday).toISOString().slice(0, 10);
+  const ralliers = [await signIn(Wallet.createRandom()), await signIn(Wallet.createRandom())];
+  for (const t of ralliers) assert.equal((await call('rally-register', {}, t)).status, 200);
+  clock = Date.parse(`${day}T18:00:01Z`);
+  await call('rally');
+  clock = Math.max(...(await deps.store.rallyRaces(day)).map(r => Date.parse(r.finished_at))) + 1;
+  const status = (await call('rally', {}, ralliers[0])).body;
+  assert.equal(status.week.cupSeats, 20);
+  assert.equal(status.week.board.length, 2, "this week's rally table");
+  cup = (await call('cup', { cupId: made.cupId })).body;
+  assert.equal(cup.rallyTop.length, 2, 'the top rally racers hold a kept seat');
+  const outsiders = [await signIn(Wallet.createRandom()), await signIn(Wallet.createRandom())];
+  assert.equal((await call('cup-register', { cupId: made.cupId }, outsiders[0])).status, 200, 'one open seat');
+  const blocked = await call('cup-register', { cupId: made.cupId }, outsiders[1]);
+  assert.equal(blocked.status, 409, 'the open seats are gone');
+  assert.match(blocked.body.message, /kept/);
+  for (const t of ralliers) assert.equal((await call('cup-register', { cupId: made.cupId }, t)).status, 200, 'a top rally racer still gets in');
+  cup = (await call('cup', { cupId: made.cupId })).body;
+  assert.equal(cup.cup.registered, 3);
+  assert.equal(cup.entrantWallets.length, 3, 'the cached page lists the wallets, so each browser finds itself');
+  assert.ok(cup.rounds.every(r => r.rooms.every(room => Array.isArray(room.wallets))));
+
+  // Before Sunday's Cup has run the autopilot leaves it alone; the week after, it schedules the next one.
+  assert.equal((await call('cup-weekly')).body.status, 'scheduled');
+  deps.weeklyCup = false;
+  ok('weekly Cup: scheduled once for Sunday 20:00 UTC, 300 seats, the week\'s top rally racers keep theirs');
 }
 
 console.log(`\n${checks} checks passed.`);
