@@ -376,7 +376,7 @@ export interface RallyStatus {
   /** the latest rally that has started (today after 18:00 UTC, otherwise yesterday's) */
   last: { day: string; startsAt: string; rooms: RallyRoom[] } | null;
   board: RallyBoardEntry[];
-  /** this week (Monday-Sunday UTC); its top `cupSeats` keep a seat in the weekly Pangs Cup */
+  /** this rally week (Tuesday-Monday UTC, ending on Cup day); its top `cupSeats` keep a seat in the weekly Pangs Cup */
   week?: { from: string; cupSeats: number; board: RallyBoardEntry[] };
   me: { registered: boolean; raceId: string | null; result: { position: number; points: number } | null; rank: number | null; points: number } | null;
   serverTime: string;

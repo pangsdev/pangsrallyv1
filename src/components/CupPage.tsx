@@ -64,7 +64,7 @@ export default function CupPage({ player, onSignIn, onWatch }: Props) {
         ) : (
           <div className="cup-hero">
             <div>
-              <span className="cup-eyebrow">{cup.state === 'live' ? <><i className="cup-live-dot" />Live now</> : cup.state === 'postponed' ? 'Postponed · new date soon' : cup.rallySeats ? 'Weekly · Every Sunday · Free entry' : 'Beta Season special · Free entry'}</span>
+              <span className="cup-eyebrow">{cup.state === 'live' ? <><i className="cup-live-dot" />Live now</> : cup.state === 'postponed' ? 'Postponed · new date soon' : cup.rallySeats ? 'Weekly · Every Monday · Free entry' : 'Beta Season special · Free entry'}</span>
               <h1>Pangs <em>Cup</em> #{cup.id}</h1>
               <p className="cup-sub">Up to {cup.seats} racers. {cup.qualifyingRounds} qualifying rounds. The top ten meet in one Grand Final, live.</p>
               <div className="cup-when">

@@ -38,11 +38,14 @@ export interface RallyEntryRow {
 const DAY_MS = 86_400_000;
 /** The week's top rally racers keep a seat in the weekly Pangs Cup (cup.ts). */
 export const RALLY_CUP_SEATS = 20;
-/** Monday (UTC) of the week that `ms` falls in, as YYYY-MM-DD. Weeks run Monday to Sunday. */
+/**
+ * First day (a Tuesday, UTC) of the rally week that `ms` falls in, as YYYY-MM-DD. A rally week runs
+ * Tuesday to Monday, so it ends on the weekly Cup's day and that day's 18:00 rally still counts.
+ */
 export function weekStartDay(ms: number): string {
   const d = new Date(ms);
-  const sinceMonday = (d.getUTCDay() + 6) % 7;
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - sinceMonday * DAY_MS).toISOString().slice(0, 10);
+  const sinceTuesday = (d.getUTCDay() + 5) % 7;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - sinceTuesday * DAY_MS).toISOString().slice(0, 10);
 }
 const dayOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 /** Start time in minutes after midnight UTC (the dev server can move it to test a start). */
@@ -177,7 +180,7 @@ export async function rallyStatus(deps: Deps, token: string | null) {
       })),
     } : null,
     board: table.slice(0, 1000).map((r, i) => ({ rank: i + 1, wallet: r.wallet, name: name(r.wallet), points: r.points, rallies: r.rallies, wins: r.wins, podiums: r.podiums, me: r.wallet === wallet })),
-    // This week (Monday-Sunday UTC); its top RALLY_CUP_SEATS keep a seat in the weekly Pangs Cup.
+    // This rally week (Tuesday-Monday UTC); its top RALLY_CUP_SEATS keep a seat in the weekly Pangs Cup.
     week: {
       from: weekStartDay(now.getTime()),
       cupSeats: deps.weeklyCup ? RALLY_CUP_SEATS : 0,

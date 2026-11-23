@@ -813,7 +813,7 @@ const fillRoom = async (roomId, taken = 0) => {
   assert.ok(again.every(r => r.body.status === 'scheduled' && r.body.cupId === made.cupId), 'one Cup a week, however often the autopilot asks');
   let cup = (await call('cup', { cupId: made.cupId })).body;
   assert.equal(cup.cup.startsAt, new Date(weeklyCupStart(clock)).toISOString());
-  assert.equal(new Date(cup.cup.startsAt).getUTCDay(), 0, 'on a Sunday');
+  assert.equal(new Date(cup.cup.startsAt).getUTCDay(), 1, 'on a Monday');
   assert.equal(new Date(cup.cup.startsAt).getUTCHours(), 20, 'at 20:00 UTC');
   assert.equal(cup.cup.seats, 300);
   assert.equal(cup.cup.rallySeats, 20);
@@ -844,10 +844,10 @@ const fillRoom = async (roomId, taken = 0) => {
   assert.equal(cup.entrantWallets.length, 3, 'the cached page lists the wallets, so each browser finds itself');
   assert.ok(cup.rounds.every(r => r.rooms.every(room => Array.isArray(room.wallets))));
 
-  // Before Sunday's Cup has run the autopilot leaves it alone; the week after, it schedules the next one.
+  // Before Monday's Cup has run the autopilot leaves it alone; the week after, it schedules the next one.
   assert.equal((await call('cup-weekly')).body.status, 'scheduled');
   deps.weeklyCup = false;
-  ok('weekly Cup: scheduled once for Sunday 20:00 UTC, 300 seats, the week\'s top rally racers keep theirs');
+  ok('weekly Cup: scheduled once for Monday 20:00 UTC, 300 seats, the week\'s top rally racers keep theirs');
 }
 
 console.log(`\n${checks} checks passed.`);

@@ -131,7 +131,7 @@ export interface Store {
   leaderboardPage(offset: number, limit: number, now: Date): Promise<LeaderRow[]>;
   /** This wallet's row and place on the board, or null before its first finish. */
   leaderboardRank(wallet: string, now: Date): Promise<{ row: LeaderRow; rank: number } | null>;
-  /** Rally points since fromDay (YYYY-MM-DD, Monday of a week) or all time, best first (migration 016). */
+  /** Rally points since fromDay (YYYY-MM-DD, the Tuesday a rally week starts) or all time, best first (migration 016). */
   rallyBoard(fromDay: string | null, now: Date): Promise<RallyBoardRow[]>;
   /** wallet → chosen name, for the wallets that have one. */
   getUsernames(wallets: string[]): Promise<Record<string, string>>;
@@ -214,7 +214,7 @@ export interface Deps {
   rallyMinuteUtc?: number;
   /** Team wallets (lower-case) that cannot enter a Pangs Cup. */
   cupTeamWallets?: Set<string>;
-  /** Weekly Pangs Cup: the autopilot schedules one every Sunday (cup.ts ensureWeeklyCup). */
+  /** Weekly Pangs Cup: the autopilot schedules one every Monday (cup.ts ensureWeeklyCup). */
   weeklyCup?: boolean;
 }
 

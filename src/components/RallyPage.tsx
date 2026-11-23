@@ -93,7 +93,7 @@ export default function RallyPage({ player, onSignIn, onWatch }: Props) {
           <div>
             <span className="cup-eyebrow">{liveNow ? <><i className="cup-live-dot" />Racing now</> : 'Every day · Free entry'}</span>
             <h1>Daily <em>Rally</em></h1>
-            <p className="cup-sub">One race a day at {zoned(next.startsAt)}. Everyone who joins is drawn into rooms of 10; bots fill the empty seats. Rally points go on their own leaderboard{data.week?.cupSeats ? <>, and the week's top {data.week.cupSeats} keep a seat in Sunday's Pangs Cup</> : null}.</p>
+            <p className="cup-sub">One race a day at {zoned(next.startsAt)}. Everyone who joins is drawn into rooms of 10; bots fill the empty seats. Rally points go on their own leaderboard{data.week?.cupSeats ? <>, and the week's top {data.week.cupSeats} keep a seat in Monday's Pangs Cup</> : null}.</p>
             <div className="cup-when">
               <div><b>{day(next.startsAt)}</b><span>Next rally</span></div>
               <div><b>{zoned(next.startsAt)}</b><span>{data.hourUtc}:00 UTC</span></div>
@@ -116,7 +116,7 @@ export default function RallyPage({ player, onSignIn, onWatch }: Props) {
                 {weekRow !== undefined && (
                   <div className="rally-mine-row"><span>This week</span><b>{weekRow ? `#${weekRow.rank} · ${weekRow.points} pts` : '—'}</b></div>
                 )}
-                {weekRow && data.week && weekRow.rank <= data.week.cupSeats && <p className="rally-mine-seat">✓ You keep a seat in Sunday's Pangs Cup</p>}
+                {weekRow && data.week && weekRow.rank <= data.week.cupSeats && <p className="rally-mine-seat">✓ You keep a seat in Monday's Pangs Cup</p>}
                 {me.result && last ? (
                   <div className="rally-mine-last">
                     <span>{lastIsToday ? "Today's" : "Yesterday's"} rally</span>
@@ -236,7 +236,7 @@ function BoardCard({ data, tab, setTab, page, setPage }: {
   const row = (r: RallyBoardEntry, pinned = false) => (
     <div key={`${pinned ? 'pin-' : ''}${r.rank}`} className={`rally-board-row ${r.me ? 'me' : ''} ${r.rank <= 3 ? `top${r.rank}` : ''} ${pinned ? 'pinned' : ''}`}>
       <span>{r.rank}</span>
-      <span className="name">{r.name}{seats > 0 && r.rank <= seats && <i className="rally-seat" title="Keeps a seat in Sunday's Pangs Cup">Cup seat</i>}</span>
+      <span className="name">{r.name}{seats > 0 && r.rank <= seats && <i className="rally-seat" title="Keeps a seat in Monday's Pangs Cup">Cup seat</i>}</span>
       <span>{r.rallies}</span><span>{r.wins}</span><b>{r.points}</b>
     </div>
   );
@@ -252,7 +252,7 @@ function BoardCard({ data, tab, setTab, page, setPage }: {
           </div>
         )}
       </div>
-      {seats > 0 && <p className="rally-seat-note">The top {seats} this week keep a seat in Sunday's <b>Pangs Cup</b>. The week runs Monday to Sunday (UTC).</p>}
+      {seats > 0 && <p className="rally-seat-note">The top {seats} this week keep a seat in Monday's <b>Pangs Cup</b>. The rally week runs Tuesday to Monday (UTC), so Monday's rally still counts.</p>}
       {view.length === 0 ? (
         <p className="rally-empty">{tab === 'week' ? 'No rally points this week yet. The next rally fills this table.' : 'No rally points yet. The first rally fills this table.'}</p>
       ) : (

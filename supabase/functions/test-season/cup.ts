@@ -93,7 +93,7 @@ export async function newCup(
 /* Weekly Cup                                                          */
 /* ------------------------------------------------------------------ */
 
-/** Every Sunday at 20:00 UTC. Seats follow Daily Rally turnout (~250-320 a day in Nov 2026). */
+/** Every Monday at 20:00 UTC. Seats follow Daily Rally turnout (~250-320 a day in Nov 2026). */
 export const WEEKLY_CUP = { hourUtc: 20, seats: 300, rallySeats: 20, roundMinutes: 15, finalGapMinutes: 15 };
 /** The whole Grand Final wins a Genesis whitelist place; badges as before. */
 export const WEEKLY_PRIZES: CupPrize[] = [
@@ -103,7 +103,7 @@ export const WEEKLY_PRIZES: CupPrize[] = [
   { tier: 4, usdg: 0, label: 'Genesis whitelist + Finalist badge', places: [4, 10] },
 ];
 
-/** Sunday 20:00 UTC of the week (Monday-Sunday UTC) that `ms` falls in. */
+/** Monday 20:00 UTC that ends the rally week (Tuesday-Monday UTC) `ms` falls in. */
 export function weeklyCupStart(ms: number): number {
   return Date.parse(`${weekStartDay(ms)}T00:00:00.000Z`) + 6 * 86_400_000 + WEEKLY_CUP.hourUtc * 3_600_000;
 }
@@ -124,7 +124,7 @@ export async function ensureWeeklyCup(deps: Deps) {
     if (started > now - 6 * 3_600_000) return { status: 'busy', cupId: latest.id };
     if (!latest.claim_contract && started > now - 24 * 3_600_000) return { status: 'busy', cupId: latest.id };
   }
-  // Registration closes 30 minutes before Round 1: too late for this week, next week's comes on Monday.
+  // Registration closes 30 minutes before Round 1: too late for this week, next week's comes on Tuesday.
   if (now >= start - 30 * 60_000) return { status: 'waiting' };
   const id = (latest?.id ?? 0) + 1;
   const cup = await newCup(deps, {

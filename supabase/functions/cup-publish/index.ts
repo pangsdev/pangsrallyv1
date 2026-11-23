@@ -6,7 +6,7 @@
  *      due, so rounds begin on time even when nobody has the page open;
  *   2. once the Grand Final has finished, writes the results and the Participant root on chain and
  *      turns on the Claim buttons (publish.ts; safe to repeat);
- *   3. until this week's Cup exists (weekly Cups, every Sunday 20:00 UTC), asks the game server to schedule it;
+ *   3. until this week's Cup exists (weekly Cups, every Monday 20:00 UTC), asks the game server to schedule it;
  *   4. in the first minutes after 18:00 UTC, asks for the Daily Rally (`rally` action), which draws and
  *      runs that day's rooms, so the rally starts on time even when nobody has the page open.
  *
@@ -25,11 +25,11 @@ const CHAIN_ID = 4663;
 const url = Deno.env.get('SUPABASE_URL')!;
 const db = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
 
-/** Sunday 20:00 UTC of the Monday-Sunday (UTC) week that `ms` falls in (same as cup.ts weeklyCupStart). */
+/** Monday 20:00 UTC that ends the rally week (Tuesday-Monday UTC) `ms` falls in (same as cup.ts weeklyCupStart). */
 function weeklyCupStart(ms: number): number {
   const d = new Date(ms);
-  const monday = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - ((d.getUTCDay() + 6) % 7) * 86_400_000;
-  return monday + 6 * 86_400_000 + 20 * 3_600_000;
+  const tuesday = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - ((d.getUTCDay() + 5) % 7) * 86_400_000;
+  return tuesday + 6 * 86_400_000 + 20 * 3_600_000;
 }
 
 const reply = (status: number, body: unknown) =>
