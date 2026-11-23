@@ -5,7 +5,7 @@ import { LeaderboardBadges } from './Badges';
 import { BoardTabs } from './Predictions';
 import type { WalletOption } from '../testSeason/wallets';
 import { pollWhileVisible } from '../testSeason/poll';
-import { Pager } from './Pager';
+import { LeaderBoard, PODIUM, boardPages, pageRanks, type BoardRow } from './LeaderBoard';
 
 /** Shown instead of a race page until the player has signed in with their wallet. */
 export function SignInGate({ signingIn, onSignIn }: { signingIn: boolean; onSignIn: () => void }) {
@@ -135,34 +135,51 @@ export function BetaMintModal({ onMint, onClose }: { onMint: (onStep: (s: 'vouch
 const medal = (pos: number | null) => pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : pos ? `#${pos}` : '⏳';
 const raceNote = (r: HistoryRow) => r.status === 'finished' ? `+${r.points} pts` : r.status === 'live' ? 'Racing now' : 'Waiting';
 
-/** Test-season leaderboard (points from every finish). */
-export function SeasonLeaderboard({ playerWallet, playerRank, onTab }: { playerWallet: string | null; playerRank?: number | null; onTab: (tab: 'season' | 'predictions') => void }) {
-  const [players, setPlayers] = useState<LeaderboardPlayer[] | null>(null);
+/** Season leaderboard (points from every finish): podium, ten a page, my place pinned. */
+export function SeasonLeaderboard({ me, onTab }: {
+  /** the signed-in racer's own line (from `me`), pinned under the table */
+  me: { wallet: string; name: string; rank: number | null; points: number; races: number; wins: number } | null;
+  onTab: (tab: 'season' | 'predictions') => void;
+}) {
+  // The server sends 25 racers a page (cached for everyone); the table shows 10, so it keeps the pages it has.
+  const [pagesSeen, setPagesSeen] = useState<Record<number, LeaderboardPlayer[]>>({});
   const [total, setTotal] = useState<number | null>(null);
+  const [serverSize, setServerSize] = useState(25);
   const [page, setPage] = useState(1);
-  const [pages, setPages] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
   const [error, setError] = useState<string | null>(null);
+
+  const [from, to] = pageRanks(page);
+  const need = [...new Set([1, Math.ceil(from / serverSize), Math.ceil(Math.min(to, total ?? to) / serverSize)])].filter(p => p >= 1);
+  const needKey = need.join(',');
 
   useEffect(() => {
     let live = true;
-    const load = () => testSeason.leaderboard(page)
-      .then(({ data: r }) => {
+    const load = () => Promise.all(needKey.split(',').map(Number).map(p => testSeason.leaderboard(p).then(r => [p, r.data] as const)))
+      .then(got => {
         if (!live) return;
-        setPlayers(r.players);
-        setTotal(r.total ?? r.players.length);
-        setPages(r.pages ?? 1);
-        setPageSize(r.pageSize ?? 25);
+        setPagesSeen(c => {
+          const next = { ...c };
+          for (const [p, d] of got) next[p] = d.players;
+          return next;
+        });
+        const d = got[0][1];
+        setTotal(d.total ?? d.players.length);
+        setServerSize(d.pageSize ?? 25);
         setError(null);
       })
-      .catch(e => { if (live) setError(e.message); });
+      .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Could not load the leaderboard.'); });
     load();
     const stop = pollWhileVisible(load, 60_000);
     return () => { live = false; stop(); };
-  }, [page]);
+  }, [needKey]);
 
+  const all = Object.values(pagesSeen).flat();
+  const toRow = (p: LeaderboardPlayer): BoardRow => ({
+    rank: p.rank, key: p.wallet, name: p.name, points: p.points, stats: [p.races, p.wins], me: p.wallet === me?.wallet,
+    extra: <LeaderboardBadges racerNumber={p.racerNumber} streakDays={p.badge} />,
+  });
   const go = (p: number) => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-  const myPage = playerRank ? Math.ceil(playerRank / pageSize) : null;
+  const mineRow: BoardRow | null = me?.rank ? { rank: me.rank, key: me.wallet, name: me.name, points: me.points, stats: [me.races, me.wins], me: true } : null;
 
   return (
     <section className="inventory-page animated-enter season-page">
@@ -171,8 +188,6 @@ export function SeasonLeaderboard({ playerWallet, playerRank, onTab }: { playerW
         <h2>Beta Season Leaderboard</h2>
         <div className="inventory-stats">
           <span>Racers: <strong style={{ color: 'var(--primary)' }}>{total?.toLocaleString('en-US') ?? '…'}</strong></span>
-          {playerRank ? <span>Your rank: <strong style={{ color: 'var(--primary)' }}>#{playerRank}</strong></span> : null}
-          {myPage && myPage !== page && <button type="button" className="season-jump" onClick={() => go(myPage)}>Show my place</button>}
         </div>
       </div>
 
@@ -181,38 +196,23 @@ export function SeasonLeaderboard({ playerWallet, playerRank, onTab }: { playerW
         Ties go to more wins, then to whoever got there first.
       </p>
 
-      <div className="leaderboard-list glass-panel season-board">
-        <div className="lb-list-header season-grid">
-          <div>Rank</div>
-          <div>Racer</div>
-          <div>Points</div>
-          <div>Races</div>
-          <div>Wins</div>
-        </div>
-        {error ? (
+      <div className="glass-panel season-board">
+        {error && total === null ? (
           <div className="season-empty">{error}</div>
-        ) : !players ? (
-          <div className="season-empty">Loading…</div>
-        ) : players.length === 0 ? (
-          <div className="season-empty">No races yet. Be the first on the board!</div>
-        ) : players.map(p => {
-          const me = p.wallet === playerWallet;
-          const podium = p.rank <= 3 ? ['#ffd700', '#c0c0c0', '#cd7f32'][p.rank - 1] : null;
-          return (
-            <div key={p.wallet} className={`lb-list-row season-grid ${me ? 'season-me' : ''}`} style={{ borderLeft: `4px solid ${podium ?? 'transparent'}` }}>
-              <div style={{ fontWeight: 'bold', color: podium ?? 'var(--text-muted)' }}>#{p.rank}</div>
-              <div className="season-name">
-                <span className="season-name-text">{p.name}{me ? ' (You)' : ''}</span>
-                <LeaderboardBadges racerNumber={p.racerNumber} streakDays={p.badge} />
-              </div>
-              <div style={{ color: 'var(--pangs-orange)', fontWeight: 'bold' }}>{p.points}</div>
-              <div>{p.races}</div>
-              <div style={{ color: 'var(--color-success)' }}>{p.wins}</div>
-            </div>
-          );
-        })}
+        ) : (
+          <LeaderBoard
+            columns={['Races', 'Wins']}
+            podium={all.filter(p => p.rank <= PODIUM).sort((x, y) => x.rank - y.rank).map(toRow)}
+            rows={all.filter(p => p.rank >= from && p.rank <= to).sort((x, y) => x.rank - y.rank).map(toRow)}
+            total={total ?? 0}
+            loading={total === null}
+            page={Math.min(page, boardPages(total ?? 0))}
+            onPage={go}
+            mine={mineRow}
+            empty="No races yet. Be the first on the board!"
+          />
+        )}
       </div>
-      <Pager page={page} pages={pages} onPage={go} label="Leaderboard pages" />
     </section>
   );
 }

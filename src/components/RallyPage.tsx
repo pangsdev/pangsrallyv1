@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSession, testSeason, withRallyMe, type PlayerStatus, type RallyBoardEntry, type RallyStatus } from '../testSeason/api';
 import { Pager } from './Pager';
+import { LeaderBoard, PODIUM, boardPages, pageRanks, type BoardRow } from './LeaderBoard';
 import { POINTS_BY_POSITION } from '../race/testSeason';
 import { clockText, day, ordinal, zoned } from './cupShared';
 import './cup.css';
@@ -48,7 +49,6 @@ function useRally() {
 }
 
 const ROOMS_PER_PAGE = 12;
-const BOARD_PER_PAGE = 15;
 
 const letter = (room: number) => String.fromCharCode(64 + room);
 
@@ -222,24 +222,19 @@ function RoomsCard({ data, lastIsToday, page, setPage, find, setFind, onWatch }:
   );
 }
 
-/** Rally points: this week (its top racers keep a Cup seat) or all time, fifteen a page, my row pinned. */
+/** Rally points: this week (its top racers keep a Cup seat) or all time, on the shared leaderboard. */
 function BoardCard({ data, tab, setTab, page, setPage }: {
   data: RallyStatus; tab: 'week' | 'all'; setTab: (t: 'week' | 'all') => void; page: number; setPage: (p: number) => void;
 }) {
   const week = data.week;
   const view = tab === 'week' && week ? week.board : data.board;
   const seats = tab === 'week' ? week?.cupSeats ?? 0 : 0;
-  const pages = Math.max(1, Math.ceil(view.length / BOARD_PER_PAGE));
-  const at = Math.min(page, pages);
-  const rows = view.slice((at - 1) * BOARD_PER_PAGE, at * BOARD_PER_PAGE);
+  const toRow = (r: RallyBoardEntry): BoardRow => ({
+    rank: r.rank, key: r.wallet ?? `${r.rank}-${r.name}`, name: r.name, points: r.points, stats: [r.rallies, r.wins], me: r.me,
+    extra: seats > 0 && r.rank <= seats ? <i className="rally-seat" title="Keeps a seat in Monday's Pangs Cup">Cup seat</i> : undefined,
+  });
+  const [from, to] = pageRanks(page);
   const mine = view.find(r => r.me);
-  const row = (r: RallyBoardEntry, pinned = false) => (
-    <div key={`${pinned ? 'pin-' : ''}${r.rank}`} className={`rally-board-row ${r.me ? 'me' : ''} ${r.rank <= 3 ? `top${r.rank}` : ''} ${pinned ? 'pinned' : ''}`}>
-      <span>{r.rank}</span>
-      <span className="name">{r.name}{seats > 0 && r.rank <= seats && <i className="rally-seat" title="Keeps a seat in Monday's Pangs Cup">Cup seat</i>}</span>
-      <span>{r.rallies}</span><span>{r.wins}</span><b>{r.points}</b>
-    </div>
-  );
 
   return (
     <div className="cup-card">
@@ -252,17 +247,18 @@ function BoardCard({ data, tab, setTab, page, setPage }: {
           </div>
         )}
       </div>
-      {seats > 0 && <p className="rally-seat-note">The top {seats} this week keep a seat in Monday's <b>Pangs Cup</b>. The rally week runs Tuesday to Monday (UTC), so Monday's rally still counts.</p>}
-      {view.length === 0 ? (
-        <p className="rally-empty">{tab === 'week' ? 'No rally points this week yet. The next rally fills this table.' : 'No rally points yet. The first rally fills this table.'}</p>
-      ) : (
-        <div className="rally-board">
-          <div className="rally-board-row head"><span>#</span><span>Racer</span><span>Rallies</span><span>Wins</span><span>Pts</span></div>
-          {rows.map(r => row(r))}
-          {mine && !rows.includes(mine) && row(mine, true)}
-        </div>
-      )}
-      <Pager page={at} pages={pages} onPage={setPage} label="Leaderboard pages" />
+      <LeaderBoard
+        compact
+        columns={['Rallies', 'Wins']}
+        podium={view.slice(0, PODIUM).map(toRow)}
+        rows={view.filter(r => r.rank >= from && r.rank <= to).map(toRow)}
+        total={view.length}
+        page={Math.min(page, boardPages(view.length))}
+        onPage={setPage}
+        mine={mine ? toRow(mine) : null}
+        note={seats > 0 ? <>The top {seats} this week keep a seat in Monday's <b>Pangs Cup</b>. The rally week runs Tuesday to Monday (UTC).</> : undefined}
+        empty={tab === 'week' ? 'No rally points this week yet. The next rally fills this table.' : 'No rally points yet. The first rally fills this table.'}
+      />
     </div>
   );
 }

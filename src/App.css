@@ -2133,7 +2133,7 @@
    TEST SEASON: leaderboard + my races
    ========================================================================== */
 .season-rules { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; margin: 1rem 0 0; }
-.season-board { margin-top: 1.5rem; }
+.season-board { max-width: 1000px; margin: 1.5rem auto 0; padding: 18px; }
 .season-grid { grid-template-columns: 70px minmax(0, 3fr) 1fr 1fr 1fr; }
 .season-name { display: flex; align-items: center; gap: 10px; min-width: 0; font-family: monospace; }
 .season-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

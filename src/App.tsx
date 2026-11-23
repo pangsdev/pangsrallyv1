@@ -2089,7 +2089,7 @@ function App() {
         )}
 
         {currentView === 'leaderboard' && (
-          <SeasonLeaderboard playerWallet={player?.wallet ?? null} playerRank={player?.rank ?? null} onTab={t => setCurrentView(t === 'season' ? 'leaderboard' : 'predictions')} />
+          <SeasonLeaderboard me={player ? { wallet: player.wallet, name: player.username ?? shortWallet(player.wallet), rank: player.rank, points: player.points, races: player.races, wins: player.wins } : null} onTab={t => setCurrentView(t === 'season' ? 'leaderboard' : 'predictions')} />
         )}
 
         {PREDICTIONS_ON && currentView === 'predictions' && (
