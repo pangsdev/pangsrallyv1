@@ -14,7 +14,9 @@ const TIERS: Record<number, { art: number; name: string; place?: string }> = {
 };
 
 export default function handler(req: Request): Response {
-  const raw = new URL(req.url).pathname.split('/').pop() ?? '';
+  // /api/cup-badge/31 is rewritten to /api/cup-badge?id=31 (vercel.json)
+  const url = new URL(req.url);
+  const raw = url.searchParams.get('id') ?? url.pathname.split('/').pop() ?? '';
   const tokenId = Number(raw.replace(/\.json$/, ''));
   const cupId = Math.floor(tokenId / 10);
   const tier = TIERS[tokenId % 10];
